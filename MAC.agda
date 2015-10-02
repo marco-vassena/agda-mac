@@ -3,6 +3,8 @@ module MAC where
 open import Data.List
 open import Data.Unit
 open import Data.Empty
+open import Relation.Nullary using (¬_)
+open import Relation.Binary.PropositionalEquality
 
 -- Types τ
 data Ty : Set where
@@ -10,12 +12,6 @@ data Ty : Set where
   _=>_ : (τ₁ t₂ : Ty) -> Ty
 
 infixr 3 _=>_
-
--- TODO: is it better to have a Value data type or a statement IsValue : Term τ -> Set ?
--- Values v
-data Value : Ty -> Set where
-  True : Value Bool
-  False : Value Bool
 
 -- A context Δ is a list of types contained in an environment 
 Context : Set
@@ -104,3 +100,42 @@ data _⟼_ : {τ : Ty} -> CTerm τ -> CTerm τ -> Set where
   -- Distributes the environment forming two closures wrapped in a CLapp
   Dist : ∀ {Δ α β f x} {Γ : Env Δ} {j₁ : Δ ⊢ f ∷ α => β} {j₂ : Δ ⊢ x ∷ α} ->
          (Γ , EApp j₁ j₂) ⟼ ((Γ , j₁) $ (Γ , j₂))
+
+-- A closed term is a redex if it can be reduced further
+data Redex {τ : Ty} (c : CTerm τ) : Set where
+  Step : ∀ {c' : CTerm τ} -> c ⟼ c' -> Redex c
+
+-- Normal forms
+-- A closed term is in normal form if it cannot be reduced further
+NormalForm : ∀ {τ} -> CTerm τ -> Set
+NormalForm c = ¬ Redex c
+
+--------------------------------------------------------------------------------
+-- Proofs
+--------------------------------------------------------------------------------
+
+-- TODO move proves to separate module
+
+
+-- Lemma.
+-- Values are not reducible.
+valueNotRedex : ∀ {τ} -> (c : CTerm τ) -> IsValue c -> NormalForm c
+valueNotRedex (Γ , ETrue) p (Step ())
+valueNotRedex (Γ , EFalse) p (Step ())
+valueNotRedex (Γ , EApp j j₁) p r = p
+valueNotRedex (Γ , EAbs j) p (Step ())
+valueNotRedex (Γ , EVar x) p r = p
+valueNotRedex (f $ x) p r = p
+
+determinism : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⟼ c₂ -> c₁ ⟼ c₃ -> c₂ ≡ c₃
+determinism (AppL s₁) (AppL s₂) rewrite determinism s₁ s₂ = refl
+determinism {c₁ = Γ , EAbs j $ x} (AppL s₁) Beta = ⊥-elim (valueNotRedex (Γ , EAbs j) tt (Step s₁)) -- AppL does not apply
+determinism {c₁ = Γ , EAbs j $ x} Beta (AppL s₂) = ⊥-elim (valueNotRedex (Γ , EAbs j) tt (Step s₂)) -- Idem
+determinism Beta Beta = refl
+determinism Lookup Lookup = refl
+determinism Dist Dist = refl
+
+-- Type preservation is trivial because it is enforced by the definition of c₁ ⟼ c₂
+-- in which two closed terms always have the same type.
+preservation : ∀ {τ} {c₁ c₂ : CTerm τ} -> c₁ ⟼ c₂ -> τ ≡ τ
+preservation _ = refl
