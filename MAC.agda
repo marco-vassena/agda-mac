@@ -35,17 +35,17 @@ data Term : Set where
 -- They define well-typed terms
 -- TODO should I keep the same constructors name as in Term?
 data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where 
-  ETrue : Δ ⊢ True ∷ Bool
-  EFalse : Δ ⊢ False ∷ Bool
-  EApp : ∀ {t₁ t₂ α β} ->
+  True : Δ ⊢ True ∷ Bool
+  False : Δ ⊢ False ∷ Bool
+  App : ∀ {t₁ t₂ α β} ->
            Δ ⊢ t₁ ∷ α => β ->
            Δ ⊢ t₂ ∷ α ->
            Δ ⊢ App t₁ t₂ ∷ β
-  EAbs : ∀ {t α β} ->
+  Abs : ∀ {t α β} ->
            α ∷ Δ ⊢ t ∷ β -> 
            Δ ⊢ Abs t ∷ α => β
-  EVar : ∀ {τ} -> τ ∈ Δ -> Δ ⊢ Var ∷ τ
-
+  Var : ∀ {τ} -> τ ∈ Δ -> Δ ⊢ Var ∷ τ
+  
 infixl 1 _⊢_∷_
 
 mutual 
@@ -74,11 +74,11 @@ There r !! (t ∷ e) = r !! e
 
 -- Determines whether a closed term is a value or not
 IsValue : ∀ {τ} -> CTerm τ -> Set
-IsValue (Γ , ETrue) = ⊤
-IsValue (Γ , EFalse) = ⊤
-IsValue (Γ , EApp j j₁) = ⊥
-IsValue (Γ , EAbs j) = ⊤
-IsValue (Γ , EVar x) = ⊥
+IsValue (Γ , True) = ⊤
+IsValue (Γ , False) = ⊤
+IsValue (Γ , App j j₁) = ⊥
+IsValue (Γ , Abs j) = ⊤
+IsValue (Γ , Var x) = ⊥
 IsValue (c₁ $ c₂) = ⊥
 
 -- Call-by-need small step semantics
@@ -91,15 +91,15 @@ data _⟼_ : {τ : Ty} -> CTerm τ -> CTerm τ -> Set where
 
   -- Pushes a term in the environment
   Beta : ∀ {Δ α β t} {v : CTerm α} {Γ : Env Δ} {j : α ∷ Δ ⊢ t ∷ β} ->
-          (Γ , EAbs j $ v) ⟼ (v ∷ Γ , j)
+          (Γ , Abs j $ v) ⟼ (v ∷ Γ , j)
 
   -- Looks up a variable in the environment
   Lookup : ∀ {Δ τ} {i : τ ∈ Δ} {Γ : Env Δ} ->
-           (Γ , EVar i) ⟼ (i !! Γ)
+           (Γ , Var i) ⟼ (i !! Γ)
 
   -- Distributes the environment forming two closures wrapped in a CLapp
   Dist : ∀ {Δ α β f x} {Γ : Env Δ} {j₁ : Δ ⊢ f ∷ α => β} {j₂ : Δ ⊢ x ∷ α} ->
-         (Γ , EApp j₁ j₂) ⟼ ((Γ , j₁) $ (Γ , j₂))
+         (Γ , App j₁ j₂) ⟼ ((Γ , j₁) $ (Γ , j₂))
 
 -- A closed term is a redex if it can be reduced further
 data Redex {τ : Ty} (c : CTerm τ) : Set where
@@ -120,17 +120,17 @@ NormalForm c = ¬ Redex c
 -- Lemma.
 -- Values are not reducible.
 valueNotRedex : ∀ {τ} -> (c : CTerm τ) -> IsValue c -> NormalForm c
-valueNotRedex (Γ , ETrue) p (Step ())
-valueNotRedex (Γ , EFalse) p (Step ())
-valueNotRedex (Γ , EApp j j₁) p r = p
-valueNotRedex (Γ , EAbs j) p (Step ())
-valueNotRedex (Γ , EVar x) p r = p
+valueNotRedex (Γ , True) p (Step ())
+valueNotRedex (Γ , False) p (Step ())
+valueNotRedex (Γ , App j j₁) p r = p
+valueNotRedex (Γ , Abs j) p (Step ())
+valueNotRedex (Γ , Var x) p r = p
 valueNotRedex (f $ x) p r = p
 
 determinism : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⟼ c₂ -> c₁ ⟼ c₃ -> c₂ ≡ c₃
 determinism (AppL s₁) (AppL s₂) rewrite determinism s₁ s₂ = refl
-determinism {c₁ = Γ , EAbs j $ x} (AppL s₁) Beta = ⊥-elim (valueNotRedex (Γ , EAbs j) tt (Step s₁)) -- AppL does not apply
-determinism {c₁ = Γ , EAbs j $ x} Beta (AppL s₂) = ⊥-elim (valueNotRedex (Γ , EAbs j) tt (Step s₂)) -- Idem
+determinism {c₁ = Γ , Abs j $ x} (AppL s₁) Beta = ⊥-elim (valueNotRedex (Γ , Abs j) tt (Step s₁)) -- AppL does not apply
+determinism {c₁ = Γ , Abs j $ x} Beta (AppL s₂) = ⊥-elim (valueNotRedex (Γ , Abs j) tt (Step s₂)) -- Idem
 determinism Beta Beta = refl
 determinism Lookup Lookup = refl
 determinism Dist Dist = refl
