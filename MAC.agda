@@ -3,6 +3,7 @@ module MAC where
 open import Data.List
 open import Data.Unit
 open import Data.Empty
+open import Data.Sum
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality
 
@@ -110,12 +111,25 @@ data Redex {τ : Ty} (c : CTerm τ) : Set where
 NormalForm : ∀ {τ} -> CTerm τ -> Set
 NormalForm c = ¬ Redex c
 
+-- Every closed term is either a value or can be reduced further
+progress : ∀ {τ} -> (c : CTerm τ) -> (Redex c) ⊎ (IsValue c)
+progress (Γ , True) = inj₂ tt
+progress (Γ , False) = inj₂ tt
+progress (Γ , App f x) = inj₁ (Step Dist)
+progress (Γ , Abs t) = inj₂ tt
+progress (Γ , Var x) = inj₁ (Step Lookup)
+progress (f $ x) with progress f
+progress (f $ x₁) | inj₁ (Step s) = inj₁ (Step (AppL s))
+progress (Γ , App f x $ y) | inj₂ ()
+progress (Γ , Abs t $ x) | inj₂ y = inj₁ (Step Beta)
+progress (Γ , Var x $ y) | inj₂ ()
+progress ((f $ x) $ y) | inj₂ ()
+
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
 
 -- TODO move proves to separate module
-
 
 -- Lemma.
 -- Values are not reducible.
