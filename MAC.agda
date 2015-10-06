@@ -31,6 +31,7 @@ data Term : Set where
   Var : Term
   Abs : Term -> Term
   App : Term -> Term -> Term
+  If_Then_Else_ : Term -> Term -> Term -> Term
 
 -- Typing judgments.
 -- They define well-typed terms
@@ -46,7 +47,15 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
            α ∷ Δ ⊢ t ∷ β -> 
            Δ ⊢ Abs t ∷ α => β
   Var : ∀ {τ} -> τ ∈ Δ -> Δ ⊢ Var ∷ τ
-  
+
+  If_Then_Else_ : ∀ {α t₁ t₂ t₃} ->
+               Δ ⊢ t₁ ∷ Bool ->
+               Δ ⊢ t₂ ∷ α ->
+               Δ ⊢ t₃ ∷ α ->
+               Δ ⊢ If t₁ Then t₂ Else t₃ ∷ α
+
+infix 3 If_Then_Else_
+
 infixl 1 _⊢_∷_
 
 mutual 
@@ -80,6 +89,7 @@ IsValue (Γ , False) = ⊤
 IsValue (Γ , App j j₁) = ⊥
 IsValue (Γ , Abs j) = ⊤
 IsValue (Γ , Var x) = ⊥
+IsValue (Γ , If c Then t Else e) = ⊥
 IsValue (c₁ $ c₂) = ⊥
 
 -- Call-by-need small step semantics
@@ -102,6 +112,18 @@ data _⟼_ : {τ : Ty} -> CTerm τ -> CTerm τ -> Set where
   Dist : ∀ {Δ α β f x} {Γ : Env Δ} {j₁ : Δ ⊢ f ∷ α => β} {j₂ : Δ ⊢ x ∷ α} ->
          (Γ , App j₁ j₂) ⟼ ((Γ , j₁) $ (Γ , j₂))
 
+  IfCond : ∀ {Δ Δ' α t₁ t₂ t₃} {Γ : Env Δ} {Γ' : Env Δ'}
+             {c c' : Δ ⊢ t₁ ∷ Bool} {t : Δ ⊢ t₂ ∷ α} {e : Δ ⊢ t₃ ∷ α} ->
+             (Γ , c) ⟼ (Γ , c') ->
+             (Γ , (If c Then t Else e)) ⟼ (Γ , (If c' Then t Else e))
+
+  IfTrue : ∀ {Δ α t₂ t₃} {Γ : Env Δ} {t : Δ ⊢ t₂ ∷ α} {e : Δ ⊢ t₃ ∷ α} -> 
+             (Γ , (If True Then t Else e)) ⟼ (Γ , t)
+
+  IfFalse : ∀ {Δ α t₂ t₃} {Γ : Env Δ} {t : Δ ⊢ t₂ ∷ α} {e : Δ ⊢ t₃ ∷ α} -> 
+             (Γ , (If False Then t Else e)) ⟼ (Γ , e)
+
+
 -- A closed term is a redex if it can be reduced further
 data Redex {τ : Ty} (c : CTerm τ) : Set where
   Step : ∀ {c' : CTerm τ} -> c ⟼ c' -> Redex c
@@ -111,25 +133,46 @@ data Redex {τ : Ty} (c : CTerm τ) : Set where
 NormalForm : ∀ {τ} -> CTerm τ -> Set
 NormalForm c = ¬ Redex c
 
--- Every closed term is either a value or can be reduced further
-progress : ∀ {τ} -> (c : CTerm τ) -> (Redex c) ⊎ (IsValue c)
-progress (Γ , True) = inj₂ tt
-progress (Γ , False) = inj₂ tt
-progress (Γ , App f x) = inj₁ (Step Dist)
-progress (Γ , Abs t) = inj₂ tt
-progress (Γ , Var x) = inj₁ (Step Lookup)
-progress (f $ x) with progress f
-progress (f $ x₁) | inj₁ (Step s) = inj₁ (Step (AppL s))
-progress (Γ , App f x $ y) | inj₂ ()
-progress (Γ , Abs t $ x) | inj₂ y = inj₁ (Step Beta)
-progress (Γ , Var x $ y) | inj₂ ()
-progress ((f $ x) $ y) | inj₂ ()
-
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
 
 -- TODO move proves to separate module
+
+-- Every closed term is either a value or can be reduced further
+
+-- The addition of If_Then_Else_ seems to break progress
+-- In the typing rules the context Δ is fixed, i.e.
+-- it does not change within a rule, except in the lambda abstraction
+-- where it is extended with a new variable.
+
+-- In CTerm we have to existentiall quantify over the environment Γ.
+-- This is needed because to build a closure (_,_)
+-- Given the two constructors _$_ and _,_ when we open
+-- a closure we cannot rebuild the term needed for 
+-- the small step IfCond, because the Γ may have changed in Γ'
+
+progress : ∀ {τ} -> (c : CTerm τ) -> (Redex c) ⊎ (IsValue c)
+progress (Γ , True) = inj₂ tt
+progress (Γ , False) = inj₂ tt
+progress (Γ , App c c₁) = inj₁ (Step Dist)
+progress (Γ , Abs c) = inj₂ tt
+progress (Γ , Var x) = inj₁ (Step Lookup)
+progress (Γ , (If True Then t Else e)) = inj₁ (Step IfTrue)
+progress (Γ , (If False Then t Else e)) = inj₁ (Step IfFalse)
+progress (Γ , (If App (App c c₁) c₂ Then t Else e)) = {!!}
+progress (Γ , (If App (Abs c) c₁ Then t₁ Else e)) = inj₁ (Step (IfCond {!Beta!}))
+progress (Γ , (If App (Var x) c₁ Then t Else e)) = {!!}
+progress (Γ , (If App (If c Then c₁ Else c₂) c₃ Then t Else e)) = {!!} -- 
+progress (Γ , (If Var x Then t Else e)) = inj₁ (Step (IfCond {!Lookup!})) -- We could store something f $ x in Γ
+progress (Γ , (If If c Then c₁ Else c₂ Then t Else e)) = {!!}
+progress (f $ x) with progress f
+progress (f $ x) | inj₁ (Step s) = inj₁ (Step (AppL s))
+progress (Γ , App j j₁ $ x) | inj₂ ()
+progress (Γ , Abs j $ x) | inj₂ y = inj₁ (Step Beta)
+progress (Γ , Var x $ x₁) | inj₂ ()
+progress (Γ , (If j Then j₁ Else j₂) $ x) | inj₂ ()
+progress ((f $ f₁) $ x) | inj₂ ()
 
 -- Lemma.
 -- Values are not reducible.
@@ -139,6 +182,7 @@ valueNotRedex (Γ , False) p (Step ())
 valueNotRedex (Γ , App j j₁) p r = p
 valueNotRedex (Γ , Abs j) p (Step ())
 valueNotRedex (Γ , Var x) p r = p
+valueNotRedex (Γ , If c Then t Else e) p r = p
 valueNotRedex (f $ x) p r = p
 
 determinism : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⟼ c₂ -> c₁ ⟼ c₃ -> c₂ ≡ c₃
@@ -148,6 +192,14 @@ determinism {c₁ = Γ , Abs j $ x} Beta (AppL s₂) = ⊥-elim (valueNotRedex (
 determinism Beta Beta = refl
 determinism Lookup Lookup = refl
 determinism Dist Dist = refl
+determinism (IfCond s₁) (IfCond s₂) with determinism s₁ s₂
+determinism (IfCond s₁) (IfCond s₂) | refl = refl
+determinism (IfCond s₁) IfTrue = ⊥-elim (valueNotRedex (_ , True) tt (Step s₁))
+determinism (IfCond s₁) IfFalse = ⊥-elim (valueNotRedex (_ , False) tt (Step s₁))
+determinism IfTrue (IfCond s₂) = ⊥-elim (valueNotRedex (_ , True) tt (Step s₂))
+determinism IfTrue IfTrue = refl
+determinism IfFalse (IfCond s₂) = ⊥-elim (valueNotRedex (_ , False) tt (Step s₂))
+determinism IfFalse IfFalse = refl
 
 -- Type preservation is trivial because it is enforced by the definition of c₁ ⟼ c₂
 -- in which two closed terms always have the same type.
