@@ -12,6 +12,9 @@ progress (Γ , App f x) = inj₁ (Step Dist-$)
 progress (Γ , Abs t) = inj₂ tt
 progress (Γ , Var x) = inj₁ (Step Lookup)
 progress (Γ , (If c Then t Else e)) = inj₁ (Step Dist-If)
+progress (Γ , Mac j) = inj₂ tt
+progress (Γ , Return j) = inj₁ (Step Return)
+progress (Γ , m >>= k) = inj₁ (Step Dist->>=)
 progress (f $ x) with progress f
 progress (f $ x) | inj₁ (Step s) = inj₁ (Step (AppL s))
 progress (Γ , App j j₁ $ x) | inj₂ ()
@@ -29,6 +32,17 @@ progress (If Γ , Var x Then t₁ Else e) | inj₂ ()
 progress (If Γ , (If j Then j₁ Else j₂) Then t₄ Else e) | inj₂ ()
 progress (If c $ c₁ Then t Else e) | inj₂ ()
 progress (If If c Then c₁ Else c₂ Then t Else e) | inj₂ ()
+progress (m >>= k) with progress m
+progress (m >>= k) | inj₁ (Step x) = inj₁ (Step (BindCtx x))
+progress ((Γ , App j j₁) >>= k) | inj₂ ()
+progress ((Γ , Var x) >>= k) | inj₂ ()
+progress ((Γ , (If j Then j₁ Else j₂)) >>= k) | inj₂ ()
+progress ((Γ , Mac j) >>= k) | inj₂ tt = inj₁ (Step Bind)
+progress ((Γ , Return j) >>= k) | inj₂ ()
+progress ((Γ , j >>= j₁) >>= k₁) | inj₂ ()
+progress ((m $ m₁) >>= k) | inj₂ ()
+progress ((If m Then m₁ Else m₂) >>= k) | inj₂ ()
+progress (m₁ >>= k₁ >>= k₂) | inj₂ ()
 
 -- Lemma.
 -- Values are not reducible.
@@ -39,8 +53,12 @@ valueNotRedex (Γ , App f x) () nf
 valueNotRedex (Γ , Abs j) isV (Step ())
 valueNotRedex (Γ , Var x) () nf
 valueNotRedex (Γ , (If j Then j₁ Else j₂)) () nf
+valueNotRedex (Γ , Mac j) tt (Step ())
+valueNotRedex (Γ , Return j) () s
+valueNotRedex (Γ , j >>= j₁) () s
 valueNotRedex (c $ c₁) () nf
 valueNotRedex (If c Then c₁ Else c₂) () nf
+valueNotRedex (c >>= c₁) () s
 
 -- | The small step semantics is deterministic.
 -- At most one rule apply per term.
@@ -60,6 +78,13 @@ determinism IfTrue (IfCond s₂) = ⊥-elim (valueNotRedex (_ , True) tt (Step s
 determinism IfTrue IfTrue = refl
 determinism IfFalse (IfCond s₂) = ⊥-elim (valueNotRedex (_ , False) tt (Step s₂))
 determinism IfFalse IfFalse = refl
+determinism Return Return = refl
+determinism Dist->>= Dist->>= = refl
+determinism (BindCtx s₁) (BindCtx s₂) with determinism s₁ s₂
+determinism (BindCtx s₁) (BindCtx s₂) | refl = refl
+determinism (BindCtx ()) Bind
+determinism Bind (BindCtx ())
+determinism Bind Bind = refl
 
 -- Type preservation is trivial because it is enforced by the definition of c₁ ⟼ c₂
 -- in which two closed terms always have the same type.

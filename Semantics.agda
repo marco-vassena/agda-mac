@@ -1,4 +1,4 @@
-module Semantics where
+module Semantics  where
 
 open import Base public
 open import Relation.Nullary using (¬_)
@@ -38,6 +38,19 @@ data _⟼_ : {τ : Ty} -> CTerm τ -> CTerm τ -> Set where
   IfFalse : ∀ {Δ α} {Γ : Env Δ} {t e : CTerm α} -> 
              (If (Γ , False) Then t Else e) ⟼ e
 
+  Return : ∀ {Δ t τ l}  {Γ : Env Δ} {c : Δ ⊢ t ∷ τ} ->
+             (Γ , Return c) ⟼ (Γ , Mac c)
+
+  Dist->>= : ∀ {Δ t₁ t₂ α β l} {Γ : Env Δ} ->
+              {c : Δ ⊢ t₁ ∷ Mac l α} {k : Δ ⊢ t₂ ∷ α => (Mac l β)} ->
+              (Γ , c >>= k) ⟼ ((Γ , c) >>= (Γ , k))
+
+  BindCtx : ∀ {α β l} {m m' : CTerm (Mac l α)} {k : CTerm (α => (Mac l β))} ->
+            m ⟼ m' -> 
+            (m >>= k) ⟼ (m' >>= k)
+
+  Bind : ∀ {α β t l Δ} {Γ : Env Δ} {t : Δ ⊢ t ∷ α} {k : CTerm (α => (Mac l β))} ->
+           ((Γ , Mac t) >>= k) ⟼ (k $ (Γ , t))
 
 -- A closed term is a Redex if it can be reduced further
 data Redex {τ : Ty} (c : CTerm τ) : Set where
