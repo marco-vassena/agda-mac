@@ -52,6 +52,26 @@ data _⟼_ : {τ : Ty} -> CTerm τ -> CTerm τ -> Set where
   Bind : ∀ {α β t l Δ} {Γ : Env Δ} {t : Δ ⊢ t ∷ α} {k : CTerm (α => (Mac l β))} ->
            ((Γ , Mac t) >>= k) ⟼ (k $ (Γ , t))
 
+  BindEx : ∀ {α β t l Δ} {Γ : Env Δ} {e : Δ ⊢ t ∷ Exception} {k : CTerm (α => (Mac l β))} ->
+           ((Γ , Macₓ e) >>= k) ⟼ (Γ , Throw e)  -- Rethrown as in LIO. It could be also (Γ , Macₓ e)
+
+  Throw : ∀ {Δ t τ l} {Γ : Env Δ} {e : Δ ⊢ t ∷ Exception} ->
+            (Γ , Throw {Δ} {τ} e) ⟼ (Γ , Macₓ e)
+
+  Dist-Catch : ∀ {Δ t₁ t₂ τ l} {Γ : Env Δ} {m : Δ ⊢ t₁ ∷ Mac l τ} {h : Δ ⊢ t₂ ∷ Exception => Mac l τ} ->
+             (Γ , Catch m h) ⟼ Catch (Γ , m) (Γ , h)
+            
+  CatchCtx : ∀ {τ l} {m m' : CTerm (Mac l τ)} {h : CTerm (Exception => Mac l τ)} ->
+             m ⟼ m' ->
+             Catch m h ⟼ Catch m' h
+
+  Catch : ∀ {Δ m τ l} {Γ : Env Δ} {t : Δ ⊢ m ∷ τ} {h : CTerm (Exception => Mac l τ)} ->
+          Catch (Γ , Mac t) h ⟼ (Γ , (Return t))
+               
+  CatchEx : ∀ {Δ t τ l} {Γ : Env Δ} {e : Δ ⊢ t ∷ Exception} {h : CTerm (Exception => Mac l τ)} ->
+              Catch (Γ , Macₓ e) h ⟼ (h $ Γ , e)
+
+
 -- A closed term is a Redex if it can be reduced further
 data Redex {τ : Ty} (c : CTerm τ) : Set where
   Step : ∀ {c' : CTerm τ} -> c ⟼ c' -> Redex c

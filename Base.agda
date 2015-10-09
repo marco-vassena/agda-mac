@@ -16,6 +16,7 @@ data Ty : Set where
   _=>_ : (τ₁ t₂ : Ty) -> Ty
   Mac : Label -> Ty -> Ty
   Res : Label -> Ty -> Ty
+  Exception : Ty
 
 infixr 3 _=>_
 
@@ -29,6 +30,9 @@ data _∈_ : Ty -> Context -> Set where
  There : ∀ {Δ α β} -> α ∈ Δ -> α ∈ (β ∷ Δ)
 
 -- Untyped terms
+-- TODO combining terms with types (and therefore contexts)
+-- could probably simplify the proofs, because 
+-- only terms with the correct type would be reported on case analysis.
 data Term : Set where
   True : Term
   False : Term
@@ -41,8 +45,17 @@ data Term : Set where
   Return : Term -> Term
   _>>=_ : Term -> Term -> Term
 
+  ξ : Term
+  Throw : Term -> Term
+  Catch : Term -> Term -> Term
+
   -- Abstract constructors not available to the user
   Mac : Term -> Term
+
+  -- Abstract constructor that denotes failure due to an exception
+  Macₓ : Term -> Term
+
+
 
 -- Typing judgments.
 -- They define well-typed terms
@@ -65,9 +78,6 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
                Δ ⊢ t₃ ∷ α ->
                Δ ⊢ If t₁ Then t₂ Else t₃ ∷ α
 
-  -- IO and Mac are fused for simplicity
-  Mac : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ τ -> Δ ⊢ t ∷ Mac l τ
-
   Return : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ τ -> Δ ⊢ t ∷ Mac l τ
 
   _>>=_ : ∀ {α β t k l} ->
@@ -75,6 +85,19 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
             Δ ⊢ k ∷ (α => Mac l β) ->
             Δ ⊢ t >>= k ∷ Mac l β
 
+  ξ : Δ ⊢ ξ ∷ Exception
+
+  Throw : ∀ {{l}} {τ t} -> Δ ⊢ t ∷ Exception -> Δ ⊢ t ∷ Mac l τ
+
+  Catch : ∀ {t h τ} {{l}} ->
+          Δ ⊢ t ∷ Mac l τ -> 
+          Δ ⊢ h ∷ Exception => Mac l τ ->
+          Δ ⊢ Catch t h ∷ Mac l τ
+
+  -- IO and Mac are fused for simplicity
+  Mac : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ τ -> Δ ⊢ t ∷ Mac l τ
+
+  Macₓ : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ Exception -> Δ ⊢ t ∷ Mac l τ
 
 infix 3 If_Then_Else_
 
@@ -99,10 +122,12 @@ mutual
 
     _>>=_ : ∀ {α β l} -> CTerm (Mac l α) -> CTerm (α => Mac l β) -> CTerm (Mac l β)
 
+    Catch : ∀ {l τ} -> CTerm (Mac l τ) -> CTerm (Exception => Mac l τ) -> CTerm (Mac l τ)
+
   data Env : Context -> Set where
    [] : Env []
    _∷_ : ∀ {Δ τ} -> CTerm τ -> (Γ : Env Δ) -> Env (τ ∷ Δ)
-
+  
 infixr 3 _,_
 infixr 0 _$_
 infixl 5 _>>=_
@@ -122,7 +147,12 @@ IsValue (Γ , Var x) = ⊥
 IsValue (Γ , If c Then t Else e) = ⊥
 IsValue (Γ , Return j) = ⊥
 IsValue (Γ , j >>= j₁) = ⊥
+IsValue (Γ , ξ) = ⊤
+IsValue (Γ , Throw j) = ⊥
+IsValue (Γ , Catch j j₁) = ⊥
 IsValue (Γ , Mac m) = ⊤
+IsValue (Γ , Macₓ j) = ⊤
 IsValue (c₁ $ c₂) = ⊥
 IsValue (If c Then t Else e) = ⊥
 IsValue (m >>= k) = ⊥
+IsValue (Catch m h) = ⊥
