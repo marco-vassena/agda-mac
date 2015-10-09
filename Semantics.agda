@@ -92,6 +92,9 @@ data _⟼_ : {τ : Ty} -> CTerm τ -> CTerm τ -> Set where
                c ⟼ c' ->
                unlabel p c ⟼ unlabel p c'
 
+  -- From SequentialLIO. Is there a reason not to consider ∙ a value?
+  Hole : ∀ {Δ τ} {Γ : Env Δ} -> (Γ , ∙ {τ = τ}) ⟼ (Γ , ∙)
+
 -- A closed term is a Redex if it can be reduced further
 data Redex {τ : Ty} (c : CTerm τ) : Set where
   Step : ∀ {c' : CTerm τ} -> c ⟼ c' -> Redex c

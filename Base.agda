@@ -1,11 +1,14 @@
 module Base where
 
+open import Relation.Nullary public
+
 -- The security lattice (Label, _⊑_, _⊔_) is kept abstract
 -- It will turned in a parameter to the module, but 
 -- at the moment Agda crashes with them
 
 postulate Label : Set
 postulate _⊑_ : Label -> Label -> Set
+postulate _⊑?_ : (l h : Label) -> Dec (l ⊑ h)
 
 open import Data.List public
 open import Data.Unit public
@@ -62,6 +65,9 @@ data Term : Set where
   label : Term -> Term
   unlabel : Term -> Term
 
+  -- Erased term
+  ∙ : Term
+
 -- Typing judgments.
 -- They define well-typed terms
 -- TODO should I keep the same constructors name as in Term?
@@ -117,6 +123,8 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
   Res : ∀ {t τ} {{l}} ->
         Δ ⊢ t ∷ τ ->
         Δ ⊢ Res t ∷ Labeled l τ
+
+  ∙ : ∀ {τ} -> Δ ⊢ ∙ ∷ τ
 
 infix 3 If_Then_Else_
 
@@ -176,6 +184,7 @@ IsValue (Γ , Macₓ j) = ⊤
 IsValue (Γ , label x j) = ⊥
 IsValue (Γ , unlabel x j) = ⊥
 IsValue (Γ , Res j) = ⊤
+IsValue (Γ , ∙) = ⊥
 IsValue (c₁ $ c₂) = ⊥
 IsValue (If c Then t Else e) = ⊥
 IsValue (m >>= k) = ⊥

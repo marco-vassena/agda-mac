@@ -158,5 +158,3 @@ determinism (unlabelCtx s₁) (unlabelCtx s₂) rewrite determinism s₁ s₂ = 
 -- in which two closed terms always have the same type.
 preservation : ∀ {τ} {c₁ c₂ : CTerm τ} -> c₁ ⟼ c₂ -> τ ≡ τ
 preservation _ = refl
-
--- TODO define erasure function
