@@ -5,6 +5,7 @@ module Base where
 -- at the moment Agda crashes with them
 
 postulate Label : Set
+postulate _⊑_ : Label -> Label -> Set
 
 open import Data.List public
 open import Data.Unit public
@@ -15,7 +16,7 @@ data Ty : Set where
   Bool : Ty
   _=>_ : (τ₁ t₂ : Ty) -> Ty
   Mac : Label -> Ty -> Ty
-  Res : Label -> Ty -> Ty
+  Labeled : Label -> Ty -> Ty
   Exception : Ty
 
 infixr 3 _=>_
@@ -55,7 +56,11 @@ data Term : Set where
   -- Abstract constructor that denotes failure due to an exception
   Macₓ : Term -> Term
 
+  -- TODO add
+  Res : Term -> Term
 
+  label : Term -> Term
+  unlabel : Term -> Term
 
 -- Typing judgments.
 -- They define well-typed terms
@@ -99,6 +104,20 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
 
   Macₓ : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ Exception -> Δ ⊢ t ∷ Mac l τ
 
+  label : ∀ {t τ l h} -> 
+          l ⊑ h -> 
+          Δ ⊢ t ∷ τ -> 
+          Δ ⊢ label t ∷ Mac l (Labeled h τ)
+
+  unlabel : ∀ {t τ l h} -> 
+              l ⊑ h -> 
+              Δ ⊢ t ∷ Labeled l τ ->
+              Δ ⊢ unlabel t ∷ Mac h τ
+
+  Res : ∀ {t τ} {{l}} ->
+        Δ ⊢ t ∷ τ ->
+        Δ ⊢ Res t ∷ Labeled l τ
+
 infix 3 If_Then_Else_
 
 infixl 1 _⊢_∷_
@@ -123,6 +142,8 @@ mutual
     _>>=_ : ∀ {α β l} -> CTerm (Mac l α) -> CTerm (α => Mac l β) -> CTerm (Mac l β)
 
     Catch : ∀ {l τ} -> CTerm (Mac l τ) -> CTerm (Exception => Mac l τ) -> CTerm (Mac l τ)
+
+    unlabel : ∀ {l h τ} -> l ⊑ h -> CTerm (Labeled l τ) -> CTerm (Mac h τ)
 
   data Env : Context -> Set where
    [] : Env []
@@ -152,7 +173,11 @@ IsValue (Γ , Throw j) = ⊥
 IsValue (Γ , Catch j j₁) = ⊥
 IsValue (Γ , Mac m) = ⊤
 IsValue (Γ , Macₓ j) = ⊤
+IsValue (Γ , label x j) = ⊥
+IsValue (Γ , unlabel x j) = ⊥
+IsValue (Γ , Res j) = ⊤
 IsValue (c₁ $ c₂) = ⊥
 IsValue (If c Then t Else e) = ⊥
 IsValue (m >>= k) = ⊥
 IsValue (Catch m h) = ⊥
+IsValue (unlabel p t) = ⊥

@@ -71,6 +71,26 @@ data _⟼_ : {τ : Ty} -> CTerm τ -> CTerm τ -> Set where
   CatchEx : ∀ {Δ t τ l} {Γ : Env Δ} {e : Δ ⊢ t ∷ Exception} {h : CTerm (Exception => Mac l τ)} ->
               Catch (Γ , Macₓ e) h ⟼ (h $ Γ , e)
 
+  -- Dist-label :  ∀ {Δ t τ l h} {Γ : Env Δ} {j : Δ ⊢ t ∷ τ} {p : l ⊑ h} ->
+  --               (Γ , label p j) ⟼ label (Γ , j)
+
+  
+  -- labelCtx : ∀ {l h : Label} {τ : Ty} {c c' : CTerm τ} ->
+  --           c ⟼ c' ->
+  --           label {l} {h} c ⟼ label c'
+
+  label : ∀ {Δ l h t τ} {Γ : Env Δ} {t : Δ ⊢ t ∷ τ} -> (p : l ⊑ h) -> 
+            (Γ , label p t) ⟼ (Γ , Return (Res t))
+
+  Dist-unlabel : ∀ {Δ t τ l h} {Γ : Env Δ} {j : Δ ⊢ t ∷ Labeled l τ} {p : l ⊑ h} ->
+                (Γ , unlabel p j) ⟼ unlabel p (Γ , j)
+
+  unlabel : ∀ {Δ l h t τ} {Γ : Env Δ} {t : Δ ⊢ t ∷ τ} -> (p : l ⊑ h) -> 
+            unlabel p (Γ , Res t) ⟼ (Γ , Return t)
+
+  unlabelCtx : ∀ {l h τ} {c c' : CTerm (Labeled l τ)} {p : l ⊑ h} ->
+               c ⟼ c' ->
+               unlabel p c ⟼ unlabel p c'
 
 -- A closed term is a Redex if it can be reduced further
 data Redex {τ : Ty} (c : CTerm τ) : Set where

@@ -19,6 +19,9 @@ progress (Γ , Throw e) = inj₁ (Step Throw)
 progress (Γ , Catch m h) = inj₁ (Step Dist-Catch)
 progress (Γ , Mac j) = inj₂ tt
 progress (Γ , Macₓ j) = inj₂ tt
+progress (Γ , label x j) = inj₁ (Step (label x))
+progress (Γ , unlabel x j) = inj₁ (Step Dist-unlabel)
+progress (Γ , Res j) = inj₂ tt
 progress (f $ x) with progress f
 progress (f $ x) | inj₁ (Step s) = inj₁ (Step (AppL s))
 progress (Γ , App j j₁ $ x) | inj₂ ()
@@ -47,10 +50,13 @@ progress ((Γ , Throw j) >>= k) | inj₂ ()
 progress ((Γ , Catch j j₁) >>= k) | inj₂ ()
 progress ((Γ , Mac j) >>= k) | inj₂ tt = inj₁ (Step Bind)
 progress ((Γ , Macₓ j) >>= k) | inj₂ tt = inj₁ (Step BindEx)
+progress ((Γ , label x j) >>= k) | inj₂ ()
+progress ((Γ , unlabel x j) >>= k) | inj₂ ()
 progress ((m $ m₁) >>= k) | inj₂ ()
 progress ((If m Then m₁ Else m₂) >>= k) | inj₂ ()
 progress (m >>= m₁ >>= k) | inj₂ ()
 progress (Catch m m₁ >>= k) | inj₂ ()
+progress (unlabel x m >>= k) | inj₂ ()
 progress (Catch m h) with progress m
 progress (Catch m h) | inj₁ (Step x) = inj₁ (Step (CatchCtx x))
 progress (Catch (Γ , App t t₃) h) | inj₂ ()
@@ -62,10 +68,21 @@ progress (Catch (Γ , Throw t₁) h) | inj₂ ()
 progress (Catch (Γ , Catch t₁ t₂) h₁) | inj₂ ()
 progress (Catch (Γ , Mac t₁) h) | inj₂ tt = inj₁ (Step Catch)
 progress (Catch (Γ , Macₓ t₁) h) | inj₂ tt = inj₁ (Step CatchEx)
+progress (Catch (Γ , label x j) h₁) | inj₂ ()
+progress (Catch (Γ , unlabel x j) h) | inj₂ ()
 progress (Catch (m $ m₁) h) | inj₂ ()
 progress (Catch (If m Then m₁ Else m₂) h) | inj₂ ()
 progress (Catch (m >>= m₁) h) | inj₂ ()
 progress (Catch (Catch m m₁) h) | inj₂ ()
+progress (Catch (unlabel x m) h₁) | inj₂ ()
+progress (unlabel p x) with progress x
+progress (unlabel p x) | inj₁ (Step s) = inj₁ (Step (unlabelCtx s))
+progress (unlabel p (Γ , App j j₁)) | inj₂ ()
+progress (unlabel p (Γ , Var x)) | inj₂ ()
+progress (unlabel p (Γ , (If j Then j₁ Else j₂))) | inj₂ ()
+progress (unlabel p (Γ , Res j)) | inj₂ tt = inj₁ (Step (unlabel p))
+progress (unlabel p (x $ x₁)) | inj₂ ()
+progress (unlabel p (If x Then x₁ Else x₂)) | inj₂ ()
 
 -- Lemma.
 -- Values are not reducible.
@@ -83,10 +100,14 @@ valueNotRedex (Γ , Throw j) () nf
 valueNotRedex (Γ , Catch j j₁) () nf
 valueNotRedex (Γ , Mac j) tt (Step ())
 valueNotRedex (Γ , Macₓ j) isV (Step ())
+valueNotRedex (Γ , label x j) () nf
+valueNotRedex (Γ , unlabel x j) () nf
+valueNotRedex (Γ , Res j) isV (Step ())
 valueNotRedex (c $ c₁) () nf
 valueNotRedex (If c Then c₁ Else c₂) () nf
 valueNotRedex (c >>= c₁) () s
 valueNotRedex (Catch c c₁) () nf
+valueNotRedex (unlabel x c) () nf
 
 
 -- | The small step semantics is deterministic.
@@ -126,8 +147,16 @@ determinism Catch (CatchCtx ())
 determinism Catch Catch = refl
 determinism CatchEx (CatchCtx ())
 determinism CatchEx CatchEx = refl
+determinism (label p) (label .p) = refl
+determinism Dist-unlabel Dist-unlabel = refl
+determinism (unlabel p) (unlabel .p) = refl
+determinism (unlabel p) (unlabelCtx ())
+determinism (unlabelCtx ()) (unlabel p)
+determinism (unlabelCtx s₁) (unlabelCtx s₂) rewrite determinism s₁ s₂ = refl
 
 -- Type preservation is trivial because it is enforced by the definition of c₁ ⟼ c₂
 -- in which two closed terms always have the same type.
 preservation : ∀ {τ} {c₁ c₂ : CTerm τ} -> c₁ ⟼ c₂ -> τ ≡ τ
 preservation _ = refl
+
+-- TODO define erasure function
