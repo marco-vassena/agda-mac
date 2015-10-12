@@ -22,12 +22,14 @@ progress (Γ , Macₓ j) = inj₂ tt
 progress (Γ , label x j) = inj₁ (Step (label x))
 progress (Γ , unlabel x j) = inj₁ (Step Dist-unlabel)
 progress (Γ , Res j) = inj₂ tt
+progress (Γ , ∙) = inj₁ (Step Hole)
 progress (f $ x) with progress f
 progress (f $ x) | inj₁ (Step s) = inj₁ (Step (AppL s))
 progress (Γ , App j j₁ $ x) | inj₂ ()
 progress (Γ , Abs j $ x) | inj₂ tt = inj₁ (Step Beta)
 progress (Γ , Var x $ x₁) | inj₂ ()
 progress (Γ , (If j Then j₁ Else j₂) $ x) | inj₂ ()
+progress (Γ , ∙ $ x) | inj₂ ()
 progress ((f $ f₁) $ x) | inj₂ ()
 progress (If f Then f₁ Else f₂ $ x) | inj₂ ()
 progress (If c Then t Else e) with progress c
@@ -37,6 +39,7 @@ progress (If Γ , False Then t₁ Else e) | inj₂ tt = inj₁ (Step IfFalse)
 progress (If Γ , App j j₁ Then t₃ Else e) | inj₂ ()
 progress (If Γ , Var x Then t₁ Else e) | inj₂ ()
 progress (If Γ , (If j Then j₁ Else j₂) Then t₄ Else e) | inj₂ ()
+progress (If Γ , ∙ Then t₁ Else e) | inj₂ ()
 progress (If c $ c₁ Then t Else e) | inj₂ ()
 progress (If If c Then c₁ Else c₂ Then t Else e) | inj₂ ()
 progress (m >>= k) with progress m
@@ -52,6 +55,7 @@ progress ((Γ , Mac j) >>= k) | inj₂ tt = inj₁ (Step Bind)
 progress ((Γ , Macₓ j) >>= k) | inj₂ tt = inj₁ (Step BindEx)
 progress ((Γ , label x j) >>= k) | inj₂ ()
 progress ((Γ , unlabel x j) >>= k) | inj₂ ()
+progress ((Γ , ∙) >>= k) | inj₂ ()
 progress ((m $ m₁) >>= k) | inj₂ ()
 progress ((If m Then m₁ Else m₂) >>= k) | inj₂ ()
 progress (m >>= m₁ >>= k) | inj₂ ()
@@ -70,6 +74,7 @@ progress (Catch (Γ , Mac t₁) h) | inj₂ tt = inj₁ (Step Catch)
 progress (Catch (Γ , Macₓ t₁) h) | inj₂ tt = inj₁ (Step CatchEx)
 progress (Catch (Γ , label x j) h₁) | inj₂ ()
 progress (Catch (Γ , unlabel x j) h) | inj₂ ()
+progress (Catch (Γ , ∙) h) | inj₂ ()
 progress (Catch (m $ m₁) h) | inj₂ ()
 progress (Catch (If m Then m₁ Else m₂) h) | inj₂ ()
 progress (Catch (m >>= m₁) h) | inj₂ ()
@@ -81,6 +86,7 @@ progress (unlabel p (Γ , App j j₁)) | inj₂ ()
 progress (unlabel p (Γ , Var x)) | inj₂ ()
 progress (unlabel p (Γ , (If j Then j₁ Else j₂))) | inj₂ ()
 progress (unlabel p (Γ , Res j)) | inj₂ tt = inj₁ (Step (unlabel p))
+progress (unlabel p (Γ , ∙)) | inj₂ ()
 progress (unlabel p (x $ x₁)) | inj₂ ()
 progress (unlabel p (If x Then x₁ Else x₂)) | inj₂ ()
 
@@ -103,6 +109,7 @@ valueNotRedex (Γ , Macₓ j) isV (Step ())
 valueNotRedex (Γ , label x j) () nf
 valueNotRedex (Γ , unlabel x j) () nf
 valueNotRedex (Γ , Res j) isV (Step ())
+valueNotRedex (Γ , ∙) () s
 valueNotRedex (c $ c₁) () nf
 valueNotRedex (If c Then c₁ Else c₂) () nf
 valueNotRedex (c >>= c₁) () s
@@ -153,6 +160,7 @@ determinism (unlabel p) (unlabel .p) = refl
 determinism (unlabel p) (unlabelCtx ())
 determinism (unlabelCtx ()) (unlabel p)
 determinism (unlabelCtx s₁) (unlabelCtx s₂) rewrite determinism s₁ s₂ = refl
+determinism Hole Hole = refl
 
 -- Type preservation is trivial because it is enforced by the definition of c₁ ⟼ c₂
 -- in which two closed terms always have the same type.
