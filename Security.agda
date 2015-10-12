@@ -10,7 +10,7 @@ data ETerm (Δ : Context) (τ : Ty) : Set where
   ⌜_⌝ : ∀ {t} -> Δ ⊢ t ∷ τ -> ETerm Δ τ
 
 -- Erasure function.
--- ε l t transform a term t in ∙ if it is above the security level l. 
+-- ε l t transform a term t in ∙ if it is above the security level l.
 
 ε : ∀ {Δ τ t} -> Label -> Δ ⊢ t ∷ τ -> ETerm Δ τ
 ε l True = ⌜ True ⌝
@@ -36,11 +36,15 @@ data ETerm (Δ : Context) (τ : Ty) : Set where
 ε l (Macₓ t) with ε l t
 ε l (Macₓ t) | ⌜ t' ⌝ = ⌜ Macₓ t' ⌝  -- Idem
 -- CHECK!
-ε l (label {l = l₁} {h = l₂} x t) with l₁ ⊑? l 
+ε l (label {l = l₁} {h = l₂} x t) with l ⊑? l₂
 ε l (label x t) | yes p with ε l t
-ε l (label x t) | yes p | ⌜ t' ⌝ = ⌜ label x t' ⌝  -- l₁ ⊑ l
-ε l (label x t) | no ¬p = ⌜ label x ∙ ⌝
+ε l (label x t) | yes ¬p = ⌜ label x ∙ ⌝
+ε l (label x t) | no p | ⌜ t' ⌝ = ⌜ label x t' ⌝  -- l₂ ⊑ l
+
 -- CHECK! In SequentialLIO ε is applied homomorphically, but it does not feel right to me!
+-- To erase, we only focus on the parts of the program which are sensitive, the rest is applied
+-- homomorphically. How do we know where the sensitive data is? Well, it is the labeled values
+-- (sensitive data already created) or sensitive data being created (primitive label).
 ε l (unlabel {l = l₁} {h = l₂} x t) with l₁ ⊑? l
 ε l (unlabel x t) | yes p with ε l t
 ε l (unlabel x t) | yes p | ⌜ t' ⌝ = ⌜ (unlabel x t') ⌝ -- l₁ ⊑ l
@@ -59,7 +63,7 @@ data ETerm (Δ : Context) (τ : Ty) : Set where
 εᶜ-env : ∀ {Δ} -> Label -> Env Δ -> Env Δ
 
 εᶜ-env l [] = []
-εᶜ-env l (x ∷ Γ) = εᶜ l x ∷ εᶜ-env l Γ 
+εᶜ-env l (x ∷ Γ) = εᶜ l x ∷ εᶜ-env l Γ
 
 εᶜ l (Γ , True) = {!!}
 εᶜ l (Γ , False) = {!!}
