@@ -3,7 +3,7 @@ module Base where
 open import Relation.Nullary public
 
 -- The security lattice (Label, _⊑_, _⊔_) is kept abstract
--- It will turned in a parameter to the module, but 
+-- It will turned in a parameter to the module, but
 -- at the moment Agda crashes with them
 
 postulate Label : Set
@@ -24,7 +24,7 @@ data Ty : Set where
 
 infixr 3 _=>_
 
--- A context Δ is a list of types contained in an environment 
+-- A context Δ is a list of types contained in an environment
 Context : Set
 Context = List Ty
 
@@ -35,13 +35,14 @@ data _∈_ : Ty -> Context -> Set where
 
 -- Untyped terms
 -- TODO combining terms with types (and therefore contexts)
--- could probably simplify the proofs, because 
+-- could probably simplify the proofs, because
 -- only terms with the correct type would be reported on case analysis.
 data Term : Set where
   True : Term
   False : Term
-  
+
   Var : Term
+  -- Ale: variables have no names?
   Abs : Term -> Term
   App : Term -> Term -> Term
   If_Then_Else_ : Term -> Term -> Term -> Term
@@ -62,7 +63,7 @@ data Term : Set where
   -- TODO add
   Res : Term -> Term
 
-  label : Term -> Term
+  label : ∀ {l h} -> l ⊑ h -> Term -> Term
   unlabel : Term -> Term
 
   -- Erased term
@@ -71,7 +72,10 @@ data Term : Set where
 -- Typing judgments.
 -- They define well-typed terms
 -- TODO should I keep the same constructors name as in Term?
-data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where 
+data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
+-- Ale: Why is Δ before the colon instead of : Context -> Term -> Ty -> Set?
+-- Δ is a parameter, otherwise (right of :) is an index (like in GADTs)
+-- Probably an Agda thing.
   True : Δ ⊢ True ∷ Bool
   False : Δ ⊢ False ∷ Bool
   App : ∀ {t₁ t₂ α β} ->
@@ -79,7 +83,7 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
            Δ ⊢ t₂ ∷ α ->
            Δ ⊢ App t₁ t₂ ∷ β
   Abs : ∀ {t α β} ->
-           α ∷ Δ ⊢ t ∷ β -> 
+           α ∷ Δ ⊢ t ∷ β ->
            Δ ⊢ Abs t ∷ α => β
   Var : ∀ {τ} -> τ ∈ Δ -> Δ ⊢ Var ∷ τ
 
@@ -101,7 +105,7 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
   Throw : ∀ {{l}} {τ t} -> Δ ⊢ t ∷ Exception -> Δ ⊢ t ∷ Mac l τ
 
   Catch : ∀ {t h τ} {{l}} ->
-          Δ ⊢ t ∷ Mac l τ -> 
+          Δ ⊢ t ∷ Mac l τ ->
           Δ ⊢ h ∷ Exception => Mac l τ ->
           Δ ⊢ Catch t h ∷ Mac l τ
 
@@ -110,13 +114,13 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
 
   Macₓ : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ Exception -> Δ ⊢ t ∷ Mac l τ
 
-  label : ∀ {t τ l h} -> 
-          l ⊑ h -> 
-          Δ ⊢ t ∷ τ -> 
-          Δ ⊢ label t ∷ Mac l (Labeled h τ)
+  label : ∀ {t τ l h} ->
+          p : l ⊑ h ->
+          Δ ⊢ t ∷ τ ->
+          Δ ⊢ label p t ∷ Mac l (Labeled h τ)
 
-  unlabel : ∀ {t τ l h} -> 
-              l ⊑ h -> 
+  unlabel : ∀ {t τ l h} ->
+              l ⊑ h ->
               Δ ⊢ t ∷ Labeled l τ ->
               Δ ⊢ unlabel t ∷ Mac h τ
 
@@ -131,17 +135,19 @@ infix 3 If_Then_Else_
 infixl 1 _⊢_∷_
 
 
-mutual 
+mutual
   -- A closed term is indexed by a type and carries around the context
   -- nedeed for evaluation
   -- We need additional constructors _$_ and If_Then_Else_ to explicitly distribute
   -- the same environment in the small step semantics
   data CTerm : (τ : Ty) -> Set where
-    
+
     -- Closure: couples a well-typed term with an environment of the same context Δ
-    _,_ : ∀ {Δ t τ} -> (Γ : Env Δ) -> (j : Δ ⊢ t ∷ τ) -> CTerm τ 
-    
-    -- Closed term application 
+    _,_ : ∀ {Δ t τ} -> (Γ : Env Δ) -> (j : Δ ⊢ t ∷ τ) -> CTerm τ
+    -- Ale: why do you need to bind Γ and j?
+    -- It is for pattern matching to use those names, i.e.,  Γ and j.
+
+    -- Closed term application
     _$_ : ∀ {α β} -> CTerm (α => β) -> CTerm α -> CTerm β
 
     -- Closed IfThenElse
@@ -156,15 +162,17 @@ mutual
   data Env : Context -> Set where
    [] : Env []
    _∷_ : ∀ {Δ τ} -> CTerm τ -> (Γ : Env Δ) -> Env (τ ∷ Δ)
-  
+
 infixr 3 _,_
 infixr 0 _$_
 infixl 5 _>>=_
 
 -- Retrieves the term of the type given by the reference from an environment in a safe way
 _!!_ : ∀ {Δ τ} -> τ ∈ Δ -> Env Δ -> CTerm τ
-Here !! (t ∷ e) = t
-There r !! (t ∷ e) = r !! e
+Here !! (t ∷ _) = t
+There r !! (_ ∷ e) = r !! e
+-- Ale: Why do we care about t in the last pattern?
+-- We do not care!
 
 -- Determines whether a closed term is a value or not
 IsValue : ∀ {τ} -> CTerm τ -> Set
