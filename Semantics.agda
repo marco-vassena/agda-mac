@@ -75,14 +75,6 @@ data _⟼_ : {τ : Ty} -> CTerm τ -> CTerm τ -> Set where
   CatchEx : ∀ {Δ t τ l} {Γ : Env Δ} {e : Δ ⊢ t ∷ Exception} {h : CTerm (Exception => Mac l τ)} ->
               Catch (Γ , Macₓ e) h ⟼ (h $ Γ , e)
 
-  -- Dist-label :  ∀ {Δ t τ l h} {Γ : Env Δ} {j : Δ ⊢ t ∷ τ} {p : l ⊑ h} ->
-  --               (Γ , label p j) ⟼ label (Γ , j)
-
-
-  -- labelCtx : ∀ {l h : Label} {τ : Ty} {c c' : CTerm τ} ->
-  --           c ⟼ c' ->
-  --           label {l} {h} c ⟼ label c'
-
   label : ∀ {Δ l h t τ} {Γ : Env Δ} {t : Δ ⊢ t ∷ τ} -> (p : l ⊑ h) ->
             (Γ , label p t) ⟼ (Γ , Return (Res t))
 
@@ -96,9 +88,6 @@ data _⟼_ : {τ : Ty} -> CTerm τ -> CTerm τ -> Set where
                c ⟼ c' ->
                unlabel p c ⟼ unlabel p c'
 
-  -- From SequentialLIO. Is there a reason not to consider ∙ a value?
-  -- Ale: it could be, but it is not part of the surface syntax.
-  -- It looks that it can be a value (Marco, please check that)
   Hole : ∀ {Δ τ} {Γ : Env Δ} -> (Γ , ∙ {τ = τ}) ⟼ (Γ , ∙)
 
 -- A closed term is a Redex if it can be reduced further

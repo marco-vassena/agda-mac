@@ -42,9 +42,9 @@ data Term : Set where
   False : Term
 
   Var : Term
-  -- Ale: variables have no names?
   Abs : Term -> Term
   App : Term -> Term -> Term
+
   If_Then_Else_ : Term -> Term -> Term -> Term
 
   Return : Term -> Term
@@ -56,11 +56,9 @@ data Term : Set where
 
   -- Abstract constructors not available to the user
   Mac : Term -> Term
-
   -- Abstract constructor that denotes failure due to an exception
   Macₓ : Term -> Term
 
-  -- TODO add
   Res : Term -> Term
 
   label : ∀ {l h} -> l ⊑ h -> Term -> Term
@@ -171,8 +169,6 @@ infixl 5 _>>=_
 _!!_ : ∀ {Δ τ} -> τ ∈ Δ -> Env Δ -> CTerm τ
 Here !! (t ∷ _) = t
 There r !! (_ ∷ e) = r !! e
--- Ale: Why do we care about t in the last pattern?
--- We do not care!
 
 -- Determines whether a closed term is a value or not
 IsValue : ∀ {τ} -> CTerm τ -> Set
