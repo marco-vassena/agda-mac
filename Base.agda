@@ -115,7 +115,7 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
   Macₓ : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ Exception -> Δ ⊢ t ∷ Mac l τ
 
   label : ∀ {t τ l h} ->
-          p : l ⊑ h ->
+          (p : l ⊑ h) ->
           Δ ⊢ t ∷ τ ->
           Δ ⊢ label p t ∷ Mac l (Labeled h τ)
 

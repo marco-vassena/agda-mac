@@ -37,9 +37,9 @@ data ETerm (Δ : Context) (τ : Ty) : Set where
 ε l (Macₓ t) | ⌜ t' ⌝ = ⌜ Macₓ t' ⌝  -- Idem
 -- CHECK!
 ε l (label {l = l₁} {h = l₂} x t) with l ⊑? l₂
-ε l (label x t) | yes p with ε l t
-ε l (label x t) | yes ¬p = ⌜ label x ∙ ⌝
-ε l (label x t) | no p | ⌜ t' ⌝ = ⌜ label x t' ⌝  -- l₂ ⊑ l
+ε l (label x t) | yes p = ⌜ label x ∙ ⌝
+ε l (label x t) | no ¬p with ε l t
+ε l (label x t) | no ¬p | ⌜ t' ⌝ = ⌜ label x t' ⌝  -- l₂ ⊑ l
 
 -- CHECK! In SequentialLIO ε is applied homomorphically, but it does not feel right to me!
 -- To erase, we only focus on the parts of the program which are sensitive, the rest is applied
