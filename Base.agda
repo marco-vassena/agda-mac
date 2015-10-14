@@ -70,10 +70,10 @@ data Term (n : ℕ) : Set where
 
   Res : Label -> Term n -> Term n
 
-  label : ∀ {l h} -> l ⊑ h -> Term n -> Term n
+  label : ∀ {l h} -> l ⊑ h -> Term n -> Term n -- TODO we need only l for ε 
   unlabel : Term n -> Term n
 
-  -- Erased term
+  --   lErased term
   ∙ : Term n
 
 -- Typing judgments, which define well-typed terms.
