@@ -1,13 +1,7 @@
 module Security where
 
 open import Semantics
-
--- An ETerm Δ τ denotes the result of the erasure function.
--- It is a term that may be erased, i.e. transformed to ∙, depending
--- on the attacker's label level.
--- Note that the erased term is nevertheless well-typed.
--- data ETerm (Δ : Context) (τ : Ty) : Set where
---   ⌜_⌝ : ∀ {t} -> Δ ⊢ t ∷ τ -> ETerm Δ τ
+open import Relation.Binary.PropositionalEquality
 
 -- Erasure function.
 -- ε l t transform a term t in ∙ if it is above the security level l.
@@ -34,6 +28,8 @@ open import Semantics
 ε l (unlabel t) = unlabel (ε l t)
 ε l ∙ = ∙
 
+-- Erasure function for enviroments and closed terms,
+-- defined mutually recursively.
 εᶜ-env : ∀ {n} -> Label -> Env n -> Env n
 εᶜ : Label -> CTerm -> CTerm
 
@@ -46,3 +42,31 @@ open import Semantics
 
 εᶜ-env l [] = []
 εᶜ-env l (x ∷ Γ) = εᶜ l x ∷ εᶜ-env l Γ
+
+ε-idem : ∀ {n} {{l}} -> (t : Term n) -> ε l t ≡ ε l (ε l t)
+ε-idem True = refl
+ε-idem False = refl
+ε-idem (Var x) = refl
+-- Marco: Agda does not solve to complex unification problems like this,
+-- trying to pattern match on the equality proof r leads to the following error 
+-- I'm not sure if there should be a case for the constructor refl,
+-- because I get stuck when trying to solve the following unification
+-- problems (inferred index ≟ expected index):
+--   ε l t ≟ ε l (ε l t)
+-- when checking that the expression ? has type
+-- Abs (ε .l t) ≡ Abs (ε .l (ε .l t))
+ε-idem (Abs t) with ε-idem t
+... | r = {!!}
+ε-idem (App t t₁) = {!!}
+ε-idem (If t Then t₁ Else t₂) = {!!}
+ε-idem (Return t) = {!!}
+ε-idem (t >>= t₁) = {!!}
+ε-idem ξ = {!!}
+ε-idem (Throw t) = {!!}
+ε-idem (Catch t t₁) = {!!}
+ε-idem (Mac t) = {!!}
+ε-idem (Macₓ t) = {!!}
+ε-idem (Res x t) = {!!}
+ε-idem (label x t) = {!!}
+ε-idem (unlabel t) = {!!}
+ε-idem ∙ = {!!}
