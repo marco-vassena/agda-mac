@@ -73,7 +73,7 @@ data Erasure (l : Label) {n : ℕ} : Term n -> Term n -> Set where
   unlabel : ∀ {t tₑ : Term n} -> Erasure l t tₑ -> Erasure l (unlabel t) (unlabel tₑ)
   ∙ : Erasure l ∙ ∙
 
--- Safety.
+-- Sound
 -- For any term t I can construct Erasure l t (ε l t), 
 -- i.e. Erasure approximates correctly the erasure function. 
 ε-Erasure : ∀ {l n} -> (t : Term n) -> Erasure l t (ε l t)
@@ -99,7 +99,7 @@ data Erasure (l : Label) {n : ℕ} : Term n -> Term n -> Set where
 ε-Erasure (unlabel t) = unlabel (ε-Erasure t)
 ε-Erasure ∙ = ∙
 
--- Completness
+-- Complete
 -- For any term t and tₑ such that Erasure l t tₑ, the ε l t ≡ tₑ
 -- i.e. Erasure represents only the erasure function.
 Erasure-ε : ∀ {l n} {t tₑ : Term n} -> Erasure l t tₑ -> ε l t ≡ tₑ
@@ -132,7 +132,9 @@ Erasure-ε (label∙ l₁⋢l₂) | no _ = refl
 Erasure-ε (unlabel t) rewrite Erasure-ε t = refl
 Erasure-ε ∙ = refl
 
-ε-idem : ∀ {n} {{l}} {t tₑ : Term n} -> Erasure l t tₑ -> Erasure l tₑ tₑ --  ε l t ≡ ε l (ε l t)
+-- Corresponds to ε l t ≡ ε l (ε l t).
+-- I am using the graph of ε because of unification issues. 
+ε-idem : ∀ {n} {{l}} {t tₑ : Term n} -> Erasure l t tₑ -> Erasure l tₑ tₑ 
 ε-idem True = True
 ε-idem False = False
 ε-idem (Var x) = Var x
@@ -152,5 +154,75 @@ Erasure-ε ∙ = refl
 ε-idem (label∙ x) = label∙ x
 ε-idem (unlabel t) = unlabel (ε-idem t)
 ε-idem ∙ = ∙
+
+-- Now we need a similar construction for εᶜ and εᶜ-env
+
+mutual
+  data Erasureᶜ (l : Label) : CTerm -> CTerm -> Set where
+    _,_ : ∀ {n} {t tₑ : Term n} {Γ Γₑ : Env n} -> 
+            ErasureEnvᶜ l Γ Γₑ -> Erasure l t tₑ -> Erasureᶜ l (Γ , t) (Γₑ , tₑ)
+    _$_ : ∀ {f fₑ x xₑ} -> Erasureᶜ l f fₑ -> Erasureᶜ l x xₑ -> Erasureᶜ l (f $ x) (fₑ $ xₑ)
+    
+    If_Then_Else_ : ∀ {c cₑ t tₑ e eₑ} -> Erasureᶜ l c cₑ -> Erasureᶜ l t tₑ -> Erasureᶜ l e eₑ ->
+                    Erasureᶜ l (If c Then t Else e) (If cₑ Then tₑ Else eₑ)
+
+    _>>=_ : ∀ {m mₑ k kₑ} -> Erasureᶜ l m mₑ -> Erasureᶜ l k kₑ -> Erasureᶜ l (m >>= k) (mₑ >>= kₑ)
+
+    Catch : ∀ {m mₑ h hₑ} -> Erasureᶜ l m mₑ -> Erasureᶜ l h hₑ -> Erasureᶜ l (Catch m h) (Catch mₑ hₑ)
+
+    unlabel : ∀ {t tₑ} -> Erasureᶜ l t tₑ -> Erasureᶜ l (unlabel t) (unlabel tₑ)
+
+
+  data ErasureEnvᶜ (l : Label) : ∀ {n} -> Env n -> Env n -> Set where
+    [] : ErasureEnvᶜ l [] []
+    _∷_ : ∀ {n c cₑ} {Γ Γₑ : Env n} -> Erasureᶜ l c cₑ -> ErasureEnvᶜ l Γ Γₑ -> ErasureEnvᶜ l (c ∷ Γ) (cₑ ∷ Γₑ)
+
+-- Sound
+εᶜ-Erasureᶜ : ∀ {l} -> (c : CTerm) -> Erasureᶜ l c (εᶜ l c)
+εᶜ-env-ErasureEnvᶜ : ∀ {l n} -> (Γ : Env n) -> ErasureEnvᶜ l Γ (εᶜ-env l Γ)
+
+εᶜ-Erasureᶜ (Γ , x) = (εᶜ-env-ErasureEnvᶜ Γ) , (ε-Erasure x)
+εᶜ-Erasureᶜ (f $ x) = εᶜ-Erasureᶜ f $ εᶜ-Erasureᶜ x
+εᶜ-Erasureᶜ (If c Then c₁ Else c₂) = If εᶜ-Erasureᶜ c Then εᶜ-Erasureᶜ c₁ Else εᶜ-Erasureᶜ c₂
+εᶜ-Erasureᶜ (c >>= c₁) = εᶜ-Erasureᶜ c >>= εᶜ-Erasureᶜ c₁
+εᶜ-Erasureᶜ (Catch c c₁) = Catch (εᶜ-Erasureᶜ c) (εᶜ-Erasureᶜ c₁)
+εᶜ-Erasureᶜ (unlabel c) = unlabel (εᶜ-Erasureᶜ c)
+
+εᶜ-env-ErasureEnvᶜ [] = []
+εᶜ-env-ErasureEnvᶜ (x ∷ Γ) = (εᶜ-Erasureᶜ x) ∷ εᶜ-env-ErasureEnvᶜ Γ
+
+-- Complete
+Erasureᶜ-εᶜ : ∀ {l} {c cₑ : CTerm} -> Erasureᶜ l c cₑ -> εᶜ l c ≡ cₑ
+ErasureEnvᶜ-εᶜ-env : ∀ {l n} {Γ Γₑ : Env n} -> ErasureEnvᶜ l Γ Γₑ -> εᶜ-env l Γ ≡ Γₑ
+
+Erasureᶜ-εᶜ (Γ , e) rewrite
+  ErasureEnvᶜ-εᶜ-env Γ | Erasure-ε e = refl
+Erasureᶜ-εᶜ (f $ x) rewrite
+  Erasureᶜ-εᶜ f | Erasureᶜ-εᶜ x = refl
+Erasureᶜ-εᶜ (If c Then t Else e) rewrite
+  Erasureᶜ-εᶜ c | Erasureᶜ-εᶜ t | Erasureᶜ-εᶜ e = refl
+Erasureᶜ-εᶜ (m >>= k) rewrite
+  Erasureᶜ-εᶜ m | Erasureᶜ-εᶜ k = refl
+Erasureᶜ-εᶜ (Catch m h) rewrite
+  Erasureᶜ-εᶜ m | Erasureᶜ-εᶜ h = refl
+Erasureᶜ-εᶜ (unlabel e) rewrite
+  Erasureᶜ-εᶜ e = refl
+
+ErasureEnvᶜ-εᶜ-env [] = refl
+ErasureEnvᶜ-εᶜ-env (e ∷ Γ) rewrite
+  Erasureᶜ-εᶜ e | ErasureEnvᶜ-εᶜ-env Γ = refl
+
+εᶜ-idem : ∀ {l} {c cₑ : CTerm} -> Erasureᶜ l c cₑ -> Erasureᶜ l cₑ cₑ 
+εᶜ-env-idem : ∀ {l n} {Γ Γₑ : Env n} -> ErasureEnvᶜ l Γ Γₑ -> ErasureEnvᶜ l Γₑ Γₑ 
+
+εᶜ-idem (Γ , c) = (εᶜ-env-idem Γ) , (ε-idem c)
+εᶜ-idem (f $ x) = εᶜ-idem f $ εᶜ-idem x
+εᶜ-idem (If c Then t Else e) = If εᶜ-idem c Then εᶜ-idem t Else εᶜ-idem e
+εᶜ-idem (c >>= c₁) = εᶜ-idem c >>= εᶜ-idem c₁
+εᶜ-idem (Catch c c₁) = Catch (εᶜ-idem c) (εᶜ-idem c₁)
+εᶜ-idem (unlabel c) = unlabel (εᶜ-idem c)
+
+εᶜ-env-idem [] = []
+εᶜ-env-idem (x ∷ Γ) = (εᶜ-idem x) ∷ (εᶜ-env-idem Γ)
 
 --------------------------------------------------------------------------------
