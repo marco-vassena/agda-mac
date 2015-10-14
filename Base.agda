@@ -10,11 +10,11 @@ postulate Label : Set
 postulate _⊑_ : Label -> Label -> Set
 postulate _⊑?_ : (l h : Label) -> Dec (l ⊑ h)
 
-open import Data.Nat using (ℕ ; zero ; suc) public
+open import Data.Nat using (ℕ ; zero ; suc ; _≤_ ; z≤n ; s≤s ; _⊔_) public
 open import Data.List public
 open import Data.Vec using (Vec ; [] ; _∷_ ; lookup) public
-open import Data.Fin using (Fin ; zero ; suc) public
-open import Data.Unit public
+open import Data.Fin using (Fin ; zero ; suc ; inject≤) public
+open import Data.Unit hiding (_≤_) public
 open import Data.Empty public
 
 -- Types τ
@@ -41,44 +41,43 @@ fin : ∀ {τ Δ} -> τ ∈ᵗ Δ -> Fin (length Δ)
 fin Here = zero
 fin (There p) = suc (fin p)
 
--- Untyped terms
--- TODO combining terms with types (and therefore contexts)
--- could probably simplify the proofs, because
--- only terms with the correct type would be reported on case analysis.
-data Term : Set where
-  True : Term
-  False : Term
+-- Untyped bounded terms
+-- A term of type Term n is a term that has at least n free variables,
+-- i.e. n is a lower bound on the number of free variables.
+-- For convenience in compound terms like App the subterms have the same
+-- upper bound, see cast.
+data Term (n : ℕ) : Set where
+  True : Term n 
+  False : Term n
 
-  Var : ∀ {n} -> Fin n -> Term
-  Abs : Term -> Term
-  App : Term -> Term -> Term
+  Var : Fin n -> Term n
+  Abs : Term (suc n) -> Term n
+  App : Term n -> Term n -> Term n
 
-  If_Then_Else_ : Term -> Term -> Term -> Term
+  If_Then_Else_ : Term n -> Term n -> Term n -> Term n
 
-  Return : Term -> Term
-  _>>=_ : Term -> Term -> Term
+  Return : Term n -> Term n
+  _>>=_ : Term n -> Term n -> Term n
 
-  ξ : Term
-  Throw : Term -> Term
-  Catch : Term -> Term -> Term
+  ξ : Term n
+  Throw : Term n -> Term n
+  Catch : Term n -> Term n -> Term n
 
   -- Abstract constructors not available to the user
-  Mac : Term -> Term
+  Mac : Term n -> Term n
   -- Abstract constructor that denotes failure due to an exception
-  Macₓ : Term -> Term
+  Macₓ : Term n -> Term n
 
-  Res : Label -> Term -> Term
+  Res : Label -> Term n -> Term n
 
-  label : ∀ {l h} -> l ⊑ h -> Term -> Term
-  unlabel : Term -> Term
+  label : ∀ {l h} -> l ⊑ h -> Term n -> Term n
+  unlabel : Term n -> Term n
 
   -- Erased term
-  ∙ : Term
+  ∙ : Term n
 
--- Typing judgments.
--- They define well-typed terms
--- TODO should I keep the same constructors name as in Term?
-data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
+-- Typing judgments, which define well-typed terms.
+data _⊢_∷_ (Δ : Context) : Term (length Δ) -> Ty -> Set where
   True : Δ ⊢ True ∷ Bool
   False : Δ ⊢ False ∷ Bool
 
@@ -98,7 +97,7 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
                Δ ⊢ t₃ ∷ α ->
                Δ ⊢ If t₁ Then t₂ Else t₃ ∷ α
 
-  Return : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ τ -> Δ ⊢ t ∷ Mac l τ
+  Return : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ τ -> Δ ⊢ Return t ∷ Mac l τ
 
   _>>=_ : ∀ {α β t k l} ->
             Δ ⊢ t ∷ Mac l α ->
@@ -107,7 +106,7 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
 
   ξ : Δ ⊢ ξ ∷ Exception
 
-  Throw : ∀ {{l}} {τ t} -> Δ ⊢ t ∷ Exception -> Δ ⊢ t ∷ Mac l τ
+  Throw : ∀ {{l}} {τ t} -> Δ ⊢ t ∷ Exception -> Δ ⊢ Throw t ∷ Mac l τ
 
   Catch : ∀ {t h τ} {{l}} ->
           Δ ⊢ t ∷ Mac l τ ->
@@ -115,9 +114,9 @@ data _⊢_∷_ (Δ : Context) : Term -> Ty -> Set where
           Δ ⊢ Catch t h ∷ Mac l τ
 
   -- IO and Mac are fused for simplicity
-  Mac : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ τ -> Δ ⊢ t ∷ Mac l τ
+  Mac : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ τ -> Δ ⊢ Mac t ∷ Mac l τ
 
-  Macₓ : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ Exception -> Δ ⊢ t ∷ Mac l τ
+  Macₓ : ∀ {τ t} {{l}} -> Δ ⊢ t ∷ Exception -> Δ ⊢ Macₓ t ∷ Mac l τ
 
   label : ∀ {t τ l h} ->
           (p : l ⊑ h) ->
@@ -146,7 +145,7 @@ mutual
   data CTerm : Set where
 
     -- Closure: couples a well-typed term with an environment of the same context Δ
-    _,_ : ∀ {n} (Γ : Env n) -> Term -> CTerm 
+    _,_ : ∀ {n} (Γ : Env n) -> Term n -> CTerm 
 
     -- Closed term application
     _$_ : CTerm -> CTerm -> CTerm
@@ -185,7 +184,7 @@ IsValue (Γ , Macₓ j) = ⊤
 IsValue (Γ , label x t) = ⊥
 IsValue (Γ , unlabel t) = ⊥
 IsValue (Γ , Res l j) = ⊤
-IsValue (Γ , ∙) = ⊤
+IsValue (Γ , ∙) = ⊥
 IsValue (c₁ $ c₂) = ⊥
 IsValue (If c Then t Else e) = ⊥
 IsValue (m >>= k) = ⊥
@@ -195,7 +194,7 @@ IsValue (unlabel t) = ⊥
 mutual
   -- Well-typed closed term
   data _::_ : CTerm -> Ty -> Set where
-    _,_ : ∀ {Δ Γ t τ} -> TEnv  Δ Γ -> Δ ⊢ t ∷ τ -> (Γ , t) :: τ 
+    _,_ : ∀ {Δ Γ' t' τ} -> (Γ : TEnv  Δ Γ') -> (t : Δ ⊢ t' ∷ τ) -> (Γ' , t') :: τ 
     _$_ : ∀ {f x α β} -> f :: (α => β) -> x :: α -> (f $ x) :: β
     If_Then_Else_ : ∀ {c t e α} -> c :: Bool -> t :: α -> e :: α -> (If c Then t Else e) :: α
     _>>=_ : ∀ {m k l α β} -> m :: Mac l α -> k :: (α => Mac l β) -> (m >>= k) :: Mac l β
@@ -206,3 +205,77 @@ mutual
   data TEnv : (Δ : Context) -> Env (length Δ) -> Set where 
     [] : TEnv [] []
     _∷_ : ∀ {c τ Δ} {Γ : Env (length Δ)} -> c :: τ -> TEnv Δ Γ -> TEnv (τ ∷ Δ) (c ∷ Γ)
+
+--------------------------------------------------------------------------------
+-- TODO move to Example module?
+
+-- Safe cast.
+-- Increase the the lower bound, retyping a term.
+-- Note that it is always possible to rewrite terms increasing
+-- the upper bound because a variable reference of Fin n can be 
+-- safely casted to Fin m if n ≤ m
+cast : ∀ {n m} {{p : n ≤ m}} -> Term n -> Term m
+cast True = True
+cast False = False
+cast {{p}} (Var x) = Var (inject≤ x p)
+cast {{p}} (Abs t) = Abs (cast {{s≤s p}} t)
+cast (App f x) = App (cast f) (cast x)
+cast (If c Then t Else e) = If cast c Then cast t Else cast e
+cast (Return t) = Return (cast t)
+cast (m >>= k) = (cast m) >>= (cast k)
+cast ξ = ξ
+cast (Throw t) = Throw (cast t)
+cast (Catch m h) = Catch (cast m) (cast h)
+cast (Mac t) = Mac (cast t)
+cast (Macₓ t) = Macₓ (cast t)
+cast (Res x t) = Res x (cast t)
+cast (label x t) = label x (cast t)
+cast (unlabel t) = unlabel (cast t)
+cast ∙ = ∙
+
+--------------------------------------------------------------------------------
+-- Auxiliary inequalities and lemmas about ≤ and ⊔
+
+≤-refl : ∀ (n : ℕ) -> n ≤ n
+≤-refl zero = z≤n
+≤-refl (suc n) = s≤s (≤-refl n)
+
+leq₁ : ∀ (n m : ℕ) -> n ≤ n ⊔ m
+leq₁ zero m = z≤n
+leq₁ (suc n) zero = ≤-refl (suc n)
+leq₁ (suc n) (suc m) = s≤s (leq₁ n m)
+
+leq₂ : ∀ (n m : ℕ) -> m ≤ n ⊔ m
+leq₂ zero m = ≤-refl m
+leq₂ (suc n) zero = z≤n
+leq₂ (suc n) (suc m) = s≤s (leq₂ n m)
+
+leq3₂ : ∀ (a b c : ℕ) -> b ≤ a ⊔ (b ⊔ c)
+leq3₂ a zero c = z≤n
+leq3₂ zero (suc b) zero = ≤-refl (suc b)
+leq3₂ zero (suc b) (suc c) = s≤s (leq3₂ zero b c)
+leq3₂ (suc a) (suc b) zero = s≤s (leq₂ a b)
+leq3₂ (suc a) (suc b) (suc c) = s≤s (leq3₂ a b c)
+ 
+leq3₃ : ∀ (a b c : ℕ) -> c ≤ a ⊔ (b ⊔ c)
+leq3₃ a b zero = z≤n
+leq3₃ zero b (suc c) = leq₂ b (suc c)
+leq3₃ (suc a) zero (suc c) = s≤s (leq₂ a c)
+leq3₃ (suc a) (suc b) (suc c) = s≤s (leq3₃ a b c)
+
+--------------------------------------------------------------------------------
+-- If we wanted to actually write programs in this language it is convenient
+-- to use these smart constructors, so that the minimal lower bound
+-- is automatically computed while typechecking.
+
+-- Smart constructors for combining terms with differen bounds
+app : ∀ {n m} -> Term n -> Term m -> Term (n ⊔ m)
+app {n} {m} f x = App (cast {{ leq₁ n m }} f) (cast {{ leq₂ n m }} x) 
+
+if_then_else_ : ∀ {a b c} -> Term a -> Term b -> Term c -> Term (a ⊔ (b ⊔ c))
+if_then_else_ {a} {b} {c} t₁ t₂ t₃ = If t₁' Then t₂' Else t₃'
+  where t₁' = cast {{ leq₁ a (b ⊔ c) }} t₁
+        t₂' = cast {{ leq3₂ a b c }} t₂
+        t₃' = cast {{ leq3₃ a b c }} t₃
+
+-- And so on for all the other compound constructors

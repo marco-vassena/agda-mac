@@ -22,10 +22,10 @@ data _⟼_ : CTerm -> CTerm -> Set where
   Lookup : ∀ {n} {p : Fin n} {Γ : Env n} -> (Γ , Var p) ⟼ lookup p Γ
 
   -- Distributes the environment forming two closures wrapped in a CLapp
-  Dist-$ : ∀ {f x n} {Γ : Env n} -> (Γ , App f x) ⟼ ((Γ , f) $ (Γ , x))
+  Dist-$ : ∀ {n} {Γ : Env n} {f x : Term n} -> (Γ , App f x) ⟼ ((Γ , f) $ (Γ , x))
 
   -- Distributes the environment to its subterms
-  Dist-If : ∀ {c t e n} {Γ : Env n} ->
+  Dist-If : ∀ {n} {Γ : Env n} {c t e : Term n} ->
               (Γ , If c Then t Else e) ⟼ (If (Γ , c) Then (Γ , t) Else (Γ , e))
 
   -- Evaluates the condition term
@@ -36,8 +36,8 @@ data _⟼_ : CTerm -> CTerm -> Set where
 
   IfFalse : ∀ {t e n} {Γ : Env n} -> (If (Γ , False) Then t Else e) ⟼ e
 
-  Return : ∀ {c n} {Γ : Env n} ->
-             (Γ , Return c) ⟼ (Γ , Mac c)
+  Return : ∀ {n} {Γ : Env n} {t : Term n} ->
+             (Γ , Return t) ⟼ (Γ , Mac t)
 
   Dist->>= : ∀ {n c k} {Γ : Env n} ->
               (Γ , c >>= k) ⟼ ((Γ , c) >>= (Γ , k))
@@ -45,25 +45,25 @@ data _⟼_ : CTerm -> CTerm -> Set where
   BindCtx : ∀ {m m' k} -> m ⟼ m' ->
             (m >>= k) ⟼ (m' >>= k)
 
-  Bind : ∀ {t k n} {Γ : Env n} ->
+  Bind : ∀ {n k} {Γ : Env n} {t : Term n} ->
            ((Γ , Mac t) >>= k) ⟼ (k $ (Γ , t))
 
-  BindEx : ∀ {e k n} {Γ : Env n} ->
+  BindEx : ∀ {k n} {Γ : Env n} {e : Term n} ->
            ((Γ , Macₓ e) >>= k) ⟼ (Γ , Throw e)  -- Rethrown as in LIO. It could be also (Γ , Macₓ e)
 
-  Throw : ∀ {e n} {Γ : Env n} -> (Γ , Throw e) ⟼ (Γ , Macₓ e)
+  Throw : ∀ {n} {Γ : Env n} {e : Term n} -> (Γ , Throw e) ⟼ (Γ , Macₓ e)
 
-  Dist-Catch : ∀ {m h n} {Γ : Env n} -> (Γ , Catch m h) ⟼ Catch (Γ , m) (Γ , h)
+  Dist-Catch : ∀ {n} {Γ : Env n} {m h : Term n} -> (Γ , Catch m h) ⟼ Catch (Γ , m) (Γ , h)
 
   CatchCtx : ∀ {m m' h} -> m ⟼ m' -> Catch m h ⟼ Catch m' h
 
-  Catch : ∀ {t h n} {Γ : Env n} -> Catch (Γ , Mac t) h ⟼ (Γ , (Return t))
+  Catch : ∀ {n h} {Γ : Env n} {t : Term n} -> Catch (Γ , Mac t) h ⟼ (Γ , (Return t))
 
-  CatchEx : ∀ {h e n} {Γ : Env n} -> Catch (Γ , Macₓ e) h ⟼ (h $ Γ , e)
+  CatchEx : ∀ {h n} {Γ : Env n} {e : Term n} -> Catch (Γ , Macₓ e) h ⟼ (h $ Γ , e)
 
-  label : ∀ {t n l h} {Γ : Env n} -> (p : l ⊑ h) -> (Γ , label p t) ⟼ (Γ , Return (Res h t))
+  label : ∀ {n l h} {Γ : Env n} {t : Term n} -> (p : l ⊑ h) -> (Γ , label p t) ⟼ (Γ , Return (Res h t))
 
-  Dist-unlabel : ∀ {t n} {Γ : Env n} -> (Γ , unlabel t) ⟼ unlabel (Γ , t)
+  Dist-unlabel : ∀ {n} {Γ : Env n} {t : Term n} -> (Γ , unlabel t) ⟼ unlabel (Γ , t)
 
   unlabel : ∀ {n t l} {Γ : Env n} ->
             unlabel (Γ , Res l t) ⟼ (Γ , Return t)

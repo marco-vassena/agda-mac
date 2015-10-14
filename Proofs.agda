@@ -4,122 +4,122 @@ open import Semantics
 open import Data.Sum
 open import Relation.Binary.PropositionalEquality
 
--- Every closed term is either a value or can be reduced further
-progress : ∀ {τ} -> (c : CTerm τ) -> (Redex c) ⊎ (IsValue c)
+-- Every well-typed closed term is either a value or can be reduced further
+progress : ∀ {c τ} -> c :: τ -> (Redex c) ⊎ (IsValue c)
 progress (Γ , True) = inj₂ tt
 progress (Γ , False) = inj₂ tt
 progress (Γ , App f x) = inj₁ (Step Dist-$)
 progress (Γ , Abs t) = inj₂ tt
-progress (Γ , Var x) = inj₁ (Step Lookup)
+progress (Γ , Var p) = inj₁ (Step Lookup)
 progress (Γ , (If c Then t Else e)) = inj₁ (Step Dist-If)
-progress (Γ , Return j) = inj₁ (Step Return)
+progress (Γ , Return t) = inj₁ (Step Return)
 progress (Γ , m >>= k) = inj₁ (Step Dist->>=)
 progress (Γ , ξ) = inj₂ tt
 progress (Γ , Throw e) = inj₁ (Step Throw)
 progress (Γ , Catch m h) = inj₁ (Step Dist-Catch)
-progress (Γ , Mac j) = inj₂ tt
-progress (Γ , Macₓ j) = inj₂ tt
-progress (Γ , label x j) = inj₁ (Step (label x))
-progress (Γ , unlabel x j) = inj₁ (Step Dist-unlabel)
-progress (Γ , Res j) = inj₂ tt
+progress (Γ , Mac t) = inj₂ tt
+progress (Γ , Macₓ e) = inj₂ tt
+progress (Γ , label p t) = inj₁ (Step (label p))
+progress (Γ , unlabel p t) = inj₁ (Step Dist-unlabel)
+progress (Γ , Res t) = inj₂ tt
 progress (Γ , ∙) = inj₁ (Step Hole)
 progress (f $ x) with progress f
 progress (f $ x) | inj₁ (Step s) = inj₁ (Step (AppL s))
-progress (Γ , App j j₁ $ x) | inj₂ ()
-progress (Γ , Abs j $ x) | inj₂ tt = inj₁ (Step Beta)
-progress (Γ , Var x $ x₁) | inj₂ ()
-progress (Γ , (If j Then j₁ Else j₂) $ x) | inj₂ ()
-progress (Γ , ∙ $ x) | inj₂ ()
-progress ((f $ f₁) $ x) | inj₂ ()
-progress (If f Then f₁ Else f₂ $ x) | inj₂ ()
+progress (Γ₁ , App f f₁ $ x₁) | inj₂ ()
+progress (Γ₁ , Abs f $ x₁) | inj₂ tt = inj₁ (Step Beta)
+progress (Γ₁ , Var p $ x₁) | inj₂ ()
+progress (Γ₁ , (If f Then f₁ Else f₂) $ x₁) | inj₂ ()
+progress (Γ₁ , ∙ $ x₁) | inj₂ ()
+progress ((f $ y) $ x) | inj₂ ()
+progress (If f Then f₁ Else f₂ $ x₁) | inj₂ ()
 progress (If c Then t Else e) with progress c
-progress (If c Then t Else e) | inj₁ (Step x) = inj₁ (Step (IfCond x))
-progress (If Γ , True Then t₁ Else e) | inj₂ tt = inj₁ (Step IfTrue)
-progress (If Γ , False Then t₁ Else e) | inj₂ tt = inj₁ (Step IfFalse)
-progress (If Γ , App j j₁ Then t₃ Else e) | inj₂ ()
-progress (If Γ , Var x Then t₁ Else e) | inj₂ ()
-progress (If Γ , (If j Then j₁ Else j₂) Then t₄ Else e) | inj₂ ()
-progress (If Γ , ∙ Then t₁ Else e) | inj₂ ()
-progress (If c $ c₁ Then t Else e) | inj₂ ()
-progress (If If c Then c₁ Else c₂ Then t Else e) | inj₂ ()
+progress (If c Then t Else e) | inj₁ (Step s) = inj₁ (Step (IfCond s))
+progress (If Γ₁ , True Then t₁ Else e₁) | inj₂ y = inj₁ (Step IfTrue)
+progress (If Γ₁ , False Then t₁ Else e₁) | inj₂ y = inj₁ (Step IfFalse)
+progress (If Γ₁ , App c c₁ Then t₃ Else e₁) | inj₂ ()
+progress (If Γ₁ , Var p Then t₁ Else e₁) | inj₂ ()
+progress (If Γ₁ , (If c Then c₁ Else c₂) Then t₄ Else e₁) | inj₂ ()
+progress (If Γ₁ , ∙ Then t₁ Else e₁) | inj₂ ()
+progress (If c $ c₁ Then t₁ Else e₁) | inj₂ ()
+progress (If If c₁ Then c₂ Else c₃ Then t₂ Else e₂) | inj₂ ()
 progress (m >>= k) with progress m
-progress (m >>= k) | inj₁ (Step x) = inj₁ (Step (BindCtx x))
-progress ((Γ , App j j₁) >>= k) | inj₂ ()
-progress ((Γ , Var x) >>= k) | inj₂ ()
-progress ((Γ , (If j Then j₁ Else j₂)) >>= k) | inj₂ ()
-progress ((Γ , Return j) >>= k) | inj₂ ()
-progress ((Γ , j >>= j₁) >>= k₁) | inj₂ ()
-progress ((Γ , Throw j) >>= k) | inj₂ ()
-progress ((Γ , Catch j j₁) >>= k) | inj₂ ()
-progress ((Γ , Mac j) >>= k) | inj₂ tt = inj₁ (Step Bind)
-progress ((Γ , Macₓ j) >>= k) | inj₂ tt = inj₁ (Step BindEx)
-progress ((Γ , label x j) >>= k) | inj₂ ()
-progress ((Γ , unlabel x j) >>= k) | inj₂ ()
-progress ((Γ , ∙) >>= k) | inj₂ ()
-progress ((m $ m₁) >>= k) | inj₂ ()
-progress ((If m Then m₁ Else m₂) >>= k) | inj₂ ()
-progress (m >>= m₁ >>= k) | inj₂ ()
-progress (Catch m m₁ >>= k) | inj₂ ()
-progress (unlabel x m >>= k) | inj₂ ()
+progress (m₁ >>= k₁) | inj₁ (Step x) = inj₁ (Step (BindCtx x))
+progress ((Γ₁ , App x₁ x₂) >>= k₁) | inj₂ ()
+progress ((Γ₁ , Var p) >>= k₁) | inj₂ ()
+progress ((Γ₁ , (If x₁ Then x₂ Else x₃)) >>= k₁) | inj₂ ()
+progress ((Γ₁ , Return x₁) >>= k₁) | inj₂ ()
+progress ((Γ₁ , x₁ >>= x₂) >>= k₂) | inj₂ ()
+progress ((Γ₁ , Throw x₁) >>= k₁) | inj₂ ()
+progress ((Γ₁ , Catch x₁ x₂) >>= k₁) | inj₂ ()
+progress ((Γ₁ , Mac x₁) >>= k₁) | inj₂ tt = inj₁ (Step Bind)
+progress ((Γ₁ , Macₓ x₁) >>= k₁) | inj₂ tt = inj₁ (Step BindEx)
+progress ((Γ₁ , label p x₁) >>= k₁) | inj₂ ()
+progress ((Γ₁ , unlabel x x₁) >>= k₁) | inj₂ ()
+progress ((Γ₁ , ∙) >>= k₁) | inj₂ ()
+progress ((m₁ $ m₂) >>= k₁) | inj₂ ()
+progress ((If m₁ Then m₂ Else m₃) >>= k₁) | inj₂ ()
+progress (m₁ >>= m₂ >>= k₂) | inj₂ ()
+progress (Catch m₁ m₂ >>= k₁) | inj₂ ()
+progress (unlabel m₁ >>= k₁) | inj₂ ()
 progress (Catch m h) with progress m
-progress (Catch m h) | inj₁ (Step x) = inj₁ (Step (CatchCtx x))
-progress (Catch (Γ , App t t₃) h) | inj₂ ()
-progress (Catch (Γ , Var x) h) | inj₂ ()
-progress (Catch (Γ , (If t Then t₄ Else t₅)) h) | inj₂ ()
-progress (Catch (Γ , Return t₁) h) | inj₂ ()
-progress (Catch (Γ , t₁ >>= t₂) h) | inj₂ ()
-progress (Catch (Γ , Throw t₁) h) | inj₂ ()
-progress (Catch (Γ , Catch t₁ t₂) h₁) | inj₂ ()
-progress (Catch (Γ , Mac t₁) h) | inj₂ tt = inj₁ (Step Catch)
-progress (Catch (Γ , Macₓ t₁) h) | inj₂ tt = inj₁ (Step CatchEx)
-progress (Catch (Γ , label x j) h₁) | inj₂ ()
-progress (Catch (Γ , unlabel x j) h) | inj₂ ()
-progress (Catch (Γ , ∙) h) | inj₂ ()
-progress (Catch (m $ m₁) h) | inj₂ ()
-progress (Catch (If m Then m₁ Else m₂) h) | inj₂ ()
-progress (Catch (m >>= m₁) h) | inj₂ ()
-progress (Catch (Catch m m₁) h) | inj₂ ()
-progress (Catch (unlabel x m) h₁) | inj₂ ()
-progress (unlabel p x) with progress x
-progress (unlabel p x) | inj₁ (Step s) = inj₁ (Step (unlabelCtx s))
-progress (unlabel p (Γ , App j j₁)) | inj₂ ()
-progress (unlabel p (Γ , Var x)) | inj₂ ()
-progress (unlabel p (Γ , (If j Then j₁ Else j₂))) | inj₂ ()
-progress (unlabel p (Γ , Res j)) | inj₂ tt = inj₁ (Step (unlabel p))
-progress (unlabel p (Γ , ∙)) | inj₂ ()
-progress (unlabel p (x $ x₁)) | inj₂ ()
-progress (unlabel p (If x Then x₁ Else x₂)) | inj₂ ()
+progress (Catch m₁ h₁) | inj₁ (Step x) = inj₁ (Step (CatchCtx x))
+progress (Catch (̋Γ , App m m₁) h₁) | inj₂ ()
+progress (Catch (̋Γ , Var p) h₁) | inj₂ ()
+progress (Catch (̋Γ , (If m Then m₁ Else m₂)) h₁) | inj₂ ()
+progress (Catch (̋Γ , Return m) h₁) | inj₂ ()
+progress (Catch (̋Γ , m >>= m₁) h₁) | inj₂ ()
+progress (Catch (̋Γ , Throw m) h₁) | inj₂ ()
+progress (Catch (̋Γ , Catch m m₁) h₂) | inj₂ ()
+progress (Catch (̋Γ , Mac m) h₁) | inj₂ y = inj₁ (Step Catch)
+progress (Catch (̋Γ , Macₓ m) h₁) | inj₂ y = inj₁ (Step CatchEx)
+progress (Catch (̋Γ , label p m) h₂) | inj₂ ()
+progress (Catch (̋Γ , unlabel x m) h₁) | inj₂ ()
+progress (Catch (̋Γ , ∙) h₁) | inj₂ ()
+progress (Catch (m₁ $ m₂) h₁) | inj₂ ()
+progress (Catch (If m₁ Then m₂ Else m₃) h₁) | inj₂ ()
+progress (Catch (m₁ >>= m₂) h₁) | inj₂ ()
+progress (Catch (Catch m₁ m₂) h₂) | inj₂ ()
+progress (Catch (unlabel m₁) h₁) | inj₂ ()
+progress (unlabel t) with progress t
+progress (unlabel t₁) | inj₁ (Step x) = inj₁ (Step (unlabelCtx x))
+progress (unlabel (Γ₁ , App t t₃)) | inj₂ ()
+progress (unlabel (Γ₁ , Var p)) | inj₂ ()
+progress (unlabel (Γ₁ , (If t Then t₄ Else t₅))) | inj₂ ()
+progress (unlabel (Γ₁ , Res t₁)) | inj₂ tt = inj₁ (Step unlabel)
+progress (unlabel (Γ₁ , ∙)) | inj₂ ()
+progress (unlabel (t₁ $ t₂)) | inj₂ ()
+progress (unlabel (If t₁ Then t₂ Else t₃)) | inj₂ ()
 
 -- Lemma.
 -- Values are not reducible.
-valueNotRedex : ∀ {τ} -> (c : CTerm τ) -> IsValue c -> NormalForm c
+valueNotRedex : ∀ (c : CTerm) -> IsValue c -> NormalForm c
 valueNotRedex (Γ , True) isV (Step ())
 valueNotRedex (Γ , False) isV (Step ())
 valueNotRedex (Γ , App f x) () nf
-valueNotRedex (Γ , Abs j) isV (Step ())
+valueNotRedex (Γ , Abs t) isV (Step ())
 valueNotRedex (Γ , Var x) () nf
-valueNotRedex (Γ , (If j Then j₁ Else j₂)) () nf
-valueNotRedex (Γ , Return j) () s
-valueNotRedex (Γ , j >>= j₁) () s
+valueNotRedex (Γ , (If c Then t Else e)) () nf
+valueNotRedex (Γ , Return t) () s
+valueNotRedex (Γ , m >>= k) () s
 valueNotRedex (Γ , ξ) isV (Step ())
-valueNotRedex (Γ , Throw j) () nf
-valueNotRedex (Γ , Catch j j₁) () nf
-valueNotRedex (Γ , Mac j) tt (Step ())
-valueNotRedex (Γ , Macₓ j) isV (Step ())
-valueNotRedex (Γ , label x j) () nf
-valueNotRedex (Γ , unlabel x j) () nf
-valueNotRedex (Γ , Res j) isV (Step ())
+valueNotRedex (Γ , Throw t) () nf
+valueNotRedex (Γ , Catch m h) () nf
+valueNotRedex (Γ , Mac t) tt (Step ())
+valueNotRedex (Γ , Macₓ t) isV (Step ())
+valueNotRedex (Γ , label x t) () nf
+valueNotRedex (Γ , unlabel t) () nf
+valueNotRedex (Γ , Res p t) isV (Step ())
 valueNotRedex (Γ , ∙) () s
-valueNotRedex (c $ c₁) () nf
-valueNotRedex (If c Then c₁ Else c₂) () nf
-valueNotRedex (c >>= c₁) () s
-valueNotRedex (Catch c c₁) () nf
-valueNotRedex (unlabel x c) () nf
+valueNotRedex (f $ x) () nf
+valueNotRedex (If c Then t Else e) () nf
+valueNotRedex (m >>= k) () s
+valueNotRedex (Catch m h) () nf
+valueNotRedex (unlabel t) () nf
 
 
 -- | The small step semantics is deterministic.
 -- At most one rule apply per term.
-determinism : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⟼ c₂ -> c₁ ⟼ c₃ -> c₂ ≡ c₃
+determinism : ∀ {c₁ c₂ c₃ : CTerm} -> c₁ ⟼ c₂ -> c₁ ⟼ c₃ -> c₂ ≡ c₃
 determinism (AppL s₁) (AppL s₂) rewrite determinism s₁ s₂ = refl
 determinism {c₁ = Γ , Abs j $ x} (AppL s₁) Beta = ⊥-elim (valueNotRedex (Γ , Abs j) tt (Step s₁)) -- AppL does not apply
 determinism {c₁ = Γ , Abs j $ x} Beta (AppL s₂) = ⊥-elim (valueNotRedex (Γ , Abs j) tt (Step s₂)) -- Idem
@@ -156,13 +156,36 @@ determinism CatchEx (CatchCtx ())
 determinism CatchEx CatchEx = refl
 determinism (label p) (label .p) = refl
 determinism Dist-unlabel Dist-unlabel = refl
-determinism (unlabel p) (unlabel .p) = refl
-determinism (unlabel p) (unlabelCtx ())
-determinism (unlabelCtx ()) (unlabel p)
+determinism unlabel unlabel = refl
+determinism unlabel (unlabelCtx ())
+determinism (unlabelCtx ()) unlabel
 determinism (unlabelCtx s₁) (unlabelCtx s₂) rewrite determinism s₁ s₂ = refl
 determinism Hole Hole = refl
 
--- Type preservation is trivial because it is enforced by the definition of c₁ ⟼ c₂
--- in which two closed terms always have the same type.
-preservation : ∀ {τ} {c₁ c₂ : CTerm τ} -> c₁ ⟼ c₂ -> τ ≡ τ
-preservation _ = refl
+-- A well-typed closed term when reduced preserves its type.
+preservation : ∀ {τ} {c₁ c₂ : CTerm} -> c₁ :: τ -> c₁ ⟼ c₂ -> c₂ :: τ
+preservation (f $ x) (AppL s) = preservation f s $ x
+preservation (Γ , Abs t $ x) Beta = x ∷ Γ , t
+preservation ([] , Var ()) Lookup
+preservation (x ∷ Γ , Var Here) Lookup = x
+preservation (x ∷ Γ , Var (There p)) Lookup = preservation (Γ , Var p) Lookup
+preservation (Γ , App f x) Dist-$ = Γ , f $ Γ , x
+preservation (Γ , (If c Then t Else e)) Dist-If = If Γ , c Then Γ , t Else (Γ , e)
+preservation (If c Then t Else e) (IfCond s) = If preservation c s Then t Else e
+preservation (If Γ , True Then t₂ Else t₃) IfTrue = t₂
+preservation (If Γ , False Then t₂ Else t₃) IfFalse = t₃
+preservation (Γ , Return t) Return = Γ , (Mac t)
+preservation (Γ , m >>= k) Dist->>= = (Γ , m) >>= (Γ , k)
+preservation (m >>= k) (BindCtx s) = preservation m s >>= k
+preservation ((Γ , Mac m) >>= k) Bind = k $ Γ , m
+preservation ((Γ , Macₓ e) >>= k) BindEx = Γ , (Throw e)
+preservation (Γ , Throw t) Throw = Γ , (Macₓ t)
+preservation (Γ , Catch m h) Dist-Catch = Catch (Γ , m) (Γ , h)
+preservation (Catch m h) (CatchCtx s) = Catch (preservation m s) h
+preservation (Catch (Γ , Mac t) h) Catch = Γ , (Return t)
+preservation (Catch (Γ , Macₓ t) h) CatchEx = h $ (Γ , t)
+preservation (Γ , label p t) (label .p) = Γ , (Return (Res t))
+preservation (Γ , unlabel x t) Dist-unlabel = unlabel (Γ , t)
+preservation (unlabel (Γ , Res t)) unlabel = Γ , (Return t)
+preservation (unlabel t) (unlabelCtx s) = unlabel (preservation t s)
+preservation (Γ , ∙) Hole = Γ , ∙
