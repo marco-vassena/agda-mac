@@ -15,7 +15,7 @@ open import Relation.Binary.PropositionalEquality
 
 -- The erasure function distributes over the small step semantics
 -- For simple proofs we do not need the Erasureᶜ.
-εᶜ-distributes : ∀ {l} (c₁ c₂ : CTerm) -> c₁ ⟼ c₂ -> εᶜ l c₁ ⟼ εᶜ l c₂ 
+εᶜ-distributes : ∀ {{l}} (c₁ c₂ : CTerm) -> c₁ ⟼ c₂ -> εᶜ l c₁ ⟼ εᶜ l c₂ 
 εᶜ-distributes (c₁ $ x) (c₂ $ .x) (AppL s) = AppL (εᶜ-distributes c₁ c₂ s)
 εᶜ-distributes ._ ._ Beta = Beta
 εᶜ-distributes (Γ , Var p) .(lookup p Γ) Lookup rewrite sym (εᶜ-lookup Γ p) = Lookup
@@ -34,11 +34,11 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-distributes ._ ._ (CatchCtx s) = CatchCtx (εᶜ-distributes _ _ s)
 εᶜ-distributes ._ ._ Catch = Catch
 εᶜ-distributes ._ ._ CatchEx = CatchEx
-εᶜ-distributes {l₁} ._ ._ (label {h = l₂} p) with l₁ ⊑? l₂
+εᶜ-distributes {{l₁}} ._ ._ (label {h = l₂} p) with l₁ ⊑? l₂
 εᶜ-distributes ._ ._ (label p) | yes _ = label p
 εᶜ-distributes ._ ._ (label p) | no _ = label p
 εᶜ-distributes ._ ._ Dist-unlabel = Dist-unlabel
-εᶜ-distributes {l₁} (unlabel (Γ , Res .l₂ t)) (.Γ , Return .t) (unlabel {l = l₂}) with l₁ ⊑? l₂
+εᶜ-distributes {{l₁}} (unlabel (Γ , Res .l₂ t)) (.Γ , Return .t) (unlabel {l = l₂}) with l₁ ⊑? l₂
 εᶜ-distributes (unlabel (Γ , Res ._ t)) (.Γ , Return .t) unlabel | yes l₁⊑l₂ = unlabel
 -- FIX Issue with proof
 -- c₁ = unlabel (Γ , Res l₂ t)
@@ -53,28 +53,29 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-distributes ._ ._ (unlabelCtx s) = unlabelCtx (εᶜ-distributes _ _ s)
 εᶜ-distributes ._ ._ Hole = Hole
 
-
 -- Reduction of pure and monadic terms with erasure
-data _⟼ˡ_ {{l : Label}} : CTerm -> CTerm -> Set where
-  Step-εᶜ : ∀ {c₁ c₂ c₂ₑ} -> c₁ ⟼ c₂ -> Erasureᶜ l c₂ c₂ₑ -> c₁ ⟼ˡ c₂ₑ 
+data _⟼ˡ_ {{l : Label}} (c₁ c₂ₑ : CTerm) : Set where
+  Step-εᶜ : ∀ {c₂} -> εᶜ l c₂ ≡ c₂ₑ -> c₁ ⟼ c₂ -> c₁ ⟼ˡ c₂ₑ 
+
+-- The small step + erasure relation is also deterministic
+determinismˡ : ∀ {l c₁ c₂ c₃} -> c₁ ⟼ˡ c₂ -> c₁ ⟼ˡ c₃ -> c₂ ≡ c₃
+determinismˡ (Step-εᶜ eq₁ s₁) (Step-εᶜ eq₂ s₂) with determinism s₁ s₂
+determinismˡ (Step-εᶜ refl s₁) (Step-εᶜ refl s₂) | refl = refl
+
+-- Single-step collapsed simulation
+liftˡ : ∀ {{l}} {c₁ c₂} -> c₁ ⟼ c₂ -> εᶜ l c₁ ⟼ˡ εᶜ l c₂
+liftˡ {{l}} {c₁} {c₂} s with εᶜ-distributes _ _ s
+... | r = Step-εᶜ {c₂ = εᶜ l c₂} (sym (εᶜ-idem c₂)) r
 
 -- l-equivalence
 -- Two closed terms are l-equivalent if they are equivalent
 -- after applying on them the erasure function with label l.
 data _≈ˡ_ {{l : Label}} (c₁ c₂ : CTerm) : Set where
-  εᶜ-≡ : ∀ {c₁ₑ c₂ₑ} -> Erasureᶜ l c₁ c₁ₑ -> Erasureᶜ l c₂ c₂ₑ -> c₁ₑ ≡ c₂ₑ -> c₁ ≈ˡ c₂
+  εᶜ-≡ : εᶜ l c₁ ≡ εᶜ l c₂ -> c₁ ≈ˡ c₂
 
--- The small step + erasure relation is also deterministic
--- determinismˡ : ∀ {l c₁ c₂ c₃} -> c₁ ⟼ˡ c₂ -> c₁ ⟼ˡ c₃ -> c₂ ≡ c₃
--- determinismˡ (Step-εᶜ s₁ e₁) (Step-εᶜ s₂ e₂) 
---   with determinism s₁ s₂ | Erasureᶜ-εᶜ e₁ | Erasureᶜ-εᶜ e₂
--- determinismˡ (Step-εᶜ s₁ e₁) (Step-εᶜ s₂ e₂) | refl | refl | refl = refl
 
 -- Non-interference
--- non-interference : ∀ {l c₁ c₂ c₁' c₂'} -> c₁ ≈ˡ c₂ -> c₁ ⟼ c₁' -> c₂ ⟼ c₂' -> c₁' ≈ˡ c₂'
---   non-interference {l} {c₁} {c₂} {c₁'} {c₂'} (εᶜ-≡ {c₁ₑ = c₁ₑ} {c₂ₑ = .c₁ₑ} e₁ e₂ refl) s₁ s₂ with Step-εᶜ {c₁} {c₁'} s₁ {!e₁!} | Step-εᶜ {!!} {!!} 
--- ... | a | b = {!!}
-
--- non-interference (εᶜ-≡ e₁ e₂ eq) s₁ s₂ | refl | refl = {!!}
---  determinismˡ (Step-εᶜ s₁ {!e₁!}) {!!}
--- ... | r = {!!}
+non-interference : ∀ {l c₁ c₂ c₁' c₂'} -> c₁ ≈ˡ c₂ -> c₁ ⟼ c₁' -> c₂ ⟼ c₂' -> c₁' ≈ˡ c₂'
+non-interference (εᶜ-≡ eq) s₁ s₂ = εᶜ-≡ (aux eq (liftˡ s₁) (liftˡ s₂))
+  where aux : ∀ {c₁ c₂ c₃ c₄} -> c₁ ≡ c₂ -> c₁ ⟼ˡ c₃ -> c₂ ⟼ˡ c₄ -> c₃ ≡ c₄
+        aux refl s₁ s₂ = determinismˡ s₁ s₂

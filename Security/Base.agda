@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-env : ∀ {n} -> Label -> Env n -> Env n
 εᶜ : Label -> CTerm -> CTerm
 
-εᶜ l (Γ , t) = (εᶜ-env l Γ) , ε l t
+εᶜ l (Γ , t) = εᶜ-env l Γ , ε l t
 εᶜ l (f $ x) = (εᶜ l f) $ (εᶜ l x)
 εᶜ l (If c Then t Else e) = If (εᶜ l c) Then (εᶜ l t) Else (εᶜ l e)
 εᶜ l (m >>= k) = (εᶜ l m) >>= (εᶜ l k)
@@ -137,26 +137,26 @@ Erasure-ε ∙ = refl
 
 -- Corresponds to ε l t ≡ ε l (ε l t).
 -- I am using the graph of ε because of unification issues. 
-ε-idem : ∀ {n} {{l}} {t tₑ : Term n} -> Erasure l t tₑ -> Erasure l tₑ tₑ 
-ε-idem True = True
-ε-idem False = False
-ε-idem (Var x) = Var x
-ε-idem (Abs t) = Abs (ε-idem t)
-ε-idem (App f x) = App (ε-idem f) (ε-idem x)
-ε-idem (If c Then t Else e) = If (ε-idem c) Then (ε-idem t) Else (ε-idem e)
-ε-idem (Return t) = Return (ε-idem t)
-ε-idem (m >>= k) = (ε-idem m) >>= (ε-idem k)
-ε-idem ξ = ξ
-ε-idem (Throw e) = Throw (ε-idem e)
-ε-idem (Catch m h) = Catch (ε-idem m) (ε-idem h)
-ε-idem (Mac t) = Mac (ε-idem t)
-ε-idem (Macₓ t) = Macₓ (ε-idem t)
-ε-idem (Res l x t) = Res l x (ε-idem t)
-ε-idem (Res∙ l x) = Res∙ l x
-ε-idem (label x t) = label x (ε-idem t)
-ε-idem (label∙ x) = label∙ x
-ε-idem (unlabel t) = unlabel (ε-idem t)
-ε-idem ∙ = ∙
+Erasure-idem : ∀ {n} {{l}} {t tₑ : Term n} -> Erasure l t tₑ -> Erasure l tₑ tₑ 
+Erasure-idem True = True
+Erasure-idem False = False
+Erasure-idem (Var x) = Var x
+Erasure-idem (Abs t) = Abs (Erasure-idem t)
+Erasure-idem (App f x) = App (Erasure-idem f) (Erasure-idem x)
+Erasure-idem (If c Then t Else e) = If (Erasure-idem c) Then (Erasure-idem t) Else (Erasure-idem e)
+Erasure-idem (Return t) = Return (Erasure-idem t)
+Erasure-idem (m >>= k) = (Erasure-idem m) >>= (Erasure-idem k)
+Erasure-idem ξ = ξ
+Erasure-idem (Throw e) = Throw (Erasure-idem e)
+Erasure-idem (Catch m h) = Catch (Erasure-idem m) (Erasure-idem h)
+Erasure-idem (Mac t) = Mac (Erasure-idem t)
+Erasure-idem (Macₓ t) = Macₓ (Erasure-idem t)
+Erasure-idem (Res l x t) = Res l x (Erasure-idem t)
+Erasure-idem (Res∙ l x) = Res∙ l x
+Erasure-idem (label x t) = label x (Erasure-idem t)
+Erasure-idem (label∙ x) = label∙ x
+Erasure-idem (unlabel t) = unlabel (Erasure-idem t)
+Erasure-idem ∙ = ∙
 
 -- Now we need a similar construction for εᶜ and εᶜ-env
 
@@ -181,7 +181,7 @@ mutual
     _∷_ : ∀ {n c cₑ} {Γ Γₑ : Env n} -> Erasureᶜ l c cₑ -> ErasureEnvᶜ l Γ Γₑ -> ErasureEnvᶜ l (c ∷ Γ) (cₑ ∷ Γₑ)
 
 -- Sound
-εᶜ-Erasureᶜ : ∀ {l} -> (c : CTerm) -> Erasureᶜ l c (εᶜ l c)
+εᶜ-Erasureᶜ : ∀ {{l}} -> (c : CTerm) -> Erasureᶜ l c (εᶜ l c)
 εᶜ-env-ErasureEnvᶜ : ∀ {l n} -> (Γ : Env n) -> ErasureEnvᶜ l Γ (εᶜ-env l Γ)
 
 εᶜ-Erasureᶜ (Γ , x) = (εᶜ-env-ErasureEnvᶜ Γ) , (ε-Erasure x)
@@ -215,17 +215,36 @@ ErasureEnvᶜ-εᶜ-env [] = refl
 ErasureEnvᶜ-εᶜ-env (e ∷ Γ) rewrite
   Erasureᶜ-εᶜ e | ErasureEnvᶜ-εᶜ-env Γ = refl
 
-εᶜ-idem : ∀ {l} {c cₑ : CTerm} -> Erasureᶜ l c cₑ -> Erasureᶜ l cₑ cₑ 
-εᶜ-env-idem : ∀ {l n} {Γ Γₑ : Env n} -> ErasureEnvᶜ l Γ Γₑ -> ErasureEnvᶜ l Γₑ Γₑ 
+Erasureᶜ-idem : ∀ {l} {c cₑ : CTerm} -> Erasureᶜ l c cₑ -> Erasureᶜ l cₑ cₑ 
+ErasureEnvᶜ-idem : ∀ {l n} {Γ Γₑ : Env n} -> ErasureEnvᶜ l Γ Γₑ -> ErasureEnvᶜ l Γₑ Γₑ 
 
-εᶜ-idem (Γ , c) = (εᶜ-env-idem Γ) , (ε-idem c)
-εᶜ-idem (f $ x) = εᶜ-idem f $ εᶜ-idem x
-εᶜ-idem (If c Then t Else e) = If εᶜ-idem c Then εᶜ-idem t Else εᶜ-idem e
-εᶜ-idem (c >>= c₁) = εᶜ-idem c >>= εᶜ-idem c₁
-εᶜ-idem (Catch c c₁) = Catch (εᶜ-idem c) (εᶜ-idem c₁)
-εᶜ-idem (unlabel c) = unlabel (εᶜ-idem c)
+Erasureᶜ-idem (Γ , c) = (ErasureEnvᶜ-idem Γ) , (Erasure-idem c)
+Erasureᶜ-idem (f $ x) = Erasureᶜ-idem f $ Erasureᶜ-idem x
+Erasureᶜ-idem (If c Then t Else e) = If Erasureᶜ-idem c Then Erasureᶜ-idem t Else Erasureᶜ-idem e
+Erasureᶜ-idem (c >>= c₁) = Erasureᶜ-idem c >>= Erasureᶜ-idem c₁
+Erasureᶜ-idem (Catch c c₁) = Catch (Erasureᶜ-idem c) (Erasureᶜ-idem c₁)
+Erasureᶜ-idem (unlabel c) = unlabel (Erasureᶜ-idem c)
 
-εᶜ-env-idem [] = []
-εᶜ-env-idem (x ∷ Γ) = (εᶜ-idem x) ∷ (εᶜ-env-idem Γ)
+ErasureEnvᶜ-idem [] = []
+ErasureEnvᶜ-idem (x ∷ Γ) = (Erasureᶜ-idem x) ∷ (ErasureEnvᶜ-idem Γ)
+
+--------------------------------------------------------------------------------
+-- Going through the graph of the erasure function we can prove the original
+-- idempotence lemma.
+
+-- ε is idempotent
+ε-idem : ∀ {l n} -> (t : Term n) -> ε l t ≡ ε l (ε l t)
+ε-idem t with Erasure-idem (ε-Erasure t)
+... | r = sym (Erasure-ε r)
+
+-- εᶜ is idempotent
+εᶜ-idem : ∀ {l} -> (c : CTerm) -> εᶜ l c ≡ εᶜ l (εᶜ l c)
+εᶜ-idem c with Erasureᶜ-idem (εᶜ-Erasureᶜ c) 
+... | r = sym (Erasureᶜ-εᶜ r)
+
+-- εᶜ-env is idempotent
+εᶜ-env-idem : ∀ {l n} -> (Γ : Env n) -> εᶜ-env l Γ ≡ εᶜ-env l (εᶜ-env l Γ)
+εᶜ-env-idem Γ with ErasureEnvᶜ-idem (εᶜ-env-ErasureEnvᶜ Γ)
+... | r = sym (ErasureEnvᶜ-εᶜ-env r)
 
 --------------------------------------------------------------------------------
