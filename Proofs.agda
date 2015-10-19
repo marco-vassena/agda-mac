@@ -32,6 +32,7 @@ progress (Γ₁ , (If f Then f₁ Else f₂) $ x₁) | inj₂ ()
 progress (Γ₁ , ∙ $ x₁) | inj₂ ()
 progress ((f $ y) $ x) | inj₂ ()
 progress (If f Then f₁ Else f₂ $ x₁) | inj₂ ()
+progress (∙ $ x₁) | inj₂ () 
 progress (If c Then t Else e) with progress c
 progress (If c Then t Else e) | inj₁ (Step s) = inj₁ (Step (IfCond s))
 progress (If Γ₁ , True Then t₁ Else e₁) | inj₂ y = inj₁ (Step IfTrue)
@@ -42,6 +43,7 @@ progress (If Γ₁ , (If c Then c₁ Else c₂) Then t₄ Else e₁) | inj₂ ()
 progress (If Γ₁ , ∙ Then t₁ Else e₁) | inj₂ ()
 progress (If c $ c₁ Then t₁ Else e₁) | inj₂ ()
 progress (If If c₁ Then c₂ Else c₃ Then t₂ Else e₂) | inj₂ ()
+progress (If ∙ Then c₂ Else c₃) | inj₂ ()
 progress (m >>= k) with progress m
 progress (m₁ >>= k₁) | inj₁ (Step x) = inj₁ (Step (BindCtx x))
 progress ((Γ₁ , App x₁ x₂) >>= k₁) | inj₂ ()
@@ -61,6 +63,7 @@ progress ((If m₁ Then m₂ Else m₃) >>= k₁) | inj₂ ()
 progress (m₁ >>= m₂ >>= k₂) | inj₂ ()
 progress (Catch m₁ m₂ >>= k₁) | inj₂ ()
 progress (unlabel m₁ >>= k₁) | inj₂ ()
+progress (∙ >>= k₁) | inj₂ ()
 progress (Catch m h) with progress m
 progress (Catch m₁ h₁) | inj₁ (Step x) = inj₁ (Step (CatchCtx x))
 progress (Catch (̋Γ , App m m₁) h₁) | inj₂ ()
@@ -80,6 +83,7 @@ progress (Catch (If m₁ Then m₂ Else m₃) h₁) | inj₂ ()
 progress (Catch (m₁ >>= m₂) h₁) | inj₂ ()
 progress (Catch (Catch m₁ m₂) h₂) | inj₂ ()
 progress (Catch (unlabel m₁) h₁) | inj₂ ()
+progress (Catch ∙ h₁) | inj₂ ()
 progress (unlabel t) with progress t
 progress (unlabel t₁) | inj₁ (Step x) = inj₁ (Step (unlabelCtx x))
 progress (unlabel (Γ₁ , App t t₃)) | inj₂ ()
@@ -89,6 +93,8 @@ progress (unlabel (Γ₁ , Res t₁)) | inj₂ tt = inj₁ (Step unlabel)
 progress (unlabel (Γ₁ , ∙)) | inj₂ ()
 progress (unlabel (t₁ $ t₂)) | inj₂ ()
 progress (unlabel (If t₁ Then t₂ Else t₃)) | inj₂ ()
+progress (unlabel ∙) | inj₂ ()
+progress ∙ = inj₁ (Step Hole')
 
 -- Lemma.
 -- Values are not reducible.
@@ -115,7 +121,7 @@ valueNotRedex (If c Then t Else e) () nf
 valueNotRedex (m >>= k) () s
 valueNotRedex (Catch m h) () nf
 valueNotRedex (unlabel t) () nf
-
+valueNotRedex ∙ () nf
 
 -- | The small step semantics is deterministic.
 -- At most one rule apply per term.
@@ -161,6 +167,7 @@ determinism unlabel (unlabelCtx ())
 determinism (unlabelCtx ()) unlabel
 determinism (unlabelCtx s₁) (unlabelCtx s₂) rewrite determinism s₁ s₂ = refl
 determinism Hole Hole = refl
+determinism Hole' Hole' = refl
 
 -- A well-typed closed term when reduced preserves its type.
 preservation : ∀ {τ} {c₁ c₂ : CTerm} -> c₁ :: τ -> c₁ ⟼ c₂ -> c₂ :: τ
@@ -189,3 +196,4 @@ preservation (Γ , unlabel x t) Dist-unlabel = unlabel (Γ , t)
 preservation (unlabel (Γ , Res t)) unlabel = Γ , (Return t)
 preservation (unlabel t) (unlabelCtx s) = unlabel (preservation t s)
 preservation (Γ , ∙) Hole = Γ , ∙
+preservation ∙ Hole' = ∙

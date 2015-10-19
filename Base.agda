@@ -159,6 +159,11 @@ mutual
 
     unlabel : CTerm -> CTerm
 
+    -- Erased closed term
+    -- TODO ∙ is present both as a Term and as a CTerm
+    -- Can we keep it only as a CTerm?
+    ∙ : CTerm
+
   Env : ℕ -> Set
   Env n = Vec CTerm n
 
@@ -190,6 +195,7 @@ IsValue (If c Then t Else e) = ⊥
 IsValue (m >>= k) = ⊥
 IsValue (Catch m h) = ⊥
 IsValue (unlabel t) = ⊥
+IsValue ∙ = ⊥
 
 mutual
   -- Well-typed closed term
@@ -200,6 +206,7 @@ mutual
     _>>=_ : ∀ {m k l α β} -> m :: Mac l α -> k :: (α => Mac l β) -> (m >>= k) :: Mac l β
     Catch : ∀ {m h l α} -> m :: Mac l α -> h :: (Exception => Mac l α) -> Catch m h :: Mac l α
     unlabel : ∀ {t τ l h} {- p : l ⊑ h -} -> t :: Labeled l τ -> unlabel t :: Mac h τ
+    ∙ : ∀ {τ} -> ∙ :: τ
 
   -- Typed environment
   data TEnv : (Δ : Context) -> Env (length Δ) -> Set where 

@@ -73,6 +73,8 @@ data _⟼_ : CTerm -> CTerm -> Set where
 
   Hole : ∀ {n} {Γ : Env n} -> (Γ , ∙) ⟼ (Γ , ∙)
 
+  Hole' : ∙ ⟼ ∙
+
 -- A closed term is a Redex if it can be reduced further
 data Redex (c : CTerm) : Set where
   Step : ∀ {c' : CTerm} -> c ⟼ c' -> Redex c
