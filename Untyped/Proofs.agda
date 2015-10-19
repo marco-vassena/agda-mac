@@ -1,6 +1,6 @@
-module Proofs where
+module Untyped.Proofs where
 
-open import Semantics
+open import Untyped.Semantics
 open import Data.Sum
 open import Relation.Binary.PropositionalEquality
 

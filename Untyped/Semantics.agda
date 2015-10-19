@@ -1,12 +1,7 @@
-module Semantics  where
+module Untyped.Semantics where
 
-open import Base public
+open import Untyped.Base public
 open import Relation.Nullary using (¬_)
-
--- Retrieves the term of the type given by the reference from an environment in a safe way
--- _!!_ : ∀ {Δ Γ τ} -> τ ∈ Δ -> TEnv Δ Γ -> CTerm τ
--- Here !! (t ∷ _) = t
--- There r !! (_ ∷ e) = r !! e
 
 -- Call-by-need small step semantics
 -- Note that Env contains closed terms not necessarily values
