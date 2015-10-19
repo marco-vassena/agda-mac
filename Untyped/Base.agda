@@ -50,7 +50,7 @@ data _⊢_∷_ (Δ : Context) : Term (length Δ) -> Ty -> Set where
            α ∷ Δ ⊢ t ∷ β ->
            Δ ⊢ Abs t ∷ α => β
 
-  Var : ∀ {τ} -> (p : τ ∈ᵗ Δ) -> Δ ⊢ Var (fin p) ∷ τ
+  Var : ∀ {τ} -> (p : τ ∈ Δ) -> Δ ⊢ Var (fin p) ∷ τ
 
   If_Then_Else_ : ∀ {α t₁ t₂ t₃} ->
                Δ ⊢ t₁ ∷ Bool ->
@@ -166,7 +166,7 @@ mutual
     If_Then_Else_ : ∀ {c t e α} -> c :: Bool -> t :: α -> e :: α -> (If c Then t Else e) :: α
     _>>=_ : ∀ {m k l α β} -> m :: Mac l α -> k :: (α => Mac l β) -> (m >>= k) :: Mac l β
     Catch : ∀ {m h l α} -> m :: Mac l α -> h :: (Exception => Mac l α) -> Catch m h :: Mac l α
-    unlabel : ∀ {t τ l h} {- p : l ⊑ h -} -> t :: Labeled l τ -> unlabel t :: Mac h τ
+    unlabel : ∀ {t τ l h} -> l ⊑ h -> t :: Labeled l τ -> unlabel t :: Mac h τ
     ∙ : ∀ {τ} -> ∙ :: τ
 
   -- Typed environment

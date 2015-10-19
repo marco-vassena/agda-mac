@@ -32,11 +32,11 @@ Context : Set
 Context = List Ty
 
 -- Reference to a variable, bound during some abstraction.
-data _∈ᵗ_ : Ty -> Context -> Set where
- Here : ∀ {Δ τ} -> τ ∈ᵗ (τ ∷ Δ)
- There : ∀ {Δ α β} -> α ∈ᵗ Δ -> α ∈ᵗ (β ∷ Δ)
+data _∈_ : Ty -> Context -> Set where
+ Here : ∀ {Δ τ} -> τ ∈ (τ ∷ Δ)
+ There : ∀ {Δ α β} -> α ∈ Δ -> α ∈ (β ∷ Δ)
 
 -- Transform τ ∈ᵗ Δ in Fin
-fin : ∀ {τ Δ} -> τ ∈ᵗ Δ -> Fin (length Δ)
+fin : ∀ {τ Δ} -> τ ∈ Δ -> Fin (length Δ)
 fin Here = zero
 fin (There p) = suc (fin p)
