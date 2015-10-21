@@ -17,7 +17,7 @@ data Term (Δ : Context) : Ty -> Set where
 
   ξ : Term Δ Exception
   Throw : ∀ {{l α}} -> Term Δ Exception -> Term Δ (Mac l α)
-  Catch : ∀ {l α} -> Term Δ (Mac l α) -> Term Δ (Exception => Mac l α) -> Term Δ (Mac l α)
+  Catch : ∀ {{l}} {α} -> Term Δ (Mac l α) -> Term Δ (Exception => Mac l α) -> Term Δ (Mac l α)
 
   Mac : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Mac l α)
   Macₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Mac l α)
@@ -39,9 +39,9 @@ mutual
     _,_ : ∀ {Δ τ} -> Env Δ -> Term Δ τ -> CTerm τ
     _$_ : ∀ {α β} -> CTerm (α => β) -> CTerm α -> CTerm β
     If_Then_Else_ : ∀ {τ} -> CTerm Bool -> CTerm τ -> CTerm τ -> CTerm τ
-    _>>=_ : ∀ {α β l} -> CTerm (Mac l α) -> CTerm (α => Mac l β) -> CTerm (Mac l β)
-    Catch : ∀ {α l} -> CTerm (Mac l α) -> CTerm (Exception => Mac l α) -> CTerm (Mac l α)
-    unlabel : ∀ {τ l h} -> l ⊑ h -> CTerm (Labeled l τ) -> CTerm (Mac h τ)
+    _>>=_ : ∀ {l α β} -> CTerm (Mac l α) -> CTerm (α => Mac l β) -> CTerm (Mac l β)
+    Catch : ∀ {l α} -> CTerm (Mac l α) -> CTerm (Exception => Mac l α) -> CTerm (Mac l α)
+    unlabel : ∀ {l τ h} -> l ⊑ h -> CTerm (Labeled l τ) -> CTerm (Mac h τ)
     ∙ : ∀ {τ} -> CTerm τ
 
   data Env : (Δ : Context) -> Set where

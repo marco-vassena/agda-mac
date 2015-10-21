@@ -1,8 +1,7 @@
 module Security.NonInterference where
 
+open import Typed.Semantics
 open import Security.Base
-open import Proofs
-open import Semantics
 open import Relation.Binary.PropositionalEquality
 
 
@@ -15,54 +14,87 @@ open import Relation.Binary.PropositionalEquality
 
 -- The erasure function distributes over the small step semantics
 -- For simple proofs we do not need the Erasureᶜ.
-εᶜ-distributes : ∀ {{l}} {c₁ c₂ : CTerm} -> (τ : Ty) -> c₁ ⟼ c₂ -> (x : c₁ :: τ) (y : c₂ :: τ) -> εᶜ l τ x ⟼ εᶜ l τ y 
-εᶜ-distributes Bool s (Γ , t) y = {!!}
-εᶜ-distributes Bool s (x₁ $ x₂) y = {!!}
-εᶜ-distributes Bool (IfCond s) (If x Then x₁ Else x₂) (If y Then y₁ Else y₂) = {!IfCond ?!}
-εᶜ-distributes Bool IfTrue (If Γ₁ , True Then x₁ Else x₂) y = {!IfTrue!}
-εᶜ-distributes Bool IfFalse (If Γ₁ , False Then x₁ Else x₂) y = {!IfFalse!}
-εᶜ-distributes Bool Hole' ∙ ∙ = Hole'
-εᶜ-distributes (τ => τ₁) s x y = {!!}
-εᶜ-distributes (Mac x τ) s x₁ y = {!!}
-εᶜ-distributes (Labeled x τ) s x₁ y = {!!}
-εᶜ-distributes Exception s x y = {!!} 
-
--- εᶜ-distributes (c₁ $ x) (c₂ $ .x) (AppL s) = AppL (εᶜ-distributes c₁ c₂ s)
--- εᶜ-distributes ._ ._ Beta = Beta
--- εᶜ-distributes (Γ , Var p) .(lookup p Γ) Lookup rewrite sym (εᶜ-lookup Γ p) = Lookup
--- εᶜ-distributes ._ ._ Dist-$ = Dist-$
--- εᶜ-distributes ._ ._ Dist-If = Dist-If
--- εᶜ-distributes ._ ._ (IfCond s) = IfCond (εᶜ-distributes _ _ s)
--- εᶜ-distributes ._ c₂ IfTrue = IfTrue
--- εᶜ-distributes ._ c₂ IfFalse = IfFalse
--- εᶜ-distributes ._ ._ Return = Return
--- εᶜ-distributes ._ ._ Dist->>= = Dist->>=
--- εᶜ-distributes ._ ._ (BindCtx s) = BindCtx (εᶜ-distributes _ _ s)
--- εᶜ-distributes ._ ._ Bind = Bind
--- εᶜ-distributes ._ ._ BindEx = BindEx
--- εᶜ-distributes ._ ._ Throw = Throw
--- εᶜ-distributes ._ ._ Dist-Catch = Dist-Catch
--- εᶜ-distributes ._ ._ (CatchCtx s) = CatchCtx (εᶜ-distributes _ _ s)
--- εᶜ-distributes ._ ._ Catch = Catch
--- εᶜ-distributes ._ ._ CatchEx = CatchEx
--- εᶜ-distributes {{l₁}} ._ ._ (label {h = l₂} p) with l₁ ⊑? l₂
--- εᶜ-distributes ._ ._ (label p) | yes _ = label p
--- εᶜ-distributes ._ ._ (label p) | no _ = label p
--- εᶜ-distributes ._ ._ Dist-unlabel = Dist-unlabel
--- εᶜ-distributes {{l₁}} (unlabel (Γ , Res .l₂ t)) (.Γ , Return .t) (unlabel {l = l₂}) with l₁ ⊑? l₂
--- εᶜ-distributes (unlabel (Γ , Res ._ t)) (.Γ , Return .t) unlabel | yes l₁⊑l₂ = unlabel
--- -- FIX Issue with proof
--- -- c₁ = unlabel (Γ , Res l₂ t)
--- -- c₂ = (Γ , Return t)
--- -- unlabel : c₁ ⟼ c₂
--- -- Since l₁ ⋢ l₂, t is erased from c₁, leading to c₁ₑ = unlabel (Γ , Res l₂ ∙)
--- -- For c₂ instead the erasure function is applied homorphically, c₂ₑ = (εᶜ-env l₁ Γ , Return (ε l₁ t)) 
--- -- Since ∙ is in general different from ε l t the rule unlabel does not apply.
--- -- My best guess is that the erasure function should be adjusted to perform the same check in Return x
--- -- After all if we type Return x : Mac H a we are marking sensitive data, isn'it ?
--- εᶜ-distributes (unlabel (Γ , Res ._ t)) (.Γ , Return .t) unlabel | no l₁⋢l₂ = {!unlabel !}
--- εᶜ-distributes ._ ._ (unlabelCtx s) = unlabelCtx (εᶜ-distributes _ _ s)
--- εᶜ-distributes ._ ._ Hole = Hole
+εᶜ-distributes : ∀ {τ} {{l}} {c₁ c₂ : CTerm τ} -> c₁ ⟼ c₂ -> εᶜ l c₁ ⟼ εᶜ l c₂ 
+εᶜ-distributes {Bool} (AppL s) = AppL (εᶜ-distributes s)
+εᶜ-distributes {τ => τ₁} (AppL s) = AppL (εᶜ-distributes s)
+εᶜ-distributes {Mac l₂ τ} {{l₁}} (AppL s) with l₁ ⊑? l₂
+εᶜ-distributes {Mac l₂ τ} (AppL s) | yes p = AppL (εᶜ-distributes s)
+εᶜ-distributes {Mac l₂ τ} (AppL s) | no ¬p = Hole'
+εᶜ-distributes {Labeled l₂ τ} {{l₁}} (AppL s) with l₁ ⊑? l₂
+εᶜ-distributes {Labeled l₂ τ} (AppL s) | yes p = AppL (εᶜ-distributes s)
+εᶜ-distributes {Labeled l₂ τ} (AppL s) | no ¬p = Hole'
+εᶜ-distributes {Exception} (AppL s) = AppL (εᶜ-distributes s)
+εᶜ-distributes {Bool} Beta = Beta
+εᶜ-distributes {τ => τ₁} Beta = Beta
+εᶜ-distributes {Mac l₂ τ} {{l₁}} Beta with l₁ ⊑? l₂
+εᶜ-distributes {Mac l₂ τ} Beta | yes p = Beta
+εᶜ-distributes {Mac l₂ τ} Beta | no ¬p = {!!} -- Does not work! It looks like I have to check the type in closure and not pattern match
+εᶜ-distributes {Labeled x τ} Beta = {!!}
+εᶜ-distributes {Exception} Beta = {!!}
+εᶜ-distributes Lookup = {!!}
+εᶜ-distributes Dist-$ = {!!}
+εᶜ-distributes Dist-If = Dist-If
+εᶜ-distributes (IfCond s) = IfCond (εᶜ-distributes s)
+εᶜ-distributes IfTrue = IfTrue
+εᶜ-distributes IfFalse = IfFalse
+εᶜ-distributes {{l₁}} (Return {l₂}) with l₁ ⊑? l₂
+εᶜ-distributes Return | yes p = Return
+εᶜ-distributes Return | no ¬p = Hole
+εᶜ-distributes {{l₁}} (Dist->>= {l₂}) with l₁ ⊑? l₂
+εᶜ-distributes Dist->>= | yes p = Dist->>=
+εᶜ-distributes Dist->>= | no ¬p = {!!} -- Inspect type before pattern match closure
+εᶜ-distributes {{l₁}} (BindCtx {l₂} s) with l₁ ⊑? l₂
+εᶜ-distributes (BindCtx s) | yes p = BindCtx (εᶜ-distributes s)
+εᶜ-distributes (BindCtx s) | no ¬p = Hole'
+εᶜ-distributes {{l₁}} (Bind {l₂}) with l₁ ⊑? l₂
+εᶜ-distributes {{l₁}} (Bind {l₂}) | yes p with l₁ ⊑? l₂ -- Agda limitation, results are not shared
+εᶜ-distributes Bind | yes p₁ | yes p = Bind
+εᶜ-distributes Bind | yes p | no ¬p = ⊥-elim (¬p p)
+εᶜ-distributes Bind | no ¬p = Hole'
+εᶜ-distributes {{l₁}} (BindEx {l₂}) with l₁ ⊑? l₂
+εᶜ-distributes {{l₁}} (BindEx {l₂}) | yes p with l₁ ⊑? l₂ -- Agda limitation
+εᶜ-distributes BindEx | yes p₁ | yes p = BindEx
+εᶜ-distributes BindEx | yes p | no ¬p = ⊥-elim (¬p p)
+εᶜ-distributes BindEx | no ¬p = {!!} -- Inspect type in closure
+εᶜ-distributes {{l₁}} (Throw {l₂}) with l₁ ⊑? l₂
+εᶜ-distributes Throw | yes p = Throw
+εᶜ-distributes Throw | no ¬p = Hole
+εᶜ-distributes {{l₁}} (Dist-Catch {l₂}) with l₁ ⊑? l₂
+εᶜ-distributes Dist-Catch | yes p = Dist-Catch
+εᶜ-distributes Dist-Catch | no ¬p = {!!} -- Inspect type in closure
+εᶜ-distributes {{l₁}} (CatchCtx {l₂} s) with l₁ ⊑? l₂
+εᶜ-distributes (CatchCtx s) | yes p = CatchCtx (εᶜ-distributes s)
+εᶜ-distributes (CatchCtx s) | no ¬p = Hole'
+εᶜ-distributes {{l₁}} (Catch {l₂}) with l₁ ⊑? l₂
+εᶜ-distributes {{l₁}} (Catch {l₂}) | yes p with l₁ ⊑? l₂
+εᶜ-distributes Catch | yes p₁ | yes p = Catch
+εᶜ-distributes Catch | yes p | no ¬p = ⊥-elim (¬p p)
+εᶜ-distributes Catch | no ¬p = {!!} -- Inspect type in closure
+εᶜ-distributes {{l₁}} (CatchEx {l₂}) with l₁ ⊑? l₂
+εᶜ-distributes {{l₁}} (CatchEx {l₂}) | yes p with l₁ ⊑? l₂
+εᶜ-distributes CatchEx | yes p₁ | yes p = CatchEx
+εᶜ-distributes CatchEx | yes p | no ¬p = ⊥-elim (¬p p)
+εᶜ-distributes CatchEx | no ¬p = Hole'
+εᶜ-distributes {{l₁}} (label {l₂} p) with l₁ ⊑? l₂
+εᶜ-distributes {{l₁}} (label {h = l₃} p₁) | yes p with l₁ ⊑? l₃
+εᶜ-distributes (label p₂) | yes p₁ | yes p = label p₂
+εᶜ-distributes (label l₂⊑l₃) | yes l₁⊑l₂ | no ¬l₁⊑l₃ = {!!} -- Absurd assuming transitivity of ⊑
+εᶜ-distributes (label p) | no ¬p = Hole
+εᶜ-distributes {{l₁}} (Dist-unlabel {l₂}) with l₁ ⊑? l₂
+εᶜ-distributes Dist-unlabel | yes p = Dist-unlabel
+εᶜ-distributes Dist-unlabel | no ¬p = {!!} -- Inspect type in closure
+εᶜ-distributes {{l₁}} (unlabel {l = l₂} {h = l₃}) with l₁ ⊑? l₂ | l₁ ⊑? l₃
+εᶜ-distributes {{l₁}} (unlabel {l = l₂} {h = l₃}) | yes p | yes p₁ with l₁ ⊑? l₂
+εᶜ-distributes unlabel | yes p₁ | yes p₂ | yes p = unlabel
+εᶜ-distributes unlabel | yes p | yes p₁ | no ¬p = ⊥-elim (¬p p)
+εᶜ-distributes unlabel | yes l₁⊑l₂ | no ¬l₁⊑l₃ = {!!} -- Absurd assuming transitivity of ⊑
+εᶜ-distributes {{l₁}} (unlabel {l = l₂} {h = l₃}) | no ¬l₁⊑l₂ | yes l₁⊑l₃ = {!!} -- ??? Check erasure of unlabel 
+εᶜ-distributes unlabel | no ¬p | no ¬p₁ = {!!} -- Inspect type in closure
+εᶜ-distributes {{l₁}} (unlabelCtx {l₂} s) with l₁ ⊑? l₂
+εᶜ-distributes (unlabelCtx s) | yes p = unlabelCtx (εᶜ-distributes s)
+εᶜ-distributes (unlabelCtx s) | no ¬p = Hole'
+εᶜ-distributes Hole = Hole
+εᶜ-distributes Hole' = Hole'
 
 -- Reduction of pure and monadic terms with erasure
 -- data _⟼ˡ_ {{l : Label}} (c₁ c₂ₑ : CTerm) : Set where

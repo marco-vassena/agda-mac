@@ -119,31 +119,16 @@ map⟪ x ∷ Γ ⟫ = ∙ ∷ map⟪ Γ ⟫
 -- @Ale This lemma cannot be proved and shows how the typed small semantics is strictly more 
 -- expressive. In particular in the recursive cases subterms of the typing judgments are not
 -- shared.
--- stepᵘᵗ : ∀ {τ} {c₁ c₂ : CTermᵘ} -> c₁ ⟼ᵘ c₂ -> (p : c₁ :: τ) (q : c₂ :: τ) -> ⟪ p ⟫ ⟼ᵗ ⟪ q ⟫
--- stepᵘᵗ (AppL s) (p $ p₁) (q $ q₁) = {!!}
--- stepᵘᵗ Beta (p $ p₁) q = {!!}
--- stepᵘᵗ Lookup p₁ q = {!!}
--- stepᵘᵗ Dist-$ p q = {!!}
--- stepᵘᵗ Dist-If p q = {!!}
--- stepᵘᵗ (IfCond s) (If c Then t Else e) (If c' Then t' Else e') = {!IfCond ?!} -- Does not work because t ≠ t' and e ≠ e'
--- stepᵘᵗ IfTrue p q = {!!}
--- stepᵘᵗ IfFalse p q = {!!}
--- stepᵘᵗ Return p q = {!!}
--- stepᵘᵗ Dist->>= p q = {!!}
--- stepᵘᵗ (BindCtx s) p q = {!!}
--- stepᵘᵗ Bind p q = {!!}
--- stepᵘᵗ BindEx p q = {!!}
--- stepᵘᵗ Throw p q = {!!}
--- stepᵘᵗ Dist-Catch p q = {!!}
--- stepᵘᵗ (CatchCtx s) p q = {!!}
--- stepᵘᵗ Catch p q = {!!}
--- stepᵘᵗ CatchEx p q = {!!}
--- stepᵘᵗ (label p) p₁ q = {!!}
--- stepᵘᵗ Dist-unlabel p q = {!!}
--- stepᵘᵗ unlabel p q = {!!}
--- stepᵘᵗ (unlabelCtx s) p q = {!!}
--- stepᵘᵗ Hole p q = {!!}
--- stepᵘᵗ Hole' p q = {!!}
+-- TODO try to use preservation to deduce q from p and the step
+-- stepᵘᵗ : ∀ {τ} {c₁ c₂ : CTermᵘ} -> (p : c₁ :: τ) -> c₁ ⟼ᵘ c₂ -> (q : c₂ :: τ) -> ⟪ p ⟫ ⟼ᵗ ⟪ q ⟫
+-- stepᵘᵗ (Γ , t) s q = {!!}
+-- stepᵘᵗ (p $ p₁) (AppL s) (q $ q₁) = {!AppL ?!}
+-- stepᵘᵗ (p $ p₁) Beta q = {!!}
+-- stepᵘᵗ (If p Then p₁ Else p₂) s q = {!!}
+-- stepᵘᵗ (p >>= p₁) s q = {!!}
+-- stepᵘᵗ (Catch p p₁) s q = {!!}
+-- stepᵘᵗ (unlabel x p) s q = {!!}
+-- stepᵘᵗ ∙ s q = {!!}
 
 -- It is possible instead to safely remove types from the typed small step semantics
 -- and retrieve the untyped semantics
