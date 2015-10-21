@@ -8,68 +8,96 @@ open import Relation.Binary.PropositionalEquality
 -- Erasure function.
 -- ε l t transform a term t in ∙ if it is above the security level l.
 ε : ∀ {τ Δ} -> Label -> Term Δ τ -> Term Δ τ
-ε l True = True
-ε l False = False
-ε l (Var x) = Var x
-ε l (Abs t) = Abs (ε l t)
-ε l (App f x) = App (ε l f) (ε l x)
-ε l (If c Then t Else e) = If ε l c Then ε l t Else ε l e -- TODO should I check first the type in this case?
-ε l₁ (Return {{l₂}} t) with l₁ ⊑? l₂
-ε l₁ (Return t) | yes p = Return (ε l₁ t)
-ε l₁ (Return t) | no ¬p = ∙
-ε l₁ (_>>=_ {{l₂}} m k) with l₁ ⊑? l₂
-ε l₁ (m >>= k) | yes p = ε l₁ m >>= ε l₁ k
-ε l₁ (m >>= k) | no ¬p = ∙
-ε l ξ = ξ
-ε l₁ (Throw {{l₂}} t) with l₁ ⊑? l₂
-ε l₁ (Throw t) | yes p = Throw (ε l₁ t)
-ε l₁ (Throw t) | no ¬p = ∙
-ε l₁ (Catch {{l₂}} m h) with l₁ ⊑? l₂
-ε l₁ (Catch m h) | yes p = Catch (ε l₁ m) (ε l₁ h)
-ε l₁ (Catch m h) | no ¬p = ∙
-ε l₁ (Mac {{l₂}} t) with l₁ ⊑? l₂
-ε l₁ (Mac t) | yes p = Mac (ε l₁ t)
-ε l₁ (Mac t) | no ¬p = ∙
-ε l₁ (Macₓ {{l₂}} t) with l₁ ⊑? l₂
-ε l₁ (Macₓ t) | yes p = Macₓ (ε l₁ t)
-ε l₁ (Macₓ t) | no ¬p = ∙
-ε l₁ (Res {{l₂}} t) with l₁ ⊑? l₂
-ε l₁ (Res t) | yes p = Res (ε l₁ t)
-ε l₁ (Res t) | no ¬p = ∙
-ε l₁ (label {l = l₂} {h = l₃} x t) with l₁ ⊑? l₂
--- I don't have to check l₁ ⊑? l₃, the only possible option
--- is l₁ ⊑ l₃, because otherwise I would have a contradiction (l₁ ⊑ l₂, l₂ ⊑ l₃) => l₁ ⊑ l₃
-ε l₁ (label x t) | yes p = label x (ε l₁ t)
-ε l₁ (label x t) | no ¬p = ∙
-ε l₁ (unlabel {l = l₂} {h = l₃} x t) with l₁ ⊑? l₂
-ε l₁ (unlabel x t) | yes p = unlabel x (ε l₁ t)
-ε l₁ (unlabel x t) | no ¬p = ∙
-ε l ∙ = ∙
+ε {Bool} l True = True
+ε {Bool} l False = False
+ε {Bool} l (Var x) = Var x
+ε {Bool} l (App f x) = App (ε l f) (ε l x)
+ε {Bool} l (If c Then t Else e) = If (ε l c) Then (ε l t) Else (ε l e)
+ε {Bool} l ∙ = ∙
+ε {τ => τ₁} l (Var x) = Var x
+ε {τ => τ₁} l (Abs t) = Abs (ε l t)
+ε {τ => τ₁} l (App f x) = App (ε l f) (ε l x)
+ε {τ => τ₁} l (If c Then t Else e) = If (ε l c) Then (ε l t) Else (ε l e)
+ε {τ => τ₁} l ∙ = ∙
+ε {Mac l₂ τ} l₁ t with l₁ ⊑? l₂
+ε {Mac l₂ τ} l₁ (Var x) | yes p = Var x
+ε {Mac l₂ τ} l₁ (App f x) | yes p = App (ε l₁ f) (ε l₁ x)
+ε {Mac l₂ τ} l₁ (If c Then t Else e) | yes p = If (ε l₁ c) Then (ε l₁ t) Else (ε l₁ e)
+ε {Mac l₂ τ} l₁ (Return t) | yes p = Return (ε l₁ t)
+ε {Mac l₂ τ} l₁ (m >>= k) | yes p = (ε l₁ m) >>= (ε l₁ k)
+ε {Mac l₂ τ} l₁ (Throw t) | yes p = Throw (ε l₁ t)
+ε {Mac l₂ τ} l₁ (Catch m h) | yes p = Catch (ε l₁ m) (ε l₁ h)
+ε {Mac l₂ τ} l₁ (Mac t) | yes p = Mac (ε l₁ t)
+ε {Mac l₂ τ} l₁ (Macₓ t) | yes p = Macₓ (ε l₁ t)
+ε {Mac l₂ ._} l₁ (label x t) | yes p = label x (ε l₁ t) -- Check
+ε {Mac l₂ τ} l₁ (unlabel x t) | yes p = unlabel x (ε l₁ t) -- Check
+ε {Mac l₂ τ} l₁ ∙ | yes p = ∙
+ε {Mac l₂ τ} l₁ t | no ¬p = ∙
+ε {Labeled l₂ τ} l₁ t with l₁ ⊑? l₂
+ε {Labeled l₂ τ} l₁ (Var x) | yes p = Var x
+ε {Labeled l₂ τ} l₁ (App f x) | yes p = App (ε l₁ f) (ε l₁ x)
+ε {Labeled l₂ τ} l₁ (If c Then t Else e) | yes p = If (ε l₁ c) Then (ε l₁ t) Else (ε l₁ e)
+ε {Labeled l τ} l₁ (Res t) | yes p = Res (ε l₁ t)
+ε {Labeled l₂ τ} l₁ ∙ | yes p = ∙
+ε {Labeled l₂ τ} l₁ t | no ¬p = ∙
+ε {Exception} l (Var x) = Var x
+ε {Exception} l (App f x) = App (ε l f) (ε l x)
+ε {Exception} l (If c Then t Else e) = If (ε l c) Then (ε l t) Else (ε l e)
+ε {Exception} l ξ = ξ
+ε {Exception} l ∙ = ∙
 
 εᶜ : ∀ {τ} -> Label -> CTerm τ -> CTerm τ
 εᶜ-env : ∀ {Δ} -> Label -> Env Δ -> Env Δ
 
-εᶜ l (Γ , t) = εᶜ-env l Γ , ε l t
-εᶜ {Mac l₂ τ} l₁ (f $ x) with l₁ ⊑? l₂
+εᶜ {Bool} l (Γ , t) = (εᶜ-env l Γ) , (ε l t)
+εᶜ {Bool} l (f $ x) = (εᶜ l f) $ (εᶜ l x)
+εᶜ {Bool} l (If c Then t Else e) = If (εᶜ l c) Then (εᶜ l t) Else (εᶜ l e)
+εᶜ {Bool} l ∙ = ∙
+εᶜ {τ => τ₁} l (Γ , t) = (εᶜ-env l Γ) , (ε l t)
+εᶜ {τ => τ₁} l (f $ x) = (εᶜ l f) $ (εᶜ l x)
+εᶜ {τ => τ₁} l (If c Then t Else e) = If εᶜ l c Then εᶜ l t Else εᶜ l e
+εᶜ {τ => τ₁} l ∙ = ∙
+εᶜ {Mac l₂ τ} l₁ c with l₁ ⊑? l₂
+εᶜ {Mac l₂ τ} l₁ (Γ , t) | yes p = (εᶜ-env l₁ Γ) , (ε l₁ t)
 εᶜ {Mac l₂ τ} l₁ (f $ x) | yes p = (εᶜ l₁ f) $ (εᶜ l₁ x)
-εᶜ {Mac l₂ τ} l₁ (f $ x) | no ¬p = ∙
-εᶜ {Labeled l₂ τ} l₁ (f $ x) with l₁ ⊑? l₂
+εᶜ {Mac l₂ τ} l₁ (If c Then t Else e) | yes p = If (εᶜ l₁ c) Then (εᶜ l₁ t) Else εᶜ l₁ e
+εᶜ {Mac l₂ τ} l₁ (m >>= k) | yes p = (εᶜ l₁ m) >>= (εᶜ l₁ k)
+εᶜ {Mac l₂ τ} l₁ (Catch m h) | yes p = Catch (εᶜ l₁ m) (εᶜ l₁ h)
+εᶜ {Mac l₂ τ} l₁ (unlabel x c) | yes p = unlabel x (εᶜ l₁ c) -- Check
+εᶜ {Mac l₂ τ} l₁ ∙ | yes p = ∙
+εᶜ {Mac l₂ τ} l₁ c | no ¬p = ∙
+εᶜ {Labeled l₂ τ} l₁ c with l₁ ⊑? l₂
+εᶜ {Labeled l₂ τ} l₁ (Γ , t) | yes p = (εᶜ-env l₁ Γ) , (ε l₁ t)
 εᶜ {Labeled l₂ τ} l₁ (f $ x) | yes p = (εᶜ l₁ f) $ (εᶜ l₁ x)
-εᶜ {Labeled l₂ τ} l₁ (f $ x) | no ¬p = ∙
-εᶜ l (f $ x) = (εᶜ l f) $ (εᶜ l x)
--- Contrary to _$_ no monadic term is directly reduced to if-then-else
--- so it is safe to just apply ε homomorphically
-εᶜ l (If c Then t Else e) = If (εᶜ l c) Then (εᶜ l t) Else (εᶜ l e)
-εᶜ l₁ (_>>=_ {l₂} m k) with l₁ ⊑? l₂
-εᶜ l₁ (m >>= k) | yes p = εᶜ l₁ m >>= εᶜ l₁ k
-εᶜ l₁ (m >>= k) | no ¬p = ∙
-εᶜ l₁ (Catch {l₂} m h) with l₁ ⊑? l₂
-εᶜ l₁ (Catch m h) | yes p = Catch (εᶜ l₁ m) (εᶜ l₁ h)
-εᶜ l₁ (Catch m h) | no ¬p = ∙
-εᶜ l₁ (unlabel {l = l₂} {h = l₃} x c) with l₁ ⊑? l₂
-εᶜ l₁ (unlabel x c) | yes p = unlabel x (εᶜ l₁ c) -- It follows that l₁ ⊑ l₃, we don't have to check that!
-εᶜ l₁ (unlabel x c) | no ¬p = ∙
-εᶜ l ∙ = ∙
+εᶜ {Labeled l₂ τ} l₁ (If c Then t Else e) | yes p = If (εᶜ l₁ c) Then (εᶜ l₁ t) Else (εᶜ l₁ e)
+εᶜ {Labeled l₂ τ} l₁ ∙ | yes p = ∙
+εᶜ {Labeled l₂ τ} l₁ c | no ¬p = ∙
+εᶜ {Exception} l (Γ , t) = (εᶜ-env l Γ) , (ε l t)
+εᶜ {Exception} l (f $ x) = (εᶜ l f) $ (εᶜ l x)
+εᶜ {Exception} l (If c Then t Else e) = If (εᶜ l c) Then (εᶜ l t) Else (εᶜ l e)
+εᶜ {Exception} l ∙ = ∙
+
+-- εᶜ l (Γ , t) = εᶜ-env l Γ , ε l t
+-- εᶜ {Mac l₂ τ} l₁ (f $ x) with l₁ ⊑? l₂
+-- εᶜ {Mac l₂ τ} l₁ (f $ x) | yes p = (εᶜ l₁ f) $ (εᶜ l₁ x)
+-- εᶜ {Mac l₂ τ} l₁ (f $ x) | no ¬p = ∙
+-- εᶜ {Labeled l₂ τ} l₁ (f $ x) with l₁ ⊑? l₂
+-- εᶜ {Labeled l₂ τ} l₁ (f $ x) | yes p = (εᶜ l₁ f) $ (εᶜ l₁ x)
+-- εᶜ {Labeled l₂ τ} l₁ (f $ x) | no ¬p = ∙
+-- εᶜ l (f $ x) = (εᶜ l f) $ (εᶜ l x)
+-- -- Contrary to _$_ no monadic term is directly reduced to if-then-else
+-- -- so it is safe to just apply ε homomorphically
+-- εᶜ l (If c Then t Else e) = If (εᶜ l c) Then (εᶜ l t) Else (εᶜ l e)
+-- εᶜ l₁ (_>>=_ {l₂} m k) with l₁ ⊑? l₂
+-- εᶜ l₁ (m >>= k) | yes p = εᶜ l₁ m >>= εᶜ l₁ k
+-- εᶜ l₁ (m >>= k) | no ¬p = ∙
+-- εᶜ l₁ (Catch {l₂} m h) with l₁ ⊑? l₂
+-- εᶜ l₁ (Catch m h) | yes p = Catch (εᶜ l₁ m) (εᶜ l₁ h)
+-- εᶜ l₁ (Catch m h) | no ¬p = ∙
+-- εᶜ l₁ (unlabel {l = l₂} {h = l₃} x c) with l₁ ⊑? l₂
+-- εᶜ l₁ (unlabel x c) | yes p = unlabel x (εᶜ l₁ c) -- It follows that l₁ ⊑ l₃, we don't have to check that!
+-- εᶜ l₁ (unlabel x c) | no ¬p = ∙
+-- εᶜ l ∙ = ∙
 
 εᶜ-env l [] = []
 εᶜ-env l (x ∷ Γ) = εᶜ l x ∷ εᶜ-env l Γ
