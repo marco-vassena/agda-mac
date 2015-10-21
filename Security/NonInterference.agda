@@ -7,10 +7,14 @@ open import Relation.Binary.PropositionalEquality
 
 -- Looking up in an erased environment is equivalent to
 -- firstly looking up and then erasing the result.
--- εᶜ-lookup : ∀ {{l}} {n} (Γ : Env n) (p : Fin n) -> lookup p (εᶜ-env l Γ) ≡ εᶜ l (lookup p Γ)
--- εᶜ-lookup [] ()
--- εᶜ-lookup (c ∷ Γ) zero = refl
--- εᶜ-lookup (c ∷ Γ) (suc p) rewrite εᶜ-lookup Γ p = refl
+εᶜ-lookup : ∀ {{l}} {τ Δ} (p : τ ∈ Δ) (Γ : Env Δ) -> p !! (εᶜ-env l Γ) ≡ εᶜ l (p !! Γ)
+εᶜ-lookup Here (x ∷ Γ) = refl
+εᶜ-lookup (There p) (x ∷ Γ) rewrite εᶜ-lookup p Γ = refl
+
+-- New rule Dist-∙ : (Γ , ∙) ⟼ ∙
+-- *** However if we define εᶜ l (Γ , ∙) = ∙ 
+-- This should avoid introducting a new rule 
+
 
 -- The erasure function distributes over the small step semantics
 -- For simple proofs we do not need the Erasureᶜ.
@@ -28,11 +32,21 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-distributes {τ => τ₁} Beta = Beta
 εᶜ-distributes {Mac l₂ τ} {{l₁}} Beta with l₁ ⊑? l₂
 εᶜ-distributes {Mac l₂ τ} Beta | yes p = Beta
-εᶜ-distributes {Mac l₂ τ} Beta | no ¬p = {!!} -- Does not work! It looks like I have to check the type in closure and not pattern match
-εᶜ-distributes {Labeled x τ} Beta = {!!}
-εᶜ-distributes {Exception} Beta = {!!}
-εᶜ-distributes Lookup = {!!}
-εᶜ-distributes Dist-$ = {!!}
+εᶜ-distributes {Mac l₂ τ} Beta | no ¬p = {!!} -- ε should first inspect the type?
+εᶜ-distributes {Labeled l₂ τ} {{l₁}} Beta with l₁ ⊑? l₂
+εᶜ-distributes {Labeled l₂ τ} Beta | yes p = Beta
+εᶜ-distributes {Labeled l₂ τ} Beta | no ¬p = {!!} -- Idem
+εᶜ-distributes {Exception} Beta = Beta
+εᶜ-distributes {c₁ = Γ , Var p} Lookup rewrite sym (εᶜ-lookup p Γ) = Lookup
+εᶜ-distributes {Bool} Dist-$ = Dist-$
+εᶜ-distributes {τ => τ₁} Dist-$ = Dist-$
+εᶜ-distributes {Mac l₂ τ} {{l₁}} Dist-$ with l₁ ⊑? l₂
+εᶜ-distributes {Mac l₂ τ} Dist-$ | yes p = Dist-$
+εᶜ-distributes {Mac l₂ τ} Dist-$ | no ¬p = {!!} -- App needs to be fixed this case! Inspect type!
+εᶜ-distributes {Labeled l₂ τ} {{l₁}} Dist-$ with l₁ ⊑? l₂
+εᶜ-distributes {Labeled l₂ τ} Dist-$ | yes p = Dist-$
+εᶜ-distributes {Labeled l₂ τ} Dist-$ | no ¬p = {!!} -- Idem
+εᶜ-distributes {Exception} Dist-$ = Dist-$
 εᶜ-distributes Dist-If = Dist-If
 εᶜ-distributes (IfCond s) = IfCond (εᶜ-distributes s)
 εᶜ-distributes IfTrue = IfTrue
@@ -42,7 +56,7 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-distributes Return | no ¬p = Hole
 εᶜ-distributes {{l₁}} (Dist->>= {l₂}) with l₁ ⊑? l₂
 εᶜ-distributes Dist->>= | yes p = Dist->>=
-εᶜ-distributes Dist->>= | no ¬p = {!!} -- Inspect type before pattern match closure
+εᶜ-distributes Dist->>= | no ¬p = {!!} -- *** 
 εᶜ-distributes {{l₁}} (BindCtx {l₂} s) with l₁ ⊑? l₂
 εᶜ-distributes (BindCtx s) | yes p = BindCtx (εᶜ-distributes s)
 εᶜ-distributes (BindCtx s) | no ¬p = Hole'
@@ -55,13 +69,13 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-distributes {{l₁}} (BindEx {l₂}) | yes p with l₁ ⊑? l₂ -- Agda limitation
 εᶜ-distributes BindEx | yes p₁ | yes p = BindEx
 εᶜ-distributes BindEx | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes BindEx | no ¬p = {!!} -- Inspect type in closure
+εᶜ-distributes BindEx | no ¬p = {!!} -- ***
 εᶜ-distributes {{l₁}} (Throw {l₂}) with l₁ ⊑? l₂
 εᶜ-distributes Throw | yes p = Throw
 εᶜ-distributes Throw | no ¬p = Hole
 εᶜ-distributes {{l₁}} (Dist-Catch {l₂}) with l₁ ⊑? l₂
 εᶜ-distributes Dist-Catch | yes p = Dist-Catch
-εᶜ-distributes Dist-Catch | no ¬p = {!!} -- Inspect type in closure
+εᶜ-distributes Dist-Catch | no ¬p = {!!} -- ***
 εᶜ-distributes {{l₁}} (CatchCtx {l₂} s) with l₁ ⊑? l₂
 εᶜ-distributes (CatchCtx s) | yes p = CatchCtx (εᶜ-distributes s)
 εᶜ-distributes (CatchCtx s) | no ¬p = Hole'
@@ -69,7 +83,7 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-distributes {{l₁}} (Catch {l₂}) | yes p with l₁ ⊑? l₂
 εᶜ-distributes Catch | yes p₁ | yes p = Catch
 εᶜ-distributes Catch | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes Catch | no ¬p = {!!} -- Inspect type in closure
+εᶜ-distributes Catch | no ¬p = {!!} -- ***
 εᶜ-distributes {{l₁}} (CatchEx {l₂}) with l₁ ⊑? l₂
 εᶜ-distributes {{l₁}} (CatchEx {l₂}) | yes p with l₁ ⊑? l₂
 εᶜ-distributes CatchEx | yes p₁ | yes p = CatchEx
@@ -78,18 +92,18 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-distributes {{l₁}} (label {l₂} p) with l₁ ⊑? l₂
 εᶜ-distributes {{l₁}} (label {h = l₃} p₁) | yes p with l₁ ⊑? l₃
 εᶜ-distributes (label p₂) | yes p₁ | yes p = label p₂
-εᶜ-distributes (label l₂⊑l₃) | yes l₁⊑l₂ | no ¬l₁⊑l₃ = {!!} -- Absurd assuming transitivity of ⊑
+εᶜ-distributes (label l₂⊑l₃) | yes l₁⊑l₂ | no ¬l₁⊑l₃ = ⊥-elim (¬l₁⊑l₃ (trans-⊑ l₁⊑l₂ l₂⊑l₃))
 εᶜ-distributes (label p) | no ¬p = Hole
 εᶜ-distributes {{l₁}} (Dist-unlabel {l₂}) with l₁ ⊑? l₂
 εᶜ-distributes Dist-unlabel | yes p = Dist-unlabel
-εᶜ-distributes Dist-unlabel | no ¬p = {!!} -- Inspect type in closure
+εᶜ-distributes Dist-unlabel | no ¬p = {!!} -- ***  
 εᶜ-distributes {{l₁}} (unlabel {l = l₂} {h = l₃}) with l₁ ⊑? l₂ | l₁ ⊑? l₃
 εᶜ-distributes {{l₁}} (unlabel {l = l₂} {h = l₃}) | yes p | yes p₁ with l₁ ⊑? l₂
 εᶜ-distributes unlabel | yes p₁ | yes p₂ | yes p = unlabel
 εᶜ-distributes unlabel | yes p | yes p₁ | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes unlabel | yes l₁⊑l₂ | no ¬l₁⊑l₃ = {!!} -- Absurd assuming transitivity of ⊑
+εᶜ-distributes (unlabel {p = l₂⊑l₃}) | yes l₁⊑l₂ | no ¬l₁⊑l₃ = ⊥-elim (¬l₁⊑l₃ (trans-⊑ l₁⊑l₂ l₂⊑l₃))
 εᶜ-distributes {{l₁}} (unlabel {l = l₂} {h = l₃}) | no ¬l₁⊑l₂ | yes l₁⊑l₃ = {!!} -- ??? Check erasure of unlabel 
-εᶜ-distributes unlabel | no ¬p | no ¬p₁ = {!!} -- Inspect type in closure
+εᶜ-distributes unlabel | no ¬p | no ¬p₁ = {!!} -- ***
 εᶜ-distributes {{l₁}} (unlabelCtx {l₂} s) with l₁ ⊑? l₂
 εᶜ-distributes (unlabelCtx s) | yes p = unlabelCtx (εᶜ-distributes s)
 εᶜ-distributes (unlabelCtx s) | no ¬p = Hole'

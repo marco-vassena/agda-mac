@@ -9,6 +9,8 @@ open import Relation.Nullary public
 postulate Label : Set
 postulate _⊑_ : Label -> Label -> Set
 postulate _⊑?_ : (l h : Label) -> Dec (l ⊑ h)
+postulate trans-⊑ : ∀ {l₁ l₂ l₃} -> l₁ ⊑ l₂ -> l₂ ⊑ l₃ -> l₁ ⊑ l₃
+
 
 open import Data.Nat using (ℕ ; zero ; suc) public
 open import Data.List public
