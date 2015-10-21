@@ -11,143 +11,130 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-lookup Here (x ∷ Γ) = refl
 εᶜ-lookup (There p) (x ∷ Γ) rewrite εᶜ-lookup p Γ = refl
 
+εᶜ-lookup-Mac : ∀ {l₁ l₂ τ Δ} {p : l₁ ⊑ l₂} -> (x : Mac l₂ τ ∈ Δ) (Γ : Env Δ) -> εᶜ-Mac l₁ p (x !! Γ) ≡ x !! εᶜ-env l₁ Γ
+εᶜ-lookup-Mac {l₁} {l₂} Here (x ∷ Γ) with l₁ ⊑? l₂
+εᶜ-lookup-Mac Here (x ∷ Γ) | yes p = refl
+εᶜ-lookup-Mac {p = p} Here (x ∷ Γ) | no ¬p = ⊥-elim (¬p p)
+εᶜ-lookup-Mac {p = p} (There x) (_ ∷ Γ) rewrite εᶜ-lookup-Mac {p = p} x Γ = refl  
+
+εᶜ-lookup-Labeled : ∀ {l₁ l₂ τ Δ} {p : l₁ ⊑ l₂} -> (x : Labeled l₂ τ ∈ Δ) (Γ : Env Δ) -> εᶜ-Labeled l₁ p (x !! Γ) ≡ x !! εᶜ-env l₁ Γ
+εᶜ-lookup-Labeled {l₁} {l₂} Here (x ∷ Γ) with l₁ ⊑? l₂
+εᶜ-lookup-Labeled Here (x ∷ Γ) | yes p = refl
+εᶜ-lookup-Labeled {p = p} Here (x ∷ Γ) | no ¬p = ⊥-elim (¬p p)
+εᶜ-lookup-Labeled {p = p} (There x) (_ ∷ Γ) rewrite εᶜ-lookup-Labeled {p = p} x Γ = refl
+
+εᶜ-distributes-Bool : {c₁ c₂ : CTerm Bool} -> (l : Label) -> c₁ ⟼ c₂ -> εᶜ-Bool l c₁ ⟼ εᶜ-Bool l c₂
+εᶜ-distributes-Fun : ∀ {α β} {c₁ c₂ : CTerm (α => β)} -> (l : Label) -> c₁ ⟼ c₂ -> εᶜ-Fun l c₁ ⟼ εᶜ-Fun l c₂
+εᶜ-distributes-Labeled : ∀ {l₂ τ} {c₁ c₂ : CTerm (Labeled l₂ τ)} -> 
+                         (l₁ : Label) (p : l₁ ⊑ l₂) -> c₁ ⟼ c₂ -> εᶜ-Labeled l₁ p c₁ ⟼ εᶜ-Labeled l₁ p c₂
+εᶜ-distributes-Exception : {c₁ c₂ : CTerm Exception} -> (l : Label) -> c₁ ⟼ c₂ -> εᶜ-Excpetion l c₁ ⟼ εᶜ-Excpetion l c₂
+
+εᶜ-distributes-Closure : ∀ {τ Δ} (l : Label) (Γ : Env Δ) (t : Term Δ τ) -> εᶜ l (Γ , t) ≡  (εᶜ-env l Γ , ε l t) 
+εᶜ-distributes-Closure {τ = Bool} l Γ t  = refl
+εᶜ-distributes-Closure {τ = τ => τ₁} l Γ t  = refl
+εᶜ-distributes-Closure {τ = Mac l₂ τ} l₁ Γ t  with l₁ ⊑? l₂
+εᶜ-distributes-Closure {Mac l₂ τ} l₁ Γ t | yes p = refl
+εᶜ-distributes-Closure {Mac l₂ τ} l₁ Γ t | no ¬p = {!!} -- This just does not hold
+εᶜ-distributes-Closure {τ = Labeled l₂ τ} l₁ Γ t with l₁ ⊑? l₂
+εᶜ-distributes-Closure {Labeled l₂ τ} l₁ Γ t | yes p = refl
+εᶜ-distributes-Closure {Labeled l₂ τ} l₁ Γ t | no ¬p = {!!} -- This just does not hold
+εᶜ-distributes-Closure {τ = Exception} l Γ t = refl
+ 
+εᶜ-distributes-Bool l (AppL s) = AppL (εᶜ-distributes-Fun l s)
+εᶜ-distributes-Bool l Beta = Beta
+εᶜ-distributes-Bool {Γ , Var p} l Lookup rewrite εᶜ-lookup p Γ = Lookup
+εᶜ-distributes-Bool {Γ , App f x} l Dist-$ rewrite εᶜ-distributes-Closure l Γ x = Dist-$
+εᶜ-distributes-Bool l Dist-If = Dist-If
+εᶜ-distributes-Bool l (IfCond s) = IfCond (εᶜ-distributes-Bool l s)
+εᶜ-distributes-Bool l IfTrue = IfTrue
+εᶜ-distributes-Bool l IfFalse = IfFalse
+εᶜ-distributes-Bool l Hole = Hole
+εᶜ-distributes-Bool l Hole' = Hole'
+
+εᶜ-distributes-Fun l (AppL s) = AppL (εᶜ-distributes-Fun l s)
+εᶜ-distributes-Fun l Beta = Beta
+εᶜ-distributes-Fun {c₁ = Γ , Var p} l Lookup rewrite εᶜ-lookup p Γ = Lookup
+εᶜ-distributes-Fun {c₁ = Γ , App f x} l Dist-$ rewrite εᶜ-distributes-Closure l Γ x = Dist-$
+εᶜ-distributes-Fun l Dist-If = Dist-If
+εᶜ-distributes-Fun l (IfCond s) = IfCond (εᶜ-distributes-Bool l s)
+εᶜ-distributes-Fun l IfTrue = IfTrue
+εᶜ-distributes-Fun l IfFalse = IfFalse
+εᶜ-distributes-Fun l Hole = Hole
+εᶜ-distributes-Fun l Hole' = Hole'
+
+εᶜ-distributes-Mac : ∀ {l₂ τ} {c₁ c₂ : CTerm (Mac l₂ τ)} -> (l₁ : Label) (p : l₁ ⊑ l₂) -> c₁ ⟼ c₂ -> εᶜ-Mac l₁ p c₁ ⟼ εᶜ-Mac l₁ p c₂
+εᶜ-distributes-Mac l₁ p (AppL s) = AppL (εᶜ-distributes-Fun l₁ s)
+εᶜ-distributes-Mac {l₂} l₁ p Beta with l₁ ⊑? l₂
+εᶜ-distributes-Mac l₁ p₁ Beta | yes p = Beta
+εᶜ-distributes-Mac l₁ p Beta | no ¬p = ⊥-elim (¬p p)
+εᶜ-distributes-Mac {c₁ = Γ , Var x} l₁ p Lookup rewrite εᶜ-lookup-Mac {p = p} x Γ = Lookup
+εᶜ-distributes-Mac {c₁ = Γ , App f x} l₁ p Dist-$ rewrite εᶜ-distributes-Closure l₁ Γ x = Dist-$
+εᶜ-distributes-Mac l₁ p Dist-If = Dist-If
+εᶜ-distributes-Mac l₁ p (IfCond s) = IfCond (εᶜ-distributes-Bool l₁ s)
+εᶜ-distributes-Mac l₁ p IfTrue = IfTrue
+εᶜ-distributes-Mac l₁ p IfFalse = IfFalse
+εᶜ-distributes-Mac l₁ p Return = Return
+εᶜ-distributes-Mac l₁ p Dist->>= = Dist->>=
+εᶜ-distributes-Mac l₁ p (BindCtx s) = BindCtx (εᶜ-distributes-Mac l₁ p s)
+εᶜ-distributes-Mac {c₁ = (Γ , Mac t) >>= k } l₁ p Bind rewrite εᶜ-distributes-Closure l₁ Γ t = Bind
+εᶜ-distributes-Mac l₁ p BindEx = BindEx
+εᶜ-distributes-Mac l₁ p Throw = Throw
+εᶜ-distributes-Mac l₁ p Dist-Catch = Dist-Catch
+εᶜ-distributes-Mac l₁ p (CatchCtx s) = CatchCtx (εᶜ-distributes-Mac l₁ p s)
+εᶜ-distributes-Mac l₁ p Catch = Catch
+εᶜ-distributes-Mac l₁ p CatchEx = CatchEx
+εᶜ-distributes-Mac l₁ p (label {h = l₃} l₂⊑l₃) with l₁ ⊑? l₃
+εᶜ-distributes-Mac l₁ p₁ (label l₂⊑l₃) | yes p = label l₂⊑l₃
+εᶜ-distributes-Mac l₁ p (label l₂⊑l₃) | no ¬p = {!label ?!} -- Fix erasure function
+εᶜ-distributes-Mac l₁ p (Dist-unlabel {l = l₃}) with l₁ ⊑? l₃
+εᶜ-distributes-Mac l₁ p₁ Dist-unlabel | yes p = Dist-unlabel
+εᶜ-distributes-Mac l₁ p Dist-unlabel | no ¬p = {!Dist-unlabel!} -- Fix erasure function
+εᶜ-distributes-Mac l₁ p (unlabel {l = l₃}) with l₁ ⊑? l₃
+εᶜ-distributes-Mac l₁ p₁ unlabel | yes p = unlabel
+εᶜ-distributes-Mac l₁ p unlabel | no ¬p = {!!} -- Fix erasure function
+εᶜ-distributes-Mac l₁ p (unlabelCtx {l = l₃} s) with l₁ ⊑? l₃
+εᶜ-distributes-Mac l₁ p₁ (unlabelCtx s) | yes p = unlabelCtx (εᶜ-distributes-Labeled l₁ p s)
+εᶜ-distributes-Mac l₁ p (unlabelCtx s) | no ¬p = unlabelCtx Hole'
+εᶜ-distributes-Mac l₁ p Hole = Hole
+εᶜ-distributes-Mac l₁ p Hole' = Hole'
+
+εᶜ-distributes-Labeled l₁ p (AppL s) = AppL (εᶜ-distributes-Fun l₁ s)
+εᶜ-distributes-Labeled {l₂} l₁ p Beta with l₁ ⊑? l₂
+εᶜ-distributes-Labeled l₁ p₁ Beta | yes p = Beta
+εᶜ-distributes-Labeled l₁ p Beta | no ¬p = ⊥-elim (¬p p)
+εᶜ-distributes-Labeled {c₁ = Γ , Var x} l₁ p Lookup rewrite εᶜ-lookup-Labeled {p = p} x Γ = Lookup
+εᶜ-distributes-Labeled l₁ p Dist-$ = {!Dist-$!}
+εᶜ-distributes-Labeled l₁ p Dist-If = Dist-If
+εᶜ-distributes-Labeled l₁ p (IfCond s) = IfCond (εᶜ-distributes-Bool l₁ s)
+εᶜ-distributes-Labeled l₁ p IfTrue = IfTrue
+εᶜ-distributes-Labeled l₁ p IfFalse = IfFalse
+εᶜ-distributes-Labeled l₁ p Hole = Hole
+εᶜ-distributes-Labeled l₁ p Hole' = Hole'
+
+εᶜ-distributes-Exception l (AppL s) = AppL (εᶜ-distributes-Fun l s)
+εᶜ-distributes-Exception l Beta = Beta
+εᶜ-distributes-Exception {Γ , Var p} l Lookup rewrite εᶜ-lookup p Γ = Lookup
+εᶜ-distributes-Exception {Γ , App f x} l Dist-$ rewrite εᶜ-distributes-Closure l Γ x = Dist-$
+εᶜ-distributes-Exception l Dist-If = Dist-If
+εᶜ-distributes-Exception l (IfCond s) = IfCond (εᶜ-distributes-Bool l s)
+εᶜ-distributes-Exception l IfTrue = IfTrue
+εᶜ-distributes-Exception l IfFalse = IfFalse
+εᶜ-distributes-Exception l Hole = Hole
+εᶜ-distributes-Exception l Hole' = Hole'
+
+
 -- The erasure function distributes over the small step semantics
 -- For simple proofs we do not need the Erasureᶜ.
-εᶜ-distributes : ∀ {τ} {{l}} {c₁ c₂ : CTerm τ} -> c₁ ⟼ c₂ -> εᶜ l c₁ ⟼ εᶜ l c₂
-εᶜ-distributes {Bool} (AppL s) = AppL (εᶜ-distributes s)
-εᶜ-distributes {Bool} Beta = Beta
-εᶜ-distributes {Bool} {c₁ = Γ , Var p} Lookup rewrite εᶜ-lookup p Γ = Lookup
-εᶜ-distributes {Bool} Dist-$ = {!Dist-$!} -- I think here we should inspect the argument type to make any progress
-εᶜ-distributes {Bool} Dist-If = Dist-If
-εᶜ-distributes {Bool} (IfCond s) = IfCond (εᶜ-distributes s)
-εᶜ-distributes {Bool} IfTrue = IfTrue
-εᶜ-distributes {Bool} IfFalse = IfFalse
-εᶜ-distributes {Bool} Hole = Hole
-εᶜ-distributes {Bool} Hole' = Hole'
-εᶜ-distributes {τ => τ₁} (AppL s) = AppL (εᶜ-distributes s)
-εᶜ-distributes {τ => τ₁} Beta = Beta
-εᶜ-distributes {τ => τ₁} {c₁ = Γ , Var p} Lookup rewrite εᶜ-lookup p Γ = Lookup
-εᶜ-distributes {τ => τ₁} Dist-$ = {!Dist-$!}
-εᶜ-distributes {τ => τ₁} Dist-If = Dist-If
-εᶜ-distributes {τ => τ₁} (IfCond s) = IfCond (εᶜ-distributes s)
-εᶜ-distributes {τ => τ₁} IfTrue = IfTrue
-εᶜ-distributes {τ => τ₁} IfFalse = IfFalse
-εᶜ-distributes {τ => τ₁} Hole = Hole
-εᶜ-distributes {τ => τ₁} Hole' = Hole'
-εᶜ-distributes {Mac l₂ τ} {{l₁}} s with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} (AppL s) | yes p = AppL (εᶜ-distributes s)
-εᶜ-distributes {Mac l₂ τ} Beta | yes p = Beta
-εᶜ-distributes {Mac l₂ τ} {{l₁}} {c₁ = Γ , Var p} Lookup | yes x = {!!} -- rewrite εᶜ-lookup {{l₁}} p Γ = {!Lookup!}
-εᶜ-distributes {Mac l₂ τ} Dist-$ | yes p = {!!} 
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Dist-If | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Dist-If | yes p₁ | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} Dist-If | yes p₂ | yes p₁ | yes p = Dist-If
-εᶜ-distributes {Mac l₂ τ} Dist-If | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
-εᶜ-distributes {Mac l₂ τ} Dist-If | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} (IfCond s) | yes p = IfCond (εᶜ-distributes s)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} IfTrue | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} IfTrue | yes p₁ | yes p = {!!} -- Needs extensivity
-εᶜ-distributes {Mac l₂ τ} IfTrue | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} IfFalse | yes p = {!IfFalse!} -- Needs extensivity
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Return | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} Return | yes p₁ | yes p = Return
-εᶜ-distributes {Mac l₂ τ} Return | yes p | no ¬p = Hole
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Dist->>= | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} Dist->>= | yes p₁ | yes p = Dist->>=
-εᶜ-distributes {Mac l₂ τ} Dist->>= | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₁ τ} (BindCtx s) | yes p = BindCtx (εᶜ-distributes s)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Bind | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Bind | yes p₁ | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} Bind | yes p₂ | yes p₁ | yes p = {!Bind!}
-εᶜ-distributes {Mac l₂ τ} Bind | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
-εᶜ-distributes {Mac l₂ τ} Bind | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} BindEx | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} {{l₁}} BindEx | yes p₁ | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} BindEx | yes p₂ | yes p₁ | yes p = BindEx
-εᶜ-distributes {Mac l₂ τ} BindEx | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
-εᶜ-distributes {Mac l₂ τ} BindEx | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Throw | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} Throw | yes p₁ | yes p = Throw
-εᶜ-distributes {Mac l₂ τ} Throw | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Dist-Catch | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Dist-Catch | yes p₁ | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} Dist-Catch | yes p₂ | yes p₁ | yes p = Dist-Catch
-εᶜ-distributes {Mac l₂ τ} Dist-Catch | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
-εᶜ-distributes {Mac l₂ τ} Dist-Catch | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₁ τ} (CatchCtx s) | yes p = CatchCtx (εᶜ-distributes s)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Catch | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Catch | yes p₁ | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} Catch | yes p₂ | yes p₁ | yes p = Catch
-εᶜ-distributes {Mac l₂ τ} Catch | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
-εᶜ-distributes {Mac l₂ τ} Catch | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} CatchEx | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} {{l₁}} CatchEx | yes p₁ | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} CatchEx | yes p₂ | yes p₁ | yes p = CatchEx
-εᶜ-distributes {Mac l₂ τ} CatchEx | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
-εᶜ-distributes {Mac l₂ τ} CatchEx | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ ._} {{l₁}} (label p₁) | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ ._} {{l₁}} (label {h = l₃} l₂⊑l₃) | yes p₁ | yes p with l₁ ⊑? l₃
-εᶜ-distributes {Mac l₂ ._} (label l₂⊑l₃) | yes p₂ | yes p₁ | yes p = label l₂⊑l₃
-εᶜ-distributes {Mac l₂ ._} (label l₂⊑l₃) | yes p₁ | yes p | no ¬p = {!!} -- Fix εᶜ definition for label
-εᶜ-distributes {Mac l₂ ._} (label p₁) | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Dist-unlabel | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} {{l₁}} (Dist-unlabel {l = l₃}) | yes p₁ | yes p with l₁ ⊑? l₃
-εᶜ-distributes {Mac l₂ τ} {{l₁}} (Dist-unlabel {l = l₃}) | yes p₂ | yes p₁ | yes p with l₁ ⊑? l₃
-εᶜ-distributes {Mac l₂ τ} Dist-unlabel | yes p₃ | yes p₂ | yes p₁ | yes p = {!Dist-unlabel!} -- Extensivity
-εᶜ-distributes {Mac l₂ τ} Dist-unlabel | yes p₂ | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} Dist-unlabel | yes p₁ | yes p | no ¬p = {!Dist-unlabel!} -- ???
-εᶜ-distributes {Mac l₂ τ} Dist-unlabel | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} unlabel | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} {{l₁}} (unlabel {l = l₃}) | yes p₁ | yes p with l₁ ⊑? l₃
-εᶜ-distributes {Mac l₂ τ} {{l₁}} (unlabel {l = l₃}) | yes p₂ | yes p₁ | yes p with l₁ ⊑? l₃
-εᶜ-distributes {Mac l₂ τ} unlabel | yes p₃ | yes p₂ | yes p₁ | yes p = unlabel
-εᶜ-distributes {Mac l₂ τ} unlabel | yes p₂ | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} unlabel | yes p₁ | yes p | no ¬p = {!!} -- ???
-εᶜ-distributes {Mac l₂ τ} {{l₁}} (unlabel {l = l₃}) | yes p | no ¬p with l₁ ⊑? l₃ 
-εᶜ-distributes {Mac l₂ τ} {{l₁}} (unlabel {l = l₃}) | yes p₁ | no ¬p | yes p with l₁ ⊑? l₃
-εᶜ-distributes {Mac l₂ τ} unlabel | yes p₂ | no ¬p | yes p₁ | yes p = ⊥-elim (¬p p₂)
-εᶜ-distributes {Mac l₂ τ} unlabel | yes p₁ | no ¬p₁ | yes p | no ¬p = ⊥-elim (¬p₁ p₁)
-εᶜ-distributes {Mac l₂ τ} unlabel | yes p | no ¬p₁ | no ¬p = ⊥-elim (¬p₁ p)
-εᶜ-distributes {Mac l₂ ._} (unlabelCtx s) | yes p = unlabelCtx (εᶜ-distributes s)
-εᶜ-distributes {Mac l₂ τ} {{l₁}} Hole | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Mac l₂ τ} Hole | yes p₁ | yes p = Hole
-εᶜ-distributes {Mac l₂ τ} Hole | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Mac l₂ τ} Hole' | yes p = Hole'
-εᶜ-distributes {Mac l₂ τ} s | no ¬p = Hole'
-εᶜ-distributes {Labeled l₂ τ} {{l₁}} s with l₁ ⊑? l₂
-εᶜ-distributes {Labeled l₂ τ} (AppL s) | yes p = AppL (εᶜ-distributes s)
-εᶜ-distributes {Labeled l₂ τ} {{l₁}} Beta | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Labeled l₂ τ} Beta | yes p₁ | yes p = Beta
-εᶜ-distributes {Labeled l₂ τ} Beta | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Labeled l₂ τ} {{l₁}} Lookup | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Labeled l₂ τ} Lookup | yes p₁ | yes p = {!Lookup!}
-εᶜ-distributes {Labeled l₂ τ} Lookup | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Labeled l₂ τ} Dist-$ | yes p = {!!}
-εᶜ-distributes {Labeled l₂ τ} {{l₁}} Dist-If | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Labeled l₂ τ} {{l₁}} Dist-If | yes p₁ | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Labeled l₂ τ} Dist-If | yes p₂ | yes p₁ | yes p = Dist-If
-εᶜ-distributes {Labeled l₂ τ} Dist-If | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
-εᶜ-distributes {Labeled l₂ τ} Dist-If | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Labeled l₂ τ} (IfCond s) | yes p = IfCond (εᶜ-distributes s)
-εᶜ-distributes {Labeled l₂ τ} {{l₁}} IfTrue | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Labeled l₂ τ} IfTrue | yes p₁ | yes p = {!IfTrue!} -- Extensivity
-εᶜ-distributes {Labeled l₂ τ} IfTrue | yes p | no ¬p = ⊥-elim (¬p p)
-εᶜ-distributes {Labeled l₂ τ} IfFalse | yes p = {!!} -- Idem
-εᶜ-distributes {Labeled l₂ τ} {{l₁}} Hole | yes p with l₁ ⊑? l₂
-εᶜ-distributes {Labeled l₂ τ} Hole | yes p₁ | yes p = Hole
-εᶜ-distributes {Labeled l₂ τ} Hole | yes p | no ¬p = Hole
-εᶜ-distributes {Labeled l₂ τ} Hole' | yes p = Hole'
-εᶜ-distributes {Labeled l₂ τ} s | no ¬p = Hole'
-εᶜ-distributes {Exception} (AppL s) = AppL (εᶜ-distributes s)
-εᶜ-distributes {Exception} Beta = Beta
-εᶜ-distributes {Exception} {c₁ = Γ , Var p} Lookup rewrite εᶜ-lookup p Γ = Lookup
-εᶜ-distributes {Exception} Dist-$ = {!!}
-εᶜ-distributes {Exception} Dist-If = Dist-If
-εᶜ-distributes {Exception} (IfCond s) = IfCond (εᶜ-distributes s)
-εᶜ-distributes {Exception} IfTrue = IfTrue
-εᶜ-distributes {Exception} IfFalse = IfFalse
-εᶜ-distributes {Exception} Hole = Hole
-εᶜ-distributes {Exception} Hole' = Hole'
+εᶜ-distributes : ∀ {τ} {c₁ c₂ : CTerm τ} -> (l : Label) -> c₁ ⟼ c₂ -> εᶜ l c₁ ⟼ εᶜ l c₂
+εᶜ-distributes {Bool} l s = εᶜ-distributes-Bool l s
+εᶜ-distributes {τ => τ₁} l s = εᶜ-distributes-Fun l s
+εᶜ-distributes {Mac l₂ τ} l₁ s with l₁ ⊑? l₂
+εᶜ-distributes {Mac l₂ τ} l₁ s | yes p = εᶜ-distributes-Mac l₁ p s
+εᶜ-distributes {Mac l₂ τ} l₁ s | no ¬p = Hole'
+εᶜ-distributes {Labeled l₂ τ} l₁ s with l₁ ⊑? l₂
+εᶜ-distributes {Labeled l₂ τ} l₁ s | yes p = εᶜ-distributes-Labeled l₁ p s
+εᶜ-distributes {Labeled l₂ τ} l₁ s | no ¬p = Hole'
+εᶜ-distributes {Exception} l s = εᶜ-distributes-Exception l s
 
 -- Reduction of pure and monadic terms with erasure
 -- data _⟼ˡ_ {{l : Label}} (c₁ c₂ₑ : CTerm) : Set where
