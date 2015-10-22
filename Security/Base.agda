@@ -10,15 +10,15 @@ open import Relation.Binary.PropositionalEquality
 ε : ∀ {τ Δ} -> Label -> Term Δ τ -> Term Δ τ
 ε-Bool : ∀ {Δ} -> Label -> Term Δ Bool -> Term Δ Bool
 ε-Fun : ∀ {Δ α β} -> Label -> Term Δ (α => β) -> Term Δ (α => β)
-ε-Mac : ∀ {Δ l₂ τ} -> (l₁ : Label) -> l₁ ⊑ l₂ -> Term Δ (Mac l₂ τ) -> Term Δ (Mac l₂ τ)
+ε-Mac : ∀ {Δ l₁ τ} -> (l₂ : Label) -> l₁ ⊑ l₂ -> Term Δ (Mac l₁ τ) -> Term Δ (Mac l₁ τ)
 ε-Exception : ∀ {Δ} -> Label -> Term Δ Exception -> Term Δ Exception
-ε-Labeled : ∀ {Δ l₂ τ} -> (l₁ : Label) -> l₁ ⊑ l₂ -> Term Δ (Labeled l₂ τ) -> Term Δ (Labeled l₂ τ)
+ε-Labeled : ∀ {Δ l₁ τ} -> (l₂ : Label) -> l₁ ⊑ l₂ -> Term Δ (Labeled l₁ τ) -> Term Δ (Labeled l₁ τ)
 
 ε-Bool l True = True
 ε-Bool l False = False
 ε-Bool l (Var x) = Var x
-ε-Bool l (App f x) = App (ε-Fun l f) (ε l x) -- TODO for f I can call directly ε-Fun
-ε-Bool l (If c Then t Else e) = If (ε-Bool l c) Then (ε-Bool l t) Else (ε-Bool l e)  -- TODO for c I can call directly ε-Bool
+ε-Bool l (App f x) = App (ε-Fun l f) (ε l x)
+ε-Bool l (If c Then t Else e) = If (ε-Bool l c) Then (ε-Bool l t) Else (ε-Bool l e)
 ε-Bool l ∙ = ∙
 
 ε-Exception l (Var x) = Var x
@@ -33,52 +33,54 @@ open import Relation.Binary.PropositionalEquality
 ε-Fun l (If c Then t Else e) = If (ε-Bool l c) Then (ε-Fun l t) Else (ε-Fun l e)
 ε-Fun l ∙ = ∙
 
-ε-Mac l₁ p (Var x) = Var x
-ε-Mac l₁ p (App f x) = App (ε-Fun l₁ f) (ε l₁ x)
-ε-Mac l₁ p (If c Then t Else e) = If (ε-Bool l₁ c) Then (ε-Mac l₁ p t) Else (ε-Mac l₁ p e)
-ε-Mac l₁ p (Return t) = Return (ε l₁ t)
-ε-Mac l₁ p (m >>= k) = ε-Mac l₁ p m >>= ε l₁ k -- I think we want always to specialize when possible
-ε-Mac l₁ p (Throw t) = Throw (ε-Exception l₁ t)
-ε-Mac l₁ p (Catch m h) = Catch (ε-Mac l₁ p m) (ε-Fun l₁ h)
-ε-Mac l₁ p (Mac t) = Mac (ε l₁ t)
-ε-Mac l₁ p (Macₓ t) = Macₓ (ε l₁ t)
-ε-Mac l₁ l₁⊑l₂ (label {l = l₂} {h = l₃} l₂⊑l₃ t) = label l₂⊑l₃ (ε l₁ t) -- By transitivity we have that l₁ ⊑ l₃, is this useful?
--- I cannot call ε-Labeled because I don't know whether l₁ ⊑ l₂
-ε-Mac l₁ p (unlabel {l = l₂} {h = l₃} l₂⊑l₃ t) = unlabel l₂⊑l₃ (ε l₁ t)
-ε-Mac l₁ p ∙ = ∙ 
+ε-Mac l₂ l₁⊑l₂ (Var x) = Var x
+ε-Mac l₂ l₁⊑l₂ (App f x) = App (ε-Fun l₂ f) (ε l₂ x)
+ε-Mac l₂ l₁⊑l₂ (If c Then t Else e) = If (ε-Bool l₂ c) Then (ε-Mac l₂ l₁⊑l₂ t) Else (ε-Mac l₂ l₁⊑l₂ e)
+ε-Mac l₂ l₁⊑l₂ (Return t) = Return (ε l₂ t)
+ε-Mac l₂ l₁⊑l₂ (m >>= k) = ε-Mac l₂ l₁⊑l₂ m >>= ε-Fun l₂ k
+ε-Mac l₂ l₁⊑l₂ (Throw t) = Throw (ε-Exception l₂ t)
+ε-Mac l₂ l₁⊑l₂ (Catch m h) = Catch (ε-Mac l₂ l₁⊑l₂ m) (ε-Fun l₂ h)
+ε-Mac l₂ l₁⊑l₂ (Mac t) = Mac (ε l₂ t)
+ε-Mac l₂ l₁⊑l₂ (Macₓ t) = Macₓ (ε l₂ t)
+ε-Mac l₂ l₁⊑l₂ (label {l = l₁} {h = l₃} l₁⊑l₃ t) with l₃ ⊑? l₂
+ε-Mac l₂ l₁⊑l₂ (label l₁⊑l₃ t) | yes l₃⊑l₂ = label l₁⊑l₃ (ε l₂ t)
+ε-Mac l₂ l₁⊑l₂ (label l₁⊑l₃ t) | no ¬p = label l₁⊑l₃ ∙
+-- By transitivity I know l₃ ⊑ l₂, how is this useful?
+ε-Mac l₂ l₁⊑l₂ (unlabel {l = l₃} {h = l₁} l₃⊑l₁ t) = unlabel l₃⊑l₁ (ε l₂ t)
+ε-Mac l₂ l₁⊑l₂ ∙ = ∙ 
 
 ε-Labeled l p (Var x) = Var x
 ε-Labeled l p (App f x) = App (ε-Fun l f) (ε l x)
 ε-Labeled l p (If c Then t Else e) = If (ε-Bool l c) Then (ε-Labeled l p t) Else (ε-Labeled l p e)
-ε-Labeled l₁ p (Res {{l₂}} t) = Res (ε l₁ t)
+ε-Labeled l p (Res t) = Res (ε l t)
 ε-Labeled l p ∙ = ∙
 
-ε {Bool} l₁ t = ε-Bool l₁ t
-ε {τ => τ₁} l₁ t = ε-Fun l₁ t
-ε {Mac l₂ τ} l₁ t with l₁ ⊑? l₂
-ε {Mac l₂ τ} l₁ t | yes p = ε-Mac l₁ p t
-ε {Mac l₂ τ} l₁ t | no ¬p = ∙
-ε {Labeled l₂ τ} l₁ t with l₁ ⊑? l₂
-ε {Labeled l₂ τ} l₁ t | yes p = ε-Labeled l₁ p t
-ε {Labeled l₂ τ} l₁ t | no ¬p = ∙
-ε {Exception} l₁ t = ε-Exception l₁ t
+ε {Bool} l₂ t = ε-Bool l₂ t
+ε {τ => τ₁} l₂ t = ε-Fun l₂ t
+ε {Mac l₁ τ} l₂ t with l₁ ⊑? l₂
+ε {Mac l₁ τ} l₂ t | yes l₁⊑l₂ = ε-Mac l₂ l₁⊑l₂ t
+ε {Mac l₁ τ} l₂ t | no ¬p = ∙
+ε {Labeled l₁ τ} l₂ t with l₁ ⊑? l₂
+ε {Labeled l₁ τ} l₂ t | yes l₁⊑l₂ = ε-Labeled l₂ l₁⊑l₂ t
+ε {Labeled l₁ τ} l₂ t | no ¬p = ∙
+ε {Exception} l₂ t = ε-Exception l₂ t
 
 εᶜ : ∀ {τ} -> Label -> CTerm τ -> CTerm τ
 εᶜ-env : ∀ {Δ} -> Label -> Env Δ -> Env Δ
-εᶜ-Labeled : ∀ {τ l₂} -> (l₁ : Label) -> l₁ ⊑ l₂ -> CTerm (Labeled l₂ τ) -> CTerm (Labeled l₂ τ)
-εᶜ-Mac : ∀ {τ l₂} -> (l₁ : Label) -> l₁ ⊑ l₂ -> CTerm (Mac l₂ τ) -> CTerm (Mac l₂ τ)
+εᶜ-Labeled : ∀ {τ l₁} -> (l₂ : Label) -> l₁ ⊑ l₂ -> CTerm (Labeled l₁ τ) -> CTerm (Labeled l₁ τ)
+εᶜ-Mac : ∀ {τ l₁} -> (l₂ : Label) -> l₁ ⊑ l₂ -> CTerm (Mac l₁ τ) -> CTerm (Mac l₁ τ)
 εᶜ-Bool : Label -> CTerm Bool -> CTerm Bool
 εᶜ-Excpetion : Label -> CTerm Exception -> CTerm Exception
 εᶜ-Fun : ∀ {α β} -> Label -> CTerm (α => β) -> CTerm (α => β)
 
 εᶜ {Bool} l c = εᶜ-Bool l c
 εᶜ {τ => τ₁} l c = εᶜ-Fun l c
-εᶜ {Mac l₂ τ} l₁ c with l₁ ⊑? l₂
-εᶜ {Mac l₂ τ} l₁ c | yes p = εᶜ-Mac l₁ p c
-εᶜ {Mac l₂ τ} l₁ c | no ¬p = ∙
-εᶜ {Labeled l₂ τ} l₁ c with l₁ ⊑? l₂
-εᶜ {Labeled l₂ τ} l₁ c | yes p = εᶜ-Labeled l₁ p c
-εᶜ {Labeled l₂ τ} l₁ c | no ¬p = ∙
+εᶜ {Mac l₁ τ} l₂ c with l₁ ⊑? l₂
+εᶜ {Mac l₁ τ} l₂ c | yes p = εᶜ-Mac l₂ p c
+εᶜ {Mac l₁ τ} l₂ c | no ¬p = ∙
+εᶜ {Labeled l₁ τ} l₂ c with l₁ ⊑? l₂
+εᶜ {Labeled l₁ τ} l₂ c | yes p = εᶜ-Labeled l₂ p c
+εᶜ {Labeled l₁ τ} l₂ c | no ¬p = ∙
 εᶜ {Exception} l c = εᶜ-Excpetion l c
 
 εᶜ-Bool l (Γ , t) = (εᶜ-env l Γ) , (ε-Bool l t)
@@ -96,18 +98,19 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Fun l (If c Then t Else e) = If (εᶜ-Bool l c) Then (εᶜ-Fun l t) Else εᶜ-Fun l e
 εᶜ-Fun l ∙ = ∙
 
-εᶜ-Labeled l₁ p (Γ , t) = (εᶜ-env l₁ Γ) , ε-Labeled l₁ p t
-εᶜ-Labeled l₁ p (f $ x) = (εᶜ-Fun l₁ f) $ (εᶜ l₁ x)
-εᶜ-Labeled l₁ p (If c Then t Else e) = If εᶜ-Bool l₁ c Then εᶜ-Labeled l₁ p t Else εᶜ-Labeled l₁ p e
-εᶜ-Labeled l₁ p ∙ = ∙
+εᶜ-Labeled l₂ l₁⊑l₂ (Γ , t) = (εᶜ-env l₂ Γ) , ε-Labeled l₂ l₁⊑l₂ t
+εᶜ-Labeled l₂ l₁⊑l₂ (f $ x) = (εᶜ-Fun l₂ f) $ (εᶜ l₂ x)
+εᶜ-Labeled l₂ l₁⊑l₂ (If c Then t Else e) = If εᶜ-Bool l₂ c Then εᶜ-Labeled l₂ l₁⊑l₂ t Else εᶜ-Labeled l₂ l₁⊑l₂ e
+εᶜ-Labeled l₂ l₁⊑l₂ ∙ = ∙
 
-εᶜ-Mac l₁ p (Γ , t) = (εᶜ-env l₁ Γ) , (ε-Mac l₁ p t)
-εᶜ-Mac l₁ p (f $ x) = (εᶜ-Fun l₁ f) $ (εᶜ l₁ x)
-εᶜ-Mac l₁ p (If c Then t Else e) = If (εᶜ-Bool l₁ c) Then (εᶜ-Mac l₁ p t) Else (εᶜ-Mac l₁ p e)
-εᶜ-Mac l₁ p (m >>= k) = (εᶜ-Mac l₁ p m) >>= (εᶜ-Fun l₁ k)
-εᶜ-Mac l₁ p (Catch m h) = Catch (εᶜ-Mac l₁ p m) (εᶜ-Fun l₁ h)
-εᶜ-Mac l₁ p (unlabel x c) = unlabel x (εᶜ l₁ c)
-εᶜ-Mac l₁ p ∙ = ∙
+εᶜ-Mac l₂ p (Γ , t) = (εᶜ-env l₂ Γ) , (ε-Mac l₂ p t)
+εᶜ-Mac l₂ p (f $ x) = (εᶜ-Fun l₂ f) $ (εᶜ l₂ x)
+εᶜ-Mac l₂ p (If c Then t Else e) = If (εᶜ-Bool l₂ c) Then (εᶜ-Mac l₂ p t) Else (εᶜ-Mac l₂ p e)
+εᶜ-Mac l₂ p (m >>= k) = (εᶜ-Mac l₂ p m) >>= (εᶜ-Fun l₂ k)
+εᶜ-Mac l₂ p (Catch m h) = Catch (εᶜ-Mac l₂ p m) (εᶜ-Fun l₂ h)
+-- With transitivity I could deduce l₃ ⊑ l₂. How is this useful?
+εᶜ-Mac l₂ l₁⊑l₂ (unlabel {l = l₃} {h = l₁} l₃⊑l₁ c) = unlabel l₃⊑l₁ (εᶜ l₂ c)
+εᶜ-Mac l₂ p ∙ = ∙
 
 εᶜ-env l [] = []
 εᶜ-env l (x ∷ Γ) = εᶜ l x ∷ εᶜ-env l Γ

@@ -61,14 +61,14 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   label : ∀ {l Δ h α} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) -> 
             (Γ , label p t) ⟼ (Γ , Return (Res t))
 
-  Dist-unlabel : ∀ {l Δ α h} {Γ : Env Δ} {p : l ⊑ h} {t : Term Δ (Labeled l α)} -> 
+  Dist-unlabel : ∀ {l Δ α h} {Γ : Env Δ} {t : Term Δ (Labeled l α)} -> (p : l ⊑ h) ->
                  (Γ , unlabel p t) ⟼ unlabel p (Γ , t)
 
   -- TODO p not implicit
-  unlabel : ∀ {l Δ h α} {Γ : Env Δ} {p : l ⊑ h} {t : Term Δ α} ->
+  unlabel : ∀ {l Δ h α} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
             unlabel p (Γ , Res t) ⟼ (Γ , Return t)
 
-  unlabelCtx : ∀ {l h α} {p : l ⊑ h} {c c' : CTerm (Labeled l (Mac h α))} -> c ⟼ c' ->
+  unlabelCtx : ∀ {l h α} {c c' : CTerm (Labeled l (Mac h α))} -> (p : l ⊑ h) -> c ⟼ c' ->
                unlabel p c ⟼ unlabel p c'
 
   Hole : ∀ {Δ} {α : Ty} {Γ : Env Δ} -> (Γ , (∙ {_} {α})) ⟼ (Γ , ∙)
