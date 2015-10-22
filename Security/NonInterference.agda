@@ -1,6 +1,7 @@
 module Security.NonInterference where
 
 open import Typed.Semantics
+open import Typed.Proofs
 open import Security.Base
 open import Relation.Binary.PropositionalEquality
 
@@ -103,7 +104,14 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-distributes-Labeled l₁ p₁ Beta | yes p = Beta
 εᶜ-distributes-Labeled l₁ p Beta | no ¬p = ⊥-elim (¬p p)
 εᶜ-distributes-Labeled {c₁ = Γ , Var x} l₁ p Lookup rewrite εᶜ-lookup-Labeled {p = p} x Γ = Lookup
-εᶜ-distributes-Labeled l₁ p Dist-$ = {!Dist-$!}
+-- Here I am inlining the lemma εᶜ-distributes-Closure
+εᶜ-distributes-Labeled l₁ p (Dist-$ {α = Bool}) = Dist-$
+εᶜ-distributes-Labeled l₁ p (Dist-$ {α = α => α₁}) = Dist-$
+εᶜ-distributes-Labeled l₁ p (Dist-$ {α = Mac l₂ α}) with l₁ ⊑? l₂
+εᶜ-distributes-Labeled l₁ p₁ (Dist-$ {Δ} {Mac l₂ α}) | yes p = Dist-$
+εᶜ-distributes-Labeled l₁ p (Dist-$ {Δ} {Mac l₂ α}) | no ¬p = {!Dist-$!}
+εᶜ-distributes-Labeled l₁ p (Dist-$ {α = Labeled l₂ α}) = {!!}
+εᶜ-distributes-Labeled l₁ p (Dist-$ {α = Exception}) = Dist-$
 εᶜ-distributes-Labeled l₁ p Dist-If = Dist-If
 εᶜ-distributes-Labeled l₁ p (IfCond s) = IfCond (εᶜ-distributes-Bool l₁ s)
 εᶜ-distributes-Labeled l₁ p IfTrue = IfTrue
@@ -136,29 +144,16 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-distributes {Labeled l₂ τ} l₁ s | no ¬p = Hole'
 εᶜ-distributes {Exception} l s = εᶜ-distributes-Exception l s
 
--- Reduction of pure and monadic terms with erasure
--- data _⟼ˡ_ {{l : Label}} (c₁ c₂ₑ : CTerm) : Set where
---   Step-εᶜ : ∀ {c₂} -> εᶜ l c₂ ≡ c₂ₑ -> c₁ ⟼ c₂ -> c₁ ⟼ˡ c₂ₑ 
-
--- -- The small step + erasure relation is also deterministic
--- determinismˡ : ∀ {l c₁ c₂ c₃} -> c₁ ⟼ˡ c₂ -> c₁ ⟼ˡ c₃ -> c₂ ≡ c₃
--- determinismˡ (Step-εᶜ eq₁ s₁) (Step-εᶜ eq₂ s₂) with determinism s₁ s₂
--- determinismˡ (Step-εᶜ refl s₁) (Step-εᶜ refl s₂) | refl = refl
-
--- Single-step collapsed simulation
--- liftˡ : ∀ {{l}} {c₁ c₂} -> c₁ ⟼ c₂ -> εᶜ l c₁ ⟼ˡ εᶜ l c₂
--- liftˡ {{l}} {c₁} {c₂} s with εᶜ-distributes _ _ s
--- ... | r = Step-εᶜ {c₂ = εᶜ l c₂} (sym (εᶜ-idem c₂)) r
-
 -- l-equivalence
 -- Two closed terms are l-equivalent if they are equivalent
 -- after applying on them the erasure function with label l.
--- data _≈ˡ_ {{l : Label}} (c₁ c₂ : CTerm) : Set where
---   εᶜ-≡ : εᶜ l c₁ ≡ εᶜ l c₂ -> c₁ ≈ˡ c₂
+data _≈ˡ_ {{l : Label}} {τ : Ty} (c₁ c₂ : CTerm τ) : Set where
+  εᶜ-≡ : εᶜ l c₁ ≡ εᶜ l c₂ -> c₁ ≈ˡ c₂
 
 
 -- Non-interference
--- non-interference : ∀ {l c₁ c₂ c₁' c₂'} -> c₁ ≈ˡ c₂ -> c₁ ⟼ c₁' -> c₂ ⟼ c₂' -> c₁' ≈ˡ c₂'
--- non-interference (εᶜ-≡ eq) s₁ s₂ = εᶜ-≡ (aux eq (liftˡ s₁) (liftˡ s₂))
---   where aux : ∀ {c₁ c₂ c₃ c₄} -> c₁ ≡ c₂ -> c₁ ⟼ˡ c₃ -> c₂ ⟼ˡ c₄ -> c₃ ≡ c₄
---         aux refl s₁ s₂ = determinismˡ s₁ s₂
+-- As expected we need only determinism.
+non-interference : ∀ {l τ} {c₁ c₂ c₁' c₂' : CTerm τ} -> c₁ ≈ˡ c₂ -> c₁ ⟼ c₁' -> c₂ ⟼ c₂' -> c₁' ≈ˡ c₂'
+non-interference {l} (εᶜ-≡ eq) s₁ s₂ = εᶜ-≡ (aux eq (εᶜ-distributes l s₁) (εᶜ-distributes l s₂))
+  where aux : ∀ {τ} {c₁ c₂ c₃ c₄ : CTerm τ} -> c₁ ≡ c₂ -> c₁ ⟼ c₃ -> c₂ ⟼ c₄ -> c₃ ≡ c₄
+        aux refl s₁ s₂ = determinism s₁ s₂
