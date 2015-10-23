@@ -7,113 +7,97 @@ open import Relation.Binary.PropositionalEquality
 
 -- Erasure function.
 -- ε l t transform a term t in ∙ if it is above the security level l.
-ε : ∀ {τ Δ} -> Label -> Term Δ τ -> Term Δ τ
-ε-Bool : ∀ {Δ} -> Label -> Term Δ Bool -> Term Δ Bool
-ε-Fun : ∀ {Δ α β} -> Label -> Term Δ (α => β) -> Term Δ (α => β)
-ε-Mac : ∀ {Δ l₁ τ} -> (l₂ : Label) -> l₁ ⊑ l₂ -> Term Δ (Mac l₁ τ) -> Term Δ (Mac l₁ τ)
-ε-Exception : ∀ {Δ} -> Label -> Term Δ Exception -> Term Δ Exception
-ε-Labeled : ∀ {Δ l₁ τ} -> (l₂ : Label) -> l₁ ⊑ l₂ -> Term Δ (Labeled l₁ τ) -> Term Δ (Labeled l₁ τ)
-
-ε-Bool l True = True
-ε-Bool l False = False
-ε-Bool l (Var x) = Var x
-ε-Bool l (App f x) = App (ε-Fun l f) (ε l x)
-ε-Bool l (If c Then t Else e) = If (ε-Bool l c) Then (ε-Bool l t) Else (ε-Bool l e)
-ε-Bool l ∙ = ∙
-
-ε-Exception l (Var x) = Var x
-ε-Exception l (App f x) = App (ε-Fun l f) (ε l x)
-ε-Exception l (If c Then t Else e) = If ε-Bool l c Then ε-Exception l t Else ε-Exception l e
-ε-Exception l ξ = ξ
-ε-Exception l ∙ = ∙
-
-ε-Fun l (Var x) = Var x
-ε-Fun l (Abs t) = Abs (ε l t)
-ε-Fun l (App f x) = App (ε-Fun l f) (ε l x)
-ε-Fun l (If c Then t Else e) = If (ε-Bool l c) Then (ε-Fun l t) Else (ε-Fun l e)
-ε-Fun l ∙ = ∙
-
-ε-Mac l₂ l₁⊑l₂ (Var x) = Var x
-ε-Mac l₂ l₁⊑l₂ (App f x) = App (ε-Fun l₂ f) (ε l₂ x)
-ε-Mac l₂ l₁⊑l₂ (If c Then t Else e) = If (ε-Bool l₂ c) Then (ε-Mac l₂ l₁⊑l₂ t) Else (ε-Mac l₂ l₁⊑l₂ e)
-ε-Mac l₂ l₁⊑l₂ (Return t) = Return (ε l₂ t)
-ε-Mac l₂ l₁⊑l₂ (m >>= k) = ε-Mac l₂ l₁⊑l₂ m >>= ε-Fun l₂ k
-ε-Mac l₂ l₁⊑l₂ (Throw t) = Throw (ε-Exception l₂ t)
-ε-Mac l₂ l₁⊑l₂ (Catch m h) = Catch (ε-Mac l₂ l₁⊑l₂ m) (ε-Fun l₂ h)
-ε-Mac l₂ l₁⊑l₂ (Mac t) = Mac (ε l₂ t)
-ε-Mac l₂ l₁⊑l₂ (Macₓ t) = Macₓ (ε l₂ t)
-ε-Mac l₂ l₁⊑l₂ (label {l = l₁} {h = l₃} l₁⊑l₃ t) with l₃ ⊑? l₂
-ε-Mac l₂ l₁⊑l₂ (label l₁⊑l₃ t) | yes l₃⊑l₂ = label l₁⊑l₃ (ε l₂ t)
-ε-Mac l₂ l₁⊑l₂ (label l₁⊑l₃ t) | no ¬p = label l₁⊑l₃ ∙
--- By transitivity I know l₃ ⊑ l₂, how is this useful?
-ε-Mac l₂ l₁⊑l₂ (unlabel {l = l₃} {h = l₁} l₃⊑l₁ t) = unlabel l₃⊑l₁ (ε l₂ t)
-ε-Mac l₂ l₁⊑l₂ ∙ = ∙ 
-
-ε-Labeled l p (Var x) = Var x
-ε-Labeled l p (App f x) = App (ε-Fun l f) (ε l x)
-ε-Labeled l p (If c Then t Else e) = If (ε-Bool l c) Then (ε-Labeled l p t) Else (ε-Labeled l p e)
-ε-Labeled l p (Res t) = Res (ε l t)
-ε-Labeled l p ∙ = ∙
-
-ε {Bool} l₂ t = ε-Bool l₂ t
-ε {τ => τ₁} l₂ t = ε-Fun l₂ t
-ε {Mac l₁ τ} l₂ t with l₁ ⊑? l₂
-ε {Mac l₁ τ} l₂ t | yes l₁⊑l₂ = ε-Mac l₂ l₁⊑l₂ t
-ε {Mac l₁ τ} l₂ t | no ¬p = ∙
-ε {Labeled l₁ τ} l₂ t with l₁ ⊑? l₂
-ε {Labeled l₁ τ} l₂ t | yes l₁⊑l₂ = ε-Labeled l₂ l₁⊑l₂ t
-ε {Labeled l₁ τ} l₂ t | no ¬p = ∙
-ε {Exception} l₂ t = ε-Exception l₂ t
+ε : ∀ {τ Δ} (lₐ : Label) -> Term Δ τ -> Term Δ τ
+ε lₐ True = True
+ε lₐ False = False
+ε lₐ (Var x) = Var x
+ε lₐ (Abs t) = Abs (ε lₐ t)
+ε lₐ (App f x) = App (ε lₐ f) (ε lₐ x)
+ε lₐ (If c Then t Else e) = If (ε lₐ c) Then (ε lₐ t) Else (ε lₐ e)
+ε {Mac lᵈ α} lₐ (Return t) with lᵈ ⊑? lₐ
+ε {Mac lᵈ α} lₐ (Return t) | yes p = Return (ε lₐ t) 
+ε {Mac lᵈ α} lₐ (Return t) | no ¬p = Return ∙
+ε lₐ (m >>= h) = (ε lₐ m) >>= (ε lₐ h)
+ε lₐ ξ = ξ
+ε {Mac lᵈ α} lₐ (Throw t) with lᵈ ⊑? lₐ
+ε {Mac lᵈ α} lₐ (Throw t) | yes p = Throw (ε lₐ t)
+ε {Mac lᵈ α} lₐ (Throw t) | no ¬p = Throw ∙
+ε lₐ (Catch m h) = Catch (ε lₐ m) (ε lₐ h)
+ε {Mac lᵈ α} lₐ (Mac t) with lᵈ ⊑? lₐ
+ε {Mac lᵈ α} lₐ (Mac t) | yes p = Mac (ε lₐ t)
+ε {Mac lᵈ α} lₐ (Mac t) | no ¬p = Mac ∙
+ε {Mac lᵈ α} lₐ (Macₓ t) with lᵈ ⊑? lₐ
+ε {Mac lᵈ α} lₐ (Macₓ t) | yes p = Macₓ (ε lₐ t)
+ε {Mac lᵈ α} lₐ (Macₓ t) | no ¬p = Macₓ ∙
+ε {Labeled lᵈ α} lₐ (Res t) with lᵈ ⊑? lₐ
+ε {Labeled lᵈ α} lₐ (Res t) | yes p = Res (ε lₐ t)
+ε {Labeled lᵈ α} lₐ (Res t) | no ¬p = Res ∙
+ε lₐ (label {l = lᵈ} {h = lʰ} d⊑h t) with lʰ ⊑? lₐ
+ε lₐ (label d⊑h t) | yes h⊑a = label d⊑h (ε lₐ t) 
+ε lₐ (label d⊑h t) | no ¬h⊑a = label d⊑h ∙
+ε lₐ (unlabel x t) = unlabel x (ε lₐ t)
+ε lₐ ∙ = ∙
 
 εᶜ : ∀ {τ} -> Label -> CTerm τ -> CTerm τ
 εᶜ-env : ∀ {Δ} -> Label -> Env Δ -> Env Δ
-εᶜ-Labeled : ∀ {τ l₁} -> (l₂ : Label) -> l₁ ⊑ l₂ -> CTerm (Labeled l₁ τ) -> CTerm (Labeled l₁ τ)
-εᶜ-Mac : ∀ {τ l₁} -> (l₂ : Label) -> l₁ ⊑ l₂ -> CTerm (Mac l₁ τ) -> CTerm (Mac l₁ τ)
-εᶜ-Bool : Label -> CTerm Bool -> CTerm Bool
-εᶜ-Excpetion : Label -> CTerm Exception -> CTerm Exception
-εᶜ-Fun : ∀ {α β} -> Label -> CTerm (α => β) -> CTerm (α => β)
+-- εᶜ-Labeled : ∀ {τ l₁} -> (l₂ : Label) -> l₁ ⊑ l₂ -> CTerm (Labeled l₁ τ) -> CTerm (Labeled l₁ τ)
+-- εᶜ-Mac : ∀ {τ l₁} -> (l₂ : Label) -> l₁ ⊑ l₂ -> CTerm (Mac l₁ τ) -> CTerm (Mac l₁ τ)
 
-εᶜ {Bool} l c = εᶜ-Bool l c
-εᶜ {τ => τ₁} l c = εᶜ-Fun l c
-εᶜ {Mac l₁ τ} l₂ c with l₁ ⊑? l₂
-εᶜ {Mac l₁ τ} l₂ c | yes p = εᶜ-Mac l₂ p c
-εᶜ {Mac l₁ τ} l₂ c | no ¬p = ∙
-εᶜ {Labeled l₁ τ} l₂ c with l₁ ⊑? l₂
-εᶜ {Labeled l₁ τ} l₂ c | yes p = εᶜ-Labeled l₂ p c
-εᶜ {Labeled l₁ τ} l₂ c | no ¬p = ∙
-εᶜ {Exception} l c = εᶜ-Excpetion l c
-
-εᶜ-Bool l (Γ , t) = (εᶜ-env l Γ) , (ε-Bool l t)
-εᶜ-Bool l (f $ x) = (εᶜ-Fun l f) $ (εᶜ l x) -- Should I inspect α ? or should I apply homomorphically?
-εᶜ-Bool l (If c Then t Else e) = If (εᶜ-Bool l c) Then (εᶜ-Bool l t) Else εᶜ-Bool l e
-εᶜ-Bool l ∙ = ∙
-
-εᶜ-Excpetion l (Γ , t) = εᶜ-env l Γ , ε-Exception l t
-εᶜ-Excpetion l (f $ x) = (εᶜ-Fun l f) $ (εᶜ l x)
-εᶜ-Excpetion l (If c Then t Else e) = If (εᶜ-Bool l c) Then (εᶜ-Excpetion l t) Else (εᶜ-Excpetion l e)
-εᶜ-Excpetion l ∙ = ∙
-
-εᶜ-Fun l (Γ , t) = εᶜ-env l Γ , ε-Fun l t
-εᶜ-Fun l (f $ x) = (εᶜ-Fun l f) $ (εᶜ l x)
-εᶜ-Fun l (If c Then t Else e) = If (εᶜ-Bool l c) Then (εᶜ-Fun l t) Else εᶜ-Fun l e
-εᶜ-Fun l ∙ = ∙
-
-εᶜ-Labeled l₂ l₁⊑l₂ (Γ , t) = (εᶜ-env l₂ Γ) , ε-Labeled l₂ l₁⊑l₂ t
-εᶜ-Labeled l₂ l₁⊑l₂ (f $ x) = (εᶜ-Fun l₂ f) $ (εᶜ l₂ x)
-εᶜ-Labeled l₂ l₁⊑l₂ (If c Then t Else e) = If εᶜ-Bool l₂ c Then εᶜ-Labeled l₂ l₁⊑l₂ t Else εᶜ-Labeled l₂ l₁⊑l₂ e
-εᶜ-Labeled l₂ l₁⊑l₂ ∙ = ∙
-
-εᶜ-Mac l₂ p (Γ , t) = (εᶜ-env l₂ Γ) , (ε-Mac l₂ p t)
-εᶜ-Mac l₂ p (f $ x) = (εᶜ-Fun l₂ f) $ (εᶜ l₂ x)
-εᶜ-Mac l₂ p (If c Then t Else e) = If (εᶜ-Bool l₂ c) Then (εᶜ-Mac l₂ p t) Else (εᶜ-Mac l₂ p e)
-εᶜ-Mac l₂ p (m >>= k) = (εᶜ-Mac l₂ p m) >>= (εᶜ-Fun l₂ k)
-εᶜ-Mac l₂ p (Catch m h) = Catch (εᶜ-Mac l₂ p m) (εᶜ-Fun l₂ h)
--- With transitivity I could deduce l₃ ⊑ l₂. How is this useful?
-εᶜ-Mac l₂ l₁⊑l₂ (unlabel {l = l₃} {h = l₁} l₃⊑l₁ c) = unlabel l₃⊑l₁ (εᶜ l₂ c)
-εᶜ-Mac l₂ p ∙ = ∙
+εᶜ lₐ (Γ , t) = (εᶜ-env lₐ Γ) , (ε lₐ t)
+εᶜ lₐ (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
+εᶜ {Mac lᵈ β} lₐ (f $ˡ Γ , t) with lᵈ ⊑? lₐ
+εᶜ {Mac lᵈ β} lₐ (f $ˡ Γ , t) | yes p = (εᶜ lₐ f) $ˡ εᶜ-env lₐ Γ , ε lₐ t
+εᶜ {Mac lᵈ β} lₐ (f $ˡ Γ , t) | no ¬p = (εᶜ lₐ f) $ˡ εᶜ-env lₐ Γ , ∙
+εᶜ lₐ (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ lₐ t) Else εᶜ lₐ e
+εᶜ lₐ (m >>= k) = (εᶜ lₐ m) >>= (εᶜ lₐ k)
+εᶜ lₐ (Catch m h) = Catch (εᶜ lₐ m) (εᶜ lₐ h)
+εᶜ lₐ (unlabel x c) = unlabel x (εᶜ lₐ c) -- Inspect labels, erase if possible
 
 εᶜ-env l [] = []
 εᶜ-env l (x ∷ Γ) = εᶜ l x ∷ εᶜ-env l Γ
+
+open import Typed.Semantics
+
+εᶜ-lookup : ∀ {Δ τ} {{lₐ}} -> (p : τ ∈ Δ) (Γ : Env Δ) -> εᶜ lₐ (p !! Γ) ≡ p !! εᶜ-env lₐ Γ
+εᶜ-lookup Here (x ∷ Γ) = refl
+εᶜ-lookup (There p) (x ∷ Γ) rewrite εᶜ-lookup p Γ = refl
+
+εᶜ-distributes : ∀ {τ} {c₁ c₂ : CTerm τ} -> (lₐ : Label) -> c₁ ⟼ c₂ -> εᶜ lₐ c₁ ⟼ εᶜ lₐ c₂
+εᶜ-distributes lₐ (AppL s) = AppL (εᶜ-distributes lₐ s)
+εᶜ-distributes lₐ Beta = Beta
+εᶜ-distributes {c₁ = Γ , Var p} lₐ Lookup rewrite εᶜ-lookup p Γ = Lookup
+εᶜ-distributes {c₁ = Γ , App f x} lₐ Dist-$ = Dist-$
+εᶜ-distributes lₐ Dist-If = Dist-If
+εᶜ-distributes lₐ (IfCond s) = IfCond (εᶜ-distributes lₐ s)
+εᶜ-distributes lₐ IfTrue = IfTrue
+εᶜ-distributes lₐ IfFalse = IfFalse
+εᶜ-distributes {Mac lᵈ α} lₐ Return with lᵈ ⊑? lₐ 
+εᶜ-distributes {Mac lᵈ α} lₐ Return | yes p = Return
+εᶜ-distributes {Mac lᵈ α} lₐ Return | no ¬p = Return
+εᶜ-distributes lₐ Dist->>= = Dist->>=
+εᶜ-distributes lₐ (BindCtx s) = BindCtx (εᶜ-distributes lₐ s)
+εᶜ-distributes {Mac lᵈ β} lₐ Bind with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ β} lₐ Bind | yes p = Bind
+εᶜ-distributes {Mac lᵈ β} lₐ Bind | no ¬p = Bind
+εᶜ-distributes {Mac lᵈ α} lₐ BindEx with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ α} lₐ BindEx | yes p = BindEx
+εᶜ-distributes {Mac lᵈ α} lₐ BindEx | no ¬p = BindEx
+εᶜ-distributes {Mac lᵈ α} lₐ Throw with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ α} lₐ Throw | yes p = Throw
+εᶜ-distributes {Mac lᵈ α} lₐ Throw | no ¬p = Throw
+εᶜ-distributes lₐ Dist-Catch = Dist-Catch
+εᶜ-distributes lₐ (CatchCtx s) = CatchCtx (εᶜ-distributes lₐ s)
+εᶜ-distributes {Mac lᵈ α} lₐ Catch with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ α} lₐ Catch | yes p = Catch
+εᶜ-distributes {Mac lᵈ α} lₐ Catch | no ¬p = Catch
+εᶜ-distributes {Mac lᵈ α} lₐ CatchEx with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ α} lₐ CatchEx | yes p = CatchEx
+εᶜ-distributes {Mac lᵈ α} lₐ CatchEx | no ¬p = CatchEx
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) = ?
+εᶜ-distributes lₐ (Dist-unlabel p) = Dist-unlabel p
+εᶜ-distributes {Mac lʰ α} lₐ (unlabel {l = lᵈ} {h = .lʰ} d⊑h) = ?
+εᶜ-distributes lₐ (unlabelCtx p s) = unlabelCtx p (εᶜ-distributes lₐ s)
+εᶜ-distributes lₐ Hole = Hole
 
 --------------------------------------------------------------------------------
 

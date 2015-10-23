@@ -38,7 +38,7 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
             (m >>= k) ⟼ (m' >>= k)
 
   Bind : ∀ {l Δ α β} {Γ : Env Δ} {t : Term Δ α} {k : CTerm (α => Mac l β)} ->
-           ((Γ , Mac t) >>= k) ⟼ (k $ Γ , t)
+           ((Γ , Mac t) >>= k) ⟼ (k $ˡ Γ , t)
 
   BindEx : ∀ {l Δ α} {Γ : Env Δ} {e : Term Δ Exception} {k : CTerm (Exception => Mac l α)} ->
            ((Γ , Macₓ e) >>= k) ⟼ (Γ , Throw e)  -- Rethrown as in LIO. It could be also (Γ , Macₓ e)
@@ -56,7 +56,7 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
             Catch (Γ , Mac t) h ⟼ (Γ , (Return t))
 
   CatchEx : ∀ {l : Label} {Δ}  {α : Ty} {Γ : Env Δ} {e : Term Δ Exception} {h : CTerm (Exception => Mac l α)} -> 
-            Catch (Γ , Macₓ e) h ⟼ (h $ Γ , e)
+            Catch (Γ , Macₓ e) h ⟼ (h $ˡ Γ , e)
 
   label : ∀ {l Δ h α} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) -> 
             (Γ , label p t) ⟼ (Γ , Return (Res t))
@@ -64,7 +64,6 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   Dist-unlabel : ∀ {l Δ α h} {Γ : Env Δ} {t : Term Δ (Labeled l α)} -> (p : l ⊑ h) ->
                  (Γ , unlabel p t) ⟼ unlabel p (Γ , t)
 
-  -- TODO p not implicit
   unlabel : ∀ {l Δ h α} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
             unlabel p (Γ , Res t) ⟼ (Γ , Return t)
 
@@ -72,5 +71,3 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
                unlabel p c ⟼ unlabel p c'
 
   Hole : ∀ {Δ} {α : Ty} {Γ : Env Δ} -> (Γ , (∙ {_} {α})) ⟼ (Γ , ∙)
-
-  Hole' : {α : Ty} -> (∙ {α}) ⟼ ∙

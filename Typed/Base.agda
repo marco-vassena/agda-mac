@@ -38,11 +38,15 @@ mutual
   data CTerm : Ty -> Set where
     _,_ : ∀ {Δ τ} -> Env Δ -> Term Δ τ -> CTerm τ
     _$_ : ∀ {α β} -> CTerm (α => β) -> CTerm α -> CTerm β
+    -- Specialized function application for Mac computations, used in the binding semantics.
+    -- It represents the fact that the argument comes from a Mac constructor
+    -- For simiplicity I will assume that it is a closure
+    _$ˡ_,_ : ∀ {l} {α β Δ} -> CTerm (α => Mac l β) -> Env Δ -> Term Δ α -> CTerm (Mac l β)
+
     If_Then_Else_ : ∀ {τ} -> CTerm Bool -> CTerm τ -> CTerm τ -> CTerm τ
     _>>=_ : ∀ {l α β} -> CTerm (Mac l α) -> CTerm (α => Mac l β) -> CTerm (Mac l β)
     Catch : ∀ {l α} -> CTerm (Mac l α) -> CTerm (Exception => Mac l α) -> CTerm (Mac l α)
     unlabel : ∀ {l τ h} -> l ⊑ h -> CTerm (Labeled l τ) -> CTerm (Mac h τ)
-    ∙ : ∀ {τ} -> CTerm τ
 
   data Env : (Δ : Context) -> Set where
     [] : Env []
@@ -74,8 +78,8 @@ IsValue (Γ , unlabel x t) = ⊥
 IsValue (Γ , Res t) = ⊤
 IsValue (Γ , ∙) = ⊥
 IsValue (c₁ $ c₂) = ⊥
+IsValue (c₁ $ˡ Γ , t) = ⊥
 IsValue (If c Then t Else e) = ⊥
 IsValue (m >>= k) = ⊥
 IsValue (Catch m h) = ⊥
 IsValue (unlabel p t) = ⊥
-IsValue ∙ = ⊥
