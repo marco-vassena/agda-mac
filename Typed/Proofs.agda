@@ -2,15 +2,50 @@ module Typed.Proofs where
 
 open import Typed.Semantics
 open import Relation.Binary.PropositionalEquality
+open import Data.Sum
 
--- A closed term is a Redex if it can be reduced further
-data Redex {τ : Ty}(c : CTerm τ) : Set where
-  Step : ∀ {c' : CTerm τ} -> c ⟼ c' -> Redex c
-
--- Normal forms
--- A closed term is in normal form if it cannot be reduced further
-NormalForm : ∀ {τ} -> CTerm τ -> Set
-NormalForm c = ¬ Redex c
+progress : ∀ {τ} -> (c : CTerm τ) -> (Redex c) ⊎ (IsValue c)
+progress (Γ , True) = inj₂ tt
+progress (Γ , False) = inj₂ tt
+progress (Γ , Var x) = inj₁ (Step Lookup)
+progress (Γ , Abs t) = inj₂ tt
+progress (Γ , App t t₁) = inj₁ (Step Dist-$)
+progress (Γ , If t Then t₁ Else t₂) = inj₁ (Step Dist-If)
+progress (Γ , Return t) = inj₁ (Step Return)
+progress (Γ , t >>= t₁) = inj₁ (Step Dist->>=)
+progress (Γ , ξ) = inj₂ tt
+progress (Γ , Throw t) = inj₁ (Step Throw)
+progress (Γ , Catch m h) = inj₁ (Step Dist-Catch)
+progress (Γ , Mac t) = inj₂ tt
+progress (Γ , Macₓ t) = inj₂ tt
+progress (Γ , Res t) = inj₂ tt
+progress (Γ , label x t) = inj₁ (Step (label x))
+progress (Γ , unlabel x t) = inj₁ (Step (Dist-unlabel x))
+progress (Γ , ∙) = inj₁ (Step Hole)
+progress (c $ c₁) with progress c
+progress (c $ c₁) | inj₁ (Step x) = inj₁ (Step (AppL x))
+progress (x , Var x₁ $ c₁) | inj₂ ()
+progress (x , Abs x₁ $ c₁) | inj₂ tt = inj₁ (Step Beta)
+progress (x , App x₁ x₂ $ c₁) | inj₂ ()
+progress (x , If x₁ Then x₂ Else x₃ $ c₁) | inj₂ ()
+progress (x , ∙ $ c₁) | inj₂ ()
+progress ((c $ c₁) $ c₂) | inj₂ ()
+progress (If c Then c₁ Else c₂ $ c₃) | inj₂ ()
+progress (c $ˡ x , x₁) with progress c
+progress (c $ˡ x₁ , x₂) | inj₁ (Step x) = inj₁ (Step (AppLˡ x))
+progress ((x , Var x₁) $ˡ x₂ , x₃) | inj₂ ()
+-- Problem! Here the enviroments should be the same but this is not the case 
+-- in general. Putting a different enviroment seems an ad hoc solution, different from Beta
+progress ((Γ , Abs x₁) $ˡ Γ' , x₃) | inj₂ tt = inj₁ (Step {!Betaˡ!}) 
+progress ((Γ , App x₁ x₂) $ˡ Γ' , x₄) | inj₂ ()
+progress ((x , If x₁ Then x₂ Else x₃) $ˡ x₄ , x₅) | inj₂ ()
+progress ((x , ∙) $ˡ x₂ , x₃) | inj₂ ()
+progress ((c $ c₁) $ˡ x , x₁) | inj₂ ()
+progress ((If c Then c₁ Else c₂) $ˡ x , x₁) | inj₂ ()
+progress (If c Then c₁ Else c₂) = {!!}
+progress (c >>= c₁) = {!!}
+progress (Catch c c₁) = {!!}
+progress (unlabel x c) = {!!}
 
 valueNotRedex : ∀ {τ} -> (c : CTerm τ) -> IsValue c -> NormalForm c
 valueNotRedex (Γ , True) isV (Step ())
@@ -37,8 +72,6 @@ valueNotRedex (Catch m h) () nf
 valueNotRedex (unlabel x t) () nf
 valueNotRedex (f $ˡ Γ , v) () nf
 
-
-
 -- In principle once we prove the bijection between typed and untyped semantics
 -- we can keep only one proof and derive the other.
 determinism : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⟼ c₂ -> c₁ ⟼ c₃ -> c₂ ≡ c₃
@@ -46,6 +79,10 @@ determinism (AppL s₁) (AppL s₂) rewrite determinism s₁ s₂ = refl
 determinism (AppL ()) Beta
 determinism Beta (AppL ())
 determinism Beta Beta = refl
+determinism (AppLˡ s₁) (AppLˡ s₂) rewrite determinism s₁ s₂ = refl
+determinism (AppLˡ ()) Betaˡ
+determinism Betaˡ (AppLˡ ())
+determinism Betaˡ Betaˡ = refl
 determinism Lookup Lookup = refl
 determinism Dist-$ Dist-$ = refl
 determinism Dist-If Dist-If = refl

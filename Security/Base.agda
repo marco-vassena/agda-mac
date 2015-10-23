@@ -16,25 +16,29 @@ open import Relation.Binary.PropositionalEquality
 ε lₐ (If c Then t Else e) = If (ε lₐ c) Then (ε lₐ t) Else (ε lₐ e)
 ε {Mac lᵈ α} lₐ (Return t) with lᵈ ⊑? lₐ
 ε {Mac lᵈ α} lₐ (Return t) | yes p = Return (ε lₐ t) 
-ε {Mac lᵈ α} lₐ (Return t) | no ¬p = Return ∙
-ε lₐ (m >>= h) = (ε lₐ m) >>= (ε lₐ h)
+ε {Mac lᵈ α} lₐ (Return t) | no ¬p = ∙
+ε {Mac lᵈ β} lₐ (m >>= h) with lᵈ ⊑? lₐ 
+ε {Mac lᵈ β} lₐ (m >>= h) | yes p = (ε lₐ m) >>= (ε lₐ h)
+ε {Mac lᵈ β} lₐ (m >>= h) | no ¬p = ∙
 ε lₐ ξ = ξ
 ε {Mac lᵈ α} lₐ (Throw t) with lᵈ ⊑? lₐ
 ε {Mac lᵈ α} lₐ (Throw t) | yes p = Throw (ε lₐ t)
-ε {Mac lᵈ α} lₐ (Throw t) | no ¬p = Throw ∙
-ε lₐ (Catch m h) = Catch (ε lₐ m) (ε lₐ h)
+ε {Mac lᵈ α} lₐ (Throw t) | no ¬p = ∙
+ε {Mac lᵈ α} lₐ (Catch m h) with lᵈ ⊑? lₐ
+ε {Mac lᵈ α} lₐ (Catch m h) | yes p = Catch (ε lₐ m) (ε lₐ h)
+ε {Mac lᵈ α} lₐ (Catch m h) | no ¬p = ∙ --  Catch (ε lₐ m) (ε lₐ h)
 ε {Mac lᵈ α} lₐ (Mac t) with lᵈ ⊑? lₐ
 ε {Mac lᵈ α} lₐ (Mac t) | yes p = Mac (ε lₐ t)
-ε {Mac lᵈ α} lₐ (Mac t) | no ¬p = Mac ∙
+ε {Mac lᵈ α} lₐ (Mac t) | no ¬p = ∙
 ε {Mac lᵈ α} lₐ (Macₓ t) with lᵈ ⊑? lₐ
 ε {Mac lᵈ α} lₐ (Macₓ t) | yes p = Macₓ (ε lₐ t)
-ε {Mac lᵈ α} lₐ (Macₓ t) | no ¬p = Macₓ ∙
+ε {Mac lᵈ α} lₐ (Macₓ t) | no ¬p = ∙
 ε {Labeled lᵈ α} lₐ (Res t) with lᵈ ⊑? lₐ
 ε {Labeled lᵈ α} lₐ (Res t) | yes p = Res (ε lₐ t)
 ε {Labeled lᵈ α} lₐ (Res t) | no ¬p = Res ∙
-ε lₐ (label {l = lᵈ} {h = lʰ} d⊑h t) with lʰ ⊑? lₐ
-ε lₐ (label d⊑h t) | yes h⊑a = label d⊑h (ε lₐ t) 
-ε lₐ (label d⊑h t) | no ¬h⊑a = label d⊑h ∙
+ε lₐ (label {l = lᵈ} {h = lʰ} d⊑h t) with lᵈ ⊑? lₐ
+ε lₐ (label d⊑h t) | yes d⊑a = label d⊑h (ε lₐ t) 
+ε lₐ (label d⊑h t) | no ¬d⊑a = {!!}
 ε lₐ (unlabel x t) = unlabel x (ε lₐ t)
 ε lₐ ∙ = ∙
 
@@ -47,10 +51,16 @@ open import Relation.Binary.PropositionalEquality
 εᶜ lₐ (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
 εᶜ {Mac lᵈ β} lₐ (f $ˡ Γ , t) with lᵈ ⊑? lₐ
 εᶜ {Mac lᵈ β} lₐ (f $ˡ Γ , t) | yes p = (εᶜ lₐ f) $ˡ εᶜ-env lₐ Γ , ε lₐ t
-εᶜ {Mac lᵈ β} lₐ (f $ˡ Γ , t) | no ¬p = (εᶜ lₐ f) $ˡ εᶜ-env lₐ Γ , ∙
+εᶜ {Mac lᵈ β} lₐ (f $ˡ Γ , t) | no ¬p = εᶜ-env lₐ Γ , ∙
 εᶜ lₐ (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ lₐ t) Else εᶜ lₐ e
-εᶜ lₐ (m >>= k) = (εᶜ lₐ m) >>= (εᶜ lₐ k)
-εᶜ lₐ (Catch m h) = Catch (εᶜ lₐ m) (εᶜ lₐ h)
+εᶜ {Mac lᵈ β} lₐ (m >>= k) with lᵈ ⊑? lₐ
+εᶜ {Mac lᵈ β} lₐ (m  >>= k) | yes p = εᶜ lₐ m >>= εᶜ lₐ k
+εᶜ {Mac lᵈ β} lₐ ((Γ , t) >>= k) | no ¬p = (εᶜ-env lₐ Γ) , ∙ 
+εᶜ {Mac lᵈ β} lₐ (m >>= k) | no ¬p = εᶜ lₐ m >>= εᶜ lₐ k
+εᶜ {Mac lᵈ α} lₐ (Catch m h) with lᵈ ⊑? lₐ
+εᶜ {Mac lᵈ α} lₐ (Catch m h) | yes p = Catch (εᶜ lₐ m) (εᶜ lₐ h)
+εᶜ {Mac lᵈ α} lₐ (Catch (Γ  , t) h) | no ¬p = εᶜ-env lₐ Γ , ∙
+εᶜ {Mac lᵈ α} lₐ (Catch m h) | no ¬p = Catch (εᶜ lₐ m) (εᶜ lₐ h)
 εᶜ lₐ (unlabel x c) = unlabel x (εᶜ lₐ c) -- Inspect labels, erase if possible
 
 εᶜ-env l [] = []
@@ -73,29 +83,57 @@ open import Typed.Semantics
 εᶜ-distributes lₐ IfFalse = IfFalse
 εᶜ-distributes {Mac lᵈ α} lₐ Return with lᵈ ⊑? lₐ 
 εᶜ-distributes {Mac lᵈ α} lₐ Return | yes p = Return
-εᶜ-distributes {Mac lᵈ α} lₐ Return | no ¬p = Return
-εᶜ-distributes lₐ Dist->>= = Dist->>=
-εᶜ-distributes lₐ (BindCtx s) = BindCtx (εᶜ-distributes lₐ s)
+εᶜ-distributes {Mac lᵈ α} lₐ Return | no ¬p = Hole
+εᶜ-distributes {Mac lᵈ α} {Γ , m >>= k} lₐ Dist->>= with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ α} {Γ , m >>= k} lₐ Dist->>= | yes p = Dist->>=
+εᶜ-distributes {Mac lᵈ α} {Γ , m >>= k} lₐ Dist->>= | no ¬p = Hole
+εᶜ-distributes {Mac lᵈ α} {m >>= k} lₐ (BindCtx s) with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ α} {m >>= k} lₐ (BindCtx s) | yes p = BindCtx (εᶜ-distributes lₐ s)
+εᶜ-distributes {Mac lᵈ α} {m >>= k} lₐ (BindCtx s) | no ¬p = {!BindCtx ?!} -- BindCtx (εᶜ-distributes lₐ s)
 εᶜ-distributes {Mac lᵈ β} lₐ Bind with lᵈ ⊑? lₐ
-εᶜ-distributes {Mac lᵈ β} lₐ Bind | yes p = Bind
-εᶜ-distributes {Mac lᵈ β} lₐ Bind | no ¬p = Bind
+εᶜ-distributes {Mac lᵈ β} lₐ Bind | yes p with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ β} lₐ Bind | yes p₁ | yes p = Bind
+εᶜ-distributes {Mac lᵈ β} lₐ Bind | yes p | no ¬p = {!!} -- Bind
+εᶜ-distributes {Mac lᵈ β} lₐ Bind | no ¬p = Hole
 εᶜ-distributes {Mac lᵈ α} lₐ BindEx with lᵈ ⊑? lₐ
-εᶜ-distributes {Mac lᵈ α} lₐ BindEx | yes p = BindEx
-εᶜ-distributes {Mac lᵈ α} lₐ BindEx | no ¬p = BindEx
+εᶜ-distributes {Mac lᵈ α} lₐ BindEx | yes p with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ α} lₐ BindEx | yes p₁ | yes p = BindEx
+εᶜ-distributes {Mac lᵈ α} lₐ BindEx | yes p | no ¬p = ⊥-elim (¬p p)
+εᶜ-distributes {Mac lᵈ α} lₐ BindEx | no ¬p = Hole -- BindEx
 εᶜ-distributes {Mac lᵈ α} lₐ Throw with lᵈ ⊑? lₐ
 εᶜ-distributes {Mac lᵈ α} lₐ Throw | yes p = Throw
-εᶜ-distributes {Mac lᵈ α} lₐ Throw | no ¬p = Throw
-εᶜ-distributes lₐ Dist-Catch = Dist-Catch
-εᶜ-distributes lₐ (CatchCtx s) = CatchCtx (εᶜ-distributes lₐ s)
+εᶜ-distributes {Mac lᵈ α} lₐ Throw | no ¬p = Hole
+εᶜ-distributes {Mac lᵈ α} {Γ , Catch m h} lₐ Dist-Catch with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ α} {Γ , Catch m h} lₐ Dist-Catch | yes p = Dist-Catch
+εᶜ-distributes {Mac lᵈ α} {Γ , Catch m h} lₐ Dist-Catch | no ¬p = Hole
+εᶜ-distributes {Mac lᵈ α} {Catch m h} {Catch m' .h} lₐ (CatchCtx s) with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ α} {Catch m h} {Catch m' .h} lₐ (CatchCtx s) | yes p = CatchCtx (εᶜ-distributes lₐ s)
+εᶜ-distributes {Mac lᵈ α} {Catch (x , x₁) h} {Catch m' .h} lₐ (CatchCtx s) | no ¬p = {!!}
+εᶜ-distributes {Mac lᵈ α} {Catch (m $ m₁) h} {Catch m' .h} lₐ (CatchCtx s) | no ¬p = {!!}
+εᶜ-distributes {Mac lᵈ α} {Catch (m $ˡ x , x₁) h} {Catch m' .h} lₐ (CatchCtx s) | no ¬p = {!!}
+εᶜ-distributes {Mac lᵈ α} {Catch (If m Then m₁ Else m₂) h} {Catch m' .h} lₐ (CatchCtx s) | no ¬p = {!!}
+εᶜ-distributes {Mac lᵈ α} {Catch (m >>= m₁) h} {Catch m' .h} lₐ (CatchCtx s) | no ¬p = {!!}
+εᶜ-distributes {Mac lᵈ α} {Catch (Catch m m₁) h} {Catch m' .h} lₐ (CatchCtx s) | no ¬p = {!!}
+εᶜ-distributes {Mac lᵈ α} {Catch (unlabel x m) h} {Catch m' .h}lₐ (CatchCtx s) | no ¬p = {!!} -- CatchCtx (εᶜ-distributes lₐ s)
 εᶜ-distributes {Mac lᵈ α} lₐ Catch with lᵈ ⊑? lₐ
-εᶜ-distributes {Mac lᵈ α} lₐ Catch | yes p = Catch
-εᶜ-distributes {Mac lᵈ α} lₐ Catch | no ¬p = Catch
+εᶜ-distributes {Mac lᵈ α} lₐ Catch | yes p = {!!}
+εᶜ-distributes {Mac lᵈ α} lₐ Catch | no ¬p = Hole -- Catch
 εᶜ-distributes {Mac lᵈ α} lₐ CatchEx with lᵈ ⊑? lₐ
-εᶜ-distributes {Mac lᵈ α} lₐ CatchEx | yes p = CatchEx
-εᶜ-distributes {Mac lᵈ α} lₐ CatchEx | no ¬p = CatchEx
-εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) = ?
+εᶜ-distributes {Mac lᵈ α} lₐ CatchEx | yes p = {!!} -- CatchEx
+εᶜ-distributes {Mac lᵈ α} lₐ CatchEx | no ¬p = Hole -- CatchEx
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) with lʰ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | yes h⊑a with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | yes h⊑a | yes d⊑a with lʰ ⊑? lₐ -- Agda not sharing results
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | yes h⊑a | yes d⊑a | yes h⊑a' = label d⊑h
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | yes h⊑a | yes d⊑a | no ¬h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | yes h⊑a | no ¬d⊑a = {!!}
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | no ¬h⊑a with lᵈ ⊑? lₐ
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | no ¬h⊑a | yes d⊑a with lʰ ⊑? lₐ -- -- Agda not sharing results
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | no ¬h⊑a | yes d⊑a | yes h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | no ¬h⊑a | yes d⊑a | no ¬h⊑a' = {!!} -- label d⊑h 
+εᶜ-distributes {Mac lᵈ (Labeled lʰ α)} lₐ (label d⊑h) | no ¬h⊑a | no ¬d⊑a = {!!}
 εᶜ-distributes lₐ (Dist-unlabel p) = Dist-unlabel p
-εᶜ-distributes {Mac lʰ α} lₐ (unlabel {l = lᵈ} {h = .lʰ} d⊑h) = ?
+εᶜ-distributes {Mac lʰ α} lₐ (unlabel {l = lᵈ} {h = .lʰ} d⊑h) = {!!}
 εᶜ-distributes lₐ (unlabelCtx p s) = unlabelCtx p (εᶜ-distributes lₐ s)
 εᶜ-distributes lₐ Hole = Hole
 

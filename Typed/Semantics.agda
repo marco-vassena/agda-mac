@@ -9,6 +9,13 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   -- Pushes a term in the environment
   Beta : ∀ {Δ α β} {Γ : Env Δ} {t : Term (α ∷ Δ) β} {x : CTerm α} -> (Γ , Abs t $ x) ⟼ (x ∷ Γ , t)
 
+    -- Reduces the function in an application
+  AppLˡ : ∀ {Δ α β l} {Γ : Env Δ} {c₁ c₂ : CTerm (α => Mac l β)} {x : Term Δ α} -> c₁ ⟼ c₂ -> (c₁ $ˡ Γ , x) ⟼ (c₂ $ˡ Γ , x)
+
+  -- Pushes a term in the environment
+  Betaˡ : ∀ {Δ α β l} {Γ : Env Δ} {t : Term (α ∷ Δ) (Mac l β)} {x : Term Δ α} -> ((Γ , Abs t) $ˡ Γ , x) ⟼ ((Γ , x) ∷ Γ , t)
+
+
   -- Looks up a variable in the environment
   Lookup : ∀ {Δ τ} {Γ : Env Δ} {p : τ ∈ Δ} -> (Γ , Var p) ⟼ (p !! Γ)
 
@@ -71,3 +78,12 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
                unlabel p c ⟼ unlabel p c'
 
   Hole : ∀ {Δ} {α : Ty} {Γ : Env Δ} -> (Γ , (∙ {_} {α})) ⟼ (Γ , ∙)
+
+-- A closed term is a Redex if it can be reduced further
+data Redex {τ : Ty}(c : CTerm τ) : Set where
+  Step : ∀ {c' : CTerm τ} -> c ⟼ c' -> Redex c
+
+-- Normal forms
+-- A closed term is in normal form if it cannot be reduced further
+NormalForm : ∀ {τ} -> CTerm τ -> Set
+NormalForm c = ¬ Redex c
