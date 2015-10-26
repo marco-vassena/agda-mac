@@ -6,6 +6,7 @@ open import Typed.Base
 open import Relation.Binary.PropositionalEquality
 
 ε : ∀ {τ Δ} -> Label -> Term Δ τ -> Term Δ τ
+
 ε-Mac : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> Term Δ (Mac lᵈ τ) -> Term Δ (Mac lᵈ τ)
 ε-Mac lₐ p (Var x) = Var x
 ε-Mac lₐ p (App f x) = App (ε lₐ f) (ε lₐ x)
@@ -16,14 +17,32 @@ open import Relation.Binary.PropositionalEquality
 ε-Mac lₐ p (Catch m k) = Catch (ε-Mac lₐ p m) (ε lₐ k)
 ε-Mac lₐ p (Mac t) = Mac (ε lₐ t)
 ε-Mac lₐ p (Macₓ t) = Macₓ (ε lₐ t)
-ε-Mac lₐ p (label x t) = label x (ε lₐ t) -- Should I compare with the second label here  ?s
+ε-Mac lₐ p (label {l = lᵈ} {h = lʰ} d⊑h t) with lʰ ⊑? lₐ
+ε-Mac lₐ p₁ (label d⊑h t) | yes p = label d⊑h (ε lₐ t)
+ε-Mac lₐ p (label d⊑h t) | no ¬p = label d⊑h ∙ 
 ε-Mac lₐ p (unlabel x t) = unlabel x (ε lₐ t)
 ε-Mac lₐ p ∙ = ∙
+
+ε-Labeled : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> Term Δ (Labeled lᵈ τ) -> Term Δ (Labeled lᵈ τ)
+ε-Labeled lₐ p (Var x) = Var x
+ε-Labeled lₐ p (App f x) = App (ε lₐ f) (ε lₐ x)
+ε-Labeled lₐ p (If c Then t Else e) = If (ε lₐ c) Then (ε-Labeled lₐ p t) Else (ε-Labeled lₐ p e)
+ε-Labeled lₐ p (Res t) = Res (ε lₐ t)
+ε-Labeled lₐ p ∙ = ∙
+
+ε-Labeled-∙ : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> Term Δ (Labeled lᵈ τ) -> Term Δ (Labeled lᵈ τ)
+ε-Labeled-∙ lₐ ¬p (Var x) = ∙
+ε-Labeled-∙ lₐ ¬p (App f x) = ∙
+ε-Labeled-∙ lₐ ¬p (If t Then t₁ Else t₂) = ∙
+ε-Labeled-∙ lₐ ¬p (Res t) = Res ∙
+ε-Labeled-∙ lₐ ¬p ∙ = ∙
 
 ε {Mac lᵈ τ} lₐ t with lᵈ ⊑? lₐ
 ε {Mac lᵈ τ} lₐ t | yes p = ε-Mac lₐ p t
 ε {Mac lᵈ τ} lₐ t | no ¬p = ∙
-ε {Labeled lᵈ τ} lₐ t = {!!}
+ε {Labeled lᵈ τ} lₐ t with lᵈ ⊑? lₐ
+ε {Labeled lᵈ τ} lₐ t | yes p = ε-Labeled lₐ p t
+ε {Labeled lᵈ τ} lₐ t | no ¬p = ε-Labeled-∙ lₐ ¬p t
 ε lₐ True = True
 ε lₐ False = False
 ε lₐ (Var x) = Var x
@@ -37,7 +56,7 @@ open import Relation.Binary.PropositionalEquality
 -- ε l t transform a term t in ∙ if it is above the security level l.
 εᶜ : ∀ {τ} -> Label -> CTerm τ -> CTerm τ
 εᶜ-env : ∀ {Δ} -> Label -> Env Δ -> Env Δ
--- εᶜ-Labeled : ∀ {τ l₁} -> (l₂ : Label) -> l₁ ⊑ l₂ -> CTerm (Labeled l₁ τ) -> CTerm (Labeled l₁ τ)
+
 εᶜ-Mac : ∀ {τ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
 εᶜ-Mac lₐ p (Γ , t) = (εᶜ-env lₐ Γ) , (ε-Mac lₐ p t)
 εᶜ-Mac lₐ p (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
@@ -47,14 +66,26 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac lₐ p (unlabel x c) = unlabel x (εᶜ lₐ c) 
 εᶜ-Mac lₐ p ∙ = ∙
 
+εᶜ-Labeled : ∀ {τ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> CTerm (Labeled lᵈ τ) -> CTerm (Labeled lᵈ τ)
+εᶜ-Labeled lₐ p (Γ , t) = εᶜ-env lₐ Γ , ε-Labeled lₐ p t
+εᶜ-Labeled lₐ p (f $ x) = εᶜ lₐ f $ εᶜ lₐ x
+εᶜ-Labeled lₐ p (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Labeled lₐ p t) Else (εᶜ-Labeled lₐ p e)
+εᶜ-Labeled lₐ p ∙ = ∙
+
 εᶜ-Mac-∙ : ∀ {lᵈ τ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
 εᶜ-Mac-∙ lₐ ¬p (Γ , t) = εᶜ-env lₐ Γ , ∙
 εᶜ-Mac-∙ lₐ ¬p c = ∙
 
+εᶜ-Labeled-∙ : ∀ {lᵈ τ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> CTerm (Labeled lᵈ τ) -> CTerm (Labeled lᵈ τ)
+εᶜ-Labeled-∙ lₐ ¬p (Γ , t) = εᶜ-env lₐ Γ , ε-Labeled-∙ lₐ ¬p t
+εᶜ-Labeled-∙ lₐ ¬p c = ∙ 
+
 εᶜ {Mac lᵈ τ} lₐ c with lᵈ ⊑? lₐ
 εᶜ {Mac lᵈ τ} lₐ c | yes p = εᶜ-Mac lₐ p c
 εᶜ {Mac lᵈ τ} lₐ c | no ¬p = εᶜ-Mac-∙ lₐ ¬p c
-εᶜ {Labeled x τ} lₐ c = {!!}
+εᶜ {Labeled lᵈ τ} lₐ c with lᵈ ⊑? lₐ
+εᶜ {Labeled lᵈ τ} lₐ c | yes p = εᶜ-Labeled lₐ p c
+εᶜ {Labeled lᵈ τ} lₐ c | no ¬p = εᶜ-Labeled-∙ lₐ ¬p c
 εᶜ lₐ (Γ , t) = (εᶜ-env lₐ Γ) , (ε lₐ t)
 εᶜ lₐ (f $ x) = εᶜ lₐ f $ εᶜ lₐ x
 εᶜ lₐ (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ lₐ t) Else (εᶜ lₐ e)
@@ -69,12 +100,63 @@ open import Typed.Semantics
 εᶜ-lookup Here (x ∷ Γ) = refl
 εᶜ-lookup (There p) (x ∷ Γ) rewrite εᶜ-lookup p Γ = refl
 
+-- Yeah!
+εᶜ-Closure : ∀ {τ Δ} {{Γ : Env Δ}} {t : Term Δ τ} (lₐ : Label) -> εᶜ lₐ (Γ , t) ≡ (εᶜ-env lₐ Γ , ε lₐ t)
+εᶜ-Closure {Bool} lₐ = refl
+εᶜ-Closure {τ => τ₁} lₐ = refl
+εᶜ-Closure {Mac lᵈ τ} lₐ with lᵈ ⊑? lₐ
+εᶜ-Closure {Mac lᵈ τ} lₐ | yes p = refl
+εᶜ-Closure {Mac lᵈ τ} lₐ | no ¬p = refl
+εᶜ-Closure {Labeled lᵈ τ} lₐ with lᵈ ⊑? lₐ
+εᶜ-Closure {Labeled lᵈ τ} lₐ | yes p = refl
+εᶜ-Closure {Labeled lᵈ τ} lₐ | no ¬p = refl
+εᶜ-Closure {Exception} lₐ = refl
+
 εᶜ-distributes : ∀ {τ} {c₁ c₂ : CTerm τ} -> (lₐ : Label) -> c₁ ⟼ c₂ -> εᶜ lₐ c₁ ⟼ εᶜ lₐ c₂
 εᶜ-Mac-∙-distributes : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Mac lᵈ τ)} -> (lₐ : Label) -> (p : ¬ (lᵈ ⊑ lₐ)) -> 
                        c₁ ⟼ c₂ -> (εᶜ-Mac-∙ lₐ p c₁) ⟼ (εᶜ-Mac-∙ lₐ p c₂)
 εᶜ-Mac-distributes : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Mac lᵈ τ)} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) -> 
                        c₁ ⟼ c₂ -> (εᶜ-Mac lₐ p c₁) ⟼ (εᶜ-Mac lₐ p c₂)
+εᶜ-Labeled-distributes : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Labeled lᵈ τ)} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) -> 
+                       c₁ ⟼ c₂ -> (εᶜ-Labeled lₐ p c₁) ⟼ (εᶜ-Labeled lₐ p c₂)
+εᶜ-Labeled-∙-distributes : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Labeled lᵈ τ)} -> (lₐ : Label) -> (p : ¬ (lᵈ ⊑ lₐ)) -> 
+                       c₁ ⟼ c₂ -> (εᶜ-Labeled-∙ lₐ p c₁) ⟼ (εᶜ-Labeled-∙ lₐ p c₂)
 
+εᶜ-Labeled-∙-distributes lₐ ¬p (AppL s) = Hole
+εᶜ-Labeled-∙-distributes lₐ ¬p Beta = Hole
+εᶜ-Labeled-∙-distributes lₐ ¬p Lookup = Dist-∙
+εᶜ-Labeled-∙-distributes lₐ ¬p Dist-$ = Dist-∙
+εᶜ-Labeled-∙-distributes lₐ ¬p Dist-If = Dist-∙
+εᶜ-Labeled-∙-distributes lₐ ¬p (IfCond s) = Hole
+εᶜ-Labeled-∙-distributes lₐ ¬p IfTrue = Hole
+εᶜ-Labeled-∙-distributes lₐ ¬p IfFalse = Hole
+εᶜ-Labeled-∙-distributes lₐ ¬p Dist-∙ = Dist-∙
+εᶜ-Labeled-∙-distributes lₐ ¬p Hole = Hole
+
+εᶜ-Labeled-lookup : ∀ {lᵈ τ Δ} {lₐ : Label} (p : lᵈ ⊑ lₐ) (Γ : Env Δ) (x : Labeled lᵈ τ ∈ Δ) -> εᶜ-Labeled lₐ p (x !! Γ) ≡ x !! εᶜ-env lₐ Γ
+εᶜ-Labeled-lookup {lᵈ} {lₐ = lₐ} p (x ∷ Γ) Here with lᵈ ⊑? lₐ
+εᶜ-Labeled-lookup p (x ∷ Γ) Here | yes q rewrite extensional-⊑ p q = refl 
+εᶜ-Labeled-lookup p (x ∷ Γ) Here | no ¬p = ⊥-elim (¬p p)
+εᶜ-Labeled-lookup p (_ ∷ Γ) (There x) rewrite εᶜ-Labeled-lookup p Γ x = refl
+
+εᶜ-Labeled-distributes lₐ p (AppL s) = AppL (εᶜ-distributes lₐ s)
+εᶜ-Labeled-distributes {lᵈ} lₐ p Beta with lᵈ ⊑? lₐ
+εᶜ-Labeled-distributes lₐ p Beta | yes p' = Beta
+εᶜ-Labeled-distributes lₐ ¬p Beta | no p = ⊥-elim (p ¬p)
+εᶜ-Labeled-distributes {lᵈ} {c₁ = Γ , Var x} lₐ p Lookup with lᵈ ⊑? lₐ
+εᶜ-Labeled-distributes {lᵈ} {c₁ = Γ , Var x} lₐ p' Lookup | yes p rewrite εᶜ-Labeled-lookup p Γ x = Lookup
+εᶜ-Labeled-distributes {lᵈ} {c₁ = Γ , Var x} lₐ p Lookup | no ¬p = ⊥-elim (¬p p)
+εᶜ-Labeled-distributes {lᵈ} {c₁ = Γ , App f x} lₐ p Dist-$ rewrite εᶜ-Closure {t = x} lₐ = Dist-$
+εᶜ-Labeled-distributes lₐ p Dist-If = Dist-If
+εᶜ-Labeled-distributes lₐ p (IfCond s) = IfCond (εᶜ-distributes lₐ s)
+εᶜ-Labeled-distributes {lᵈ} lₐ p IfTrue with lᵈ ⊑? lₐ
+εᶜ-Labeled-distributes lₐ p₁ IfTrue | yes p = IfTrue
+εᶜ-Labeled-distributes lₐ p IfTrue | no ¬p = ⊥-elim (¬p p)
+εᶜ-Labeled-distributes {lᵈ} lₐ p IfFalse with lᵈ ⊑? lₐ
+εᶜ-Labeled-distributes lₐ p₁ IfFalse | yes p = IfFalse
+εᶜ-Labeled-distributes lₐ p IfFalse | no ¬p = ⊥-elim (¬p p)
+εᶜ-Labeled-distributes lₐ p Dist-∙ = Dist-∙
+εᶜ-Labeled-distributes lₐ p Hole = Hole
 
 εᶜ-Mac-∙-distributes lₐ ¬p (AppL s) = Hole
 εᶜ-Mac-∙-distributes lₐ ¬p Beta = Hole
@@ -106,16 +188,6 @@ open import Typed.Semantics
 εᶜ-Mac-lookup p (x ∷ Γ) Here | yes q rewrite extensional-⊑ p q = refl 
 εᶜ-Mac-lookup p (x ∷ Γ) Here | no ¬p = ⊥-elim (¬p p)
 εᶜ-Mac-lookup p (_ ∷ Γ) (There x) rewrite εᶜ-Mac-lookup p Γ x = refl
-
--- Yeah!
-εᶜ-Closure : ∀ {τ Δ} {{Γ : Env Δ}} {t : Term Δ τ} (lₐ : Label) -> εᶜ lₐ (Γ , t) ≡ (εᶜ-env lₐ Γ , ε lₐ t)
-εᶜ-Closure {Bool} lₐ = refl
-εᶜ-Closure {τ => τ₁} lₐ = refl
-εᶜ-Closure {Mac lᵈ τ} lₐ with lᵈ ⊑? lₐ
-εᶜ-Closure {Mac lᵈ τ} lₐ | yes p = refl
-εᶜ-Closure {Mac lᵈ τ} lₐ | no ¬p = refl
-εᶜ-Closure {Labeled x τ} lₐ = {!!}
-εᶜ-Closure {Exception} lₐ = refl
 
 εᶜ-Mac-distributes lₐ p (AppL s) = AppL (εᶜ-distributes lₐ s)
 εᶜ-Mac-distributes {lᵈ} lₐ p Beta with lᵈ ⊑? lₐ
@@ -153,14 +225,26 @@ open import Typed.Semantics
 εᶜ-Mac-distributes lₐ p₁ Catch | yes p = Catch
 εᶜ-Mac-distributes lₐ p Catch | no ¬p = ⊥-elim (¬p p)
 εᶜ-Mac-distributes lₐ p CatchEx = CatchEx
-εᶜ-Mac-distributes lₐ p (label p₁) = {!!}
-εᶜ-Mac-distributes lₐ p (Dist-unlabel p₁) = {!!}
-εᶜ-Mac-distributes lₐ p (unlabel p₁) = {!!}
-εᶜ-Mac-distributes lₐ p (unlabelCtx p₁ s) = {!!}
+εᶜ-Mac-distributes {lᵈ} lₐ p (label {l = .lᵈ} {h = lʰ} d⊑h) with lᵈ ⊑? lₐ
+εᶜ-Mac-distributes {lᵈ} lₐ d⊑a (label {l = .lᵈ} {h = lʰ} d⊑h) | yes d⊑a' with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ d⊑a (label d⊑h) | yes d⊑a' | yes h⊑a = label d⊑h
+εᶜ-Mac-distributes lₐ d⊑a (label d⊑h) | yes d⊑a' | no ¬h⊑a = label d⊑h
+εᶜ-Mac-distributes lₐ p (label x) | no ¬p = ⊥-elim (¬p p)
+εᶜ-Mac-distributes lₐ h⊑a (Dist-unlabel {l = lᵈ} {h = lʰ} d⊑h) with lᵈ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (Dist-unlabel {l = lᵈ} {h = lʰ} d⊑h) | yes d⊑a = Dist-unlabel d⊑h
+εᶜ-Mac-distributes lₐ h⊑a (Dist-unlabel {l = lᵈ} {h = lʰ} d⊑h) | no ¬d⊑a = Dist-unlabel d⊑h -- Also absurd using transitivity
+εᶜ-Mac-distributes lₐ h⊑a (unlabel {l = lᵈ} {h = lʰ} d⊑h) with lᵈ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabel {l = lᵈ} {h = lʰ} d⊑h) | yes d⊑a with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabel d⊑h) | yes d⊑a | yes h⊑a' = unlabel d⊑h
+εᶜ-Mac-distributes lₐ h⊑a (unlabel d⊑h) | yes d⊑a | no ¬h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-distributes lₐ h⊑a (unlabel {l = lᵈ} {h = lʰ} d⊑h) | no ¬d⊑a with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabel d⊑h) | no ¬d⊑a | yes h⊑a' = ⊥-elim (¬d⊑a (trans-⊑ d⊑h h⊑a))
+εᶜ-Mac-distributes lₐ h⊑a (unlabel d⊑h) | no ¬d⊑a | no ¬h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-distributes lₐ h⊑a (unlabelCtx {l = lᵈ} {h = lʰ} d⊑h s) with lᵈ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabelCtx d⊑h s) | yes d⊑a = unlabelCtx d⊑h (εᶜ-Labeled-distributes lₐ d⊑a s)
+εᶜ-Mac-distributes lₐ h⊑a (unlabelCtx d⊑h s) | no ¬p = unlabelCtx d⊑h (εᶜ-Labeled-∙-distributes lₐ ¬p s)
 εᶜ-Mac-distributes lₐ p Dist-∙ = Dist-∙
 εᶜ-Mac-distributes lₐ p Hole = Hole
-
-
 
 εᶜ-distributes {Mac lᵈ τ} lₐ s with lᵈ ⊑? lₐ
 εᶜ-distributes {Mac lᵈ τ} lₐ s | yes p = εᶜ-Mac-distributes lₐ p s
@@ -185,7 +269,9 @@ open import Typed.Semantics
 εᶜ-distributes {τ => τ₁} lₐ IfFalse = IfFalse
 εᶜ-distributes {τ => τ₁} lₐ Dist-∙ = Dist-∙
 εᶜ-distributes {τ => τ₁} lₐ Hole = Hole
-εᶜ-distributes {Labeled x τ} lₐ s = {!!}
+εᶜ-distributes {Labeled lᵈ τ} lₐ s with lᵈ ⊑? lₐ
+εᶜ-distributes {Labeled lᵈ τ} lₐ s | yes p = εᶜ-Labeled-distributes lₐ p s
+εᶜ-distributes {Labeled lᵈ τ} lₐ s | no ¬p = εᶜ-Labeled-∙-distributes lₐ ¬p s
 εᶜ-distributes {Exception} lₐ (AppL s) = AppL (εᶜ-distributes lₐ s)
 εᶜ-distributes {Exception} lₐ Beta = Beta
 εᶜ-distributes {Exception} {c₁ = Γ , Var x} lₐ Lookup rewrite εᶜ-lookup {{lₐ}} x Γ = Lookup
