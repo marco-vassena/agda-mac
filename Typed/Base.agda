@@ -26,9 +26,9 @@ data Term (Δ : Context) : Ty -> Set where
 
   label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Labeled h α))
   unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Mac h α)
-
-  -- Erased term
-  ∙ : ∀ {α} -> Term Δ α
+  
+  -- Erased term ∙
+  ∙ : ∀ {τ} -> Term Δ τ
 
 infixr 3 _,_
 infixr 0 _$_
@@ -38,15 +38,13 @@ mutual
   data CTerm : Ty -> Set where
     _,_ : ∀ {Δ τ} -> Env Δ -> Term Δ τ -> CTerm τ
     _$_ : ∀ {α β} -> CTerm (α => β) -> CTerm α -> CTerm β
-    -- Specialized function application for Mac computations, used in the binding semantics.
-    -- It represents the fact that the argument comes from a Mac constructor
-    -- For simiplicity I will assume that it is a closure
-    _$ˡ_,_ : ∀ {l} {α β Δ} -> CTerm (α => Mac l β) -> Env Δ -> Term Δ α -> CTerm (Mac l β)
-
     If_Then_Else_ : ∀ {τ} -> CTerm Bool -> CTerm τ -> CTerm τ -> CTerm τ
     _>>=_ : ∀ {l α β} -> CTerm (Mac l α) -> CTerm (α => Mac l β) -> CTerm (Mac l β)
     Catch : ∀ {l α} -> CTerm (Mac l α) -> CTerm (Exception => Mac l α) -> CTerm (Mac l α)
     unlabel : ∀ {l τ h} -> l ⊑ h -> CTerm (Labeled l τ) -> CTerm (Mac h τ)
+
+    -- Erased term
+    ∙ : ∀ {τ} -> CTerm τ
 
   data Env : (Δ : Context) -> Set where
     [] : Env []
@@ -78,8 +76,8 @@ IsValue (Γ , unlabel x t) = ⊥
 IsValue (Γ , Res t) = ⊤
 IsValue (Γ , ∙) = ⊥
 IsValue (c₁ $ c₂) = ⊥
-IsValue (c₁ $ˡ Γ , t) = ⊥
 IsValue (If c Then t Else e) = ⊥
 IsValue (m >>= k) = ⊥
 IsValue (Catch m h) = ⊥
 IsValue (unlabel p t) = ⊥
+IsValue ∙ = ⊥

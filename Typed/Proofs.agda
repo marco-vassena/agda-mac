@@ -21,7 +21,7 @@ progress (Γ , Macₓ t) = inj₂ tt
 progress (Γ , Res t) = inj₂ tt
 progress (Γ , label x t) = inj₁ (Step (label x))
 progress (Γ , unlabel x t) = inj₁ (Step (Dist-unlabel x))
-progress (Γ , ∙) = inj₁ (Step Hole)
+progress (Γ , ∙) = inj₁ (Step Dist-∙)
 progress (c $ c₁) with progress c
 progress (c $ c₁) | inj₁ (Step x) = inj₁ (Step (AppL x))
 progress (x , Var x₁ $ c₁) | inj₂ ()
@@ -31,21 +31,69 @@ progress (x , If x₁ Then x₂ Else x₃ $ c₁) | inj₂ ()
 progress (x , ∙ $ c₁) | inj₂ ()
 progress ((c $ c₁) $ c₂) | inj₂ ()
 progress (If c Then c₁ Else c₂ $ c₃) | inj₂ ()
-progress (c $ˡ x , x₁) with progress c
-progress (c $ˡ x₁ , x₂) | inj₁ (Step x) = inj₁ (Step (AppLˡ x))
-progress ((x , Var x₁) $ˡ x₂ , x₃) | inj₂ ()
--- Problem! Here the enviroments should be the same but this is not the case 
--- in general. Putting a different enviroment seems an ad hoc solution, different from Beta
-progress ((Γ , Abs x₁) $ˡ Γ' , x₃) | inj₂ tt = inj₁ (Step {!Betaˡ!}) 
-progress ((Γ , App x₁ x₂) $ˡ Γ' , x₄) | inj₂ ()
-progress ((x , If x₁ Then x₂ Else x₃) $ˡ x₄ , x₅) | inj₂ ()
-progress ((x , ∙) $ˡ x₂ , x₃) | inj₂ ()
-progress ((c $ c₁) $ˡ x , x₁) | inj₂ ()
-progress ((If c Then c₁ Else c₂) $ˡ x , x₁) | inj₂ ()
-progress (If c Then c₁ Else c₂) = {!!}
-progress (c >>= c₁) = {!!}
-progress (Catch c c₁) = {!!}
-progress (unlabel x c) = {!!}
+progress (∙ $ c₂) | inj₂ ()
+progress (If c Then c₁ Else c₂) with progress c
+progress (If c Then c₁ Else c₂) | inj₁ (Step x) = inj₁ (Step (IfCond x))
+progress (If x , True Then c₁ Else c₂) | inj₂ y = inj₁ (Step IfTrue)
+progress (If x , False Then c₁ Else c₂) | inj₂ y = inj₁ (Step IfFalse)
+progress (If x , Var x₁ Then c₁ Else c₂) | inj₂ ()
+progress (If x , App x₁ x₂ Then c₁ Else c₂) | inj₂ ()
+progress (If x , If x₁ Then x₂ Else x₃ Then c₁ Else c₂) | inj₂ ()
+progress (If x , ∙ Then c₁ Else c₂) | inj₂ ()
+progress (If c $ c₁ Then c₂ Else c₃) | inj₂ ()
+progress (If If c Then c₁ Else c₂ Then c₃ Else c₄) | inj₂ ()
+progress (If ∙ Then c₁ Else c₂) | inj₂ ()
+progress (c >>= c₁) with progress c
+progress (c >>= c₁) | inj₁ (Step x) = inj₁ (Step (BindCtx x))
+progress ((x , Var x₁) >>= c₁) | inj₂ ()
+progress ((x , App x₁ x₂) >>= c₁) | inj₂ ()
+progress ((x , If x₁ Then x₂ Else x₃) >>= c₁) | inj₂ ()
+progress ((x , Return x₁) >>= c₁) | inj₂ ()
+progress ((x , x₁ >>= x₂) >>= c₁) | inj₂ ()
+progress ((x , Throw x₁) >>= c₁) | inj₂ ()
+progress ((x , Catch x₁ x₂) >>= c₁) | inj₂ ()
+progress ((x , Mac x₁) >>= c₁) | inj₂ tt = inj₁ (Step Bind)
+progress ((Γ , Macₓ e) >>= k) | inj₂ tt = inj₁ (Step BindEx)
+progress ((x , label x₁ x₂) >>= c₁) | inj₂ ()
+progress ((x , unlabel x₁ x₂) >>= c₁) | inj₂ ()
+progress ((x , ∙) >>= c₁) | inj₂ ()
+progress ((c $ c₁) >>= c₂) | inj₂ ()
+progress (If c Then c₁ Else c₂ >>= c₃) | inj₂ ()
+progress (c >>= c₁ >>= c₂) | inj₂ ()
+progress (Catch c c₁ >>= c₂) | inj₂ ()
+progress (unlabel x c >>= c₁) | inj₂ ()
+progress (∙ >>= c₁) | inj₂ ()
+progress (Catch c c₁) with progress c
+progress (Catch c c₁) | inj₁ (Step x) = inj₁ (Step (CatchCtx x))
+progress (Catch (x , Var x₁) c₁) | inj₂ ()
+progress (Catch (x , App x₁ x₂) c₁) | inj₂ ()
+progress (Catch (x , If x₁ Then x₂ Else x₃) c₁) | inj₂ ()
+progress (Catch (x , Return x₁) c₁) | inj₂ ()
+progress (Catch (x , x₁ >>= x₂) c₁) | inj₂ ()
+progress (Catch (x , Throw x₁) c₁) | inj₂ ()
+progress (Catch (x , Catch x₁ x₂) c₁) | inj₂ ()
+progress (Catch (x , Mac x₁) c₁) | inj₂ tt = inj₁ (Step Catch)
+progress (Catch (x , Macₓ x₁) c₁) | inj₂ y = inj₁ (Step CatchEx)
+progress (Catch (x , label x₁ x₂) c₁) | inj₂ ()
+progress (Catch (x , unlabel x₁ x₂) c₁) | inj₂ ()
+progress (Catch (x , ∙) c₁) | inj₂ ()
+progress (Catch (c $ c₁) c₂) | inj₂ ()
+progress (Catch (If c Then c₁ Else c₂) c₃) | inj₂ ()
+progress (Catch (c >>= c₁) c₂) | inj₂ ()
+progress (Catch (Catch c c₁) c₂) | inj₂ ()
+progress (Catch (unlabel x c) c₁) | inj₂ ()
+progress (Catch ∙ c₁) | inj₂ ()
+progress (unlabel x c) with progress c
+progress (unlabel x₁ c) | inj₁ (Step x) = inj₁ (Step (unlabelCtx x₁ x))
+progress (unlabel x₂ (x , Var x₁)) | inj₂ ()
+progress (unlabel x₃ (x , App x₁ x₂)) | inj₂ ()
+progress (unlabel x₄ (x , If x₁ Then x₂ Else x₃)) | inj₂ ()
+progress (unlabel x₂ (x , Res x₁)) | inj₂ tt = inj₁ (Step (unlabel x₂))
+progress (unlabel x₂ (x , ∙)) | inj₂ ()
+progress (unlabel x (c $ c₁)) | inj₂ ()
+progress (unlabel x (If c Then c₁ Else c₂)) | inj₂ ()
+progress (unlabel x ∙) | inj₂ ()
+progress ∙ = inj₁ (Step Hole)
 
 valueNotRedex : ∀ {τ} -> (c : CTerm τ) -> IsValue c -> NormalForm c
 valueNotRedex (Γ , True) isV (Step ())
@@ -70,7 +118,7 @@ valueNotRedex (If c Then t Else e) () nf
 valueNotRedex (m >>= k) () s
 valueNotRedex (Catch m h) () nf
 valueNotRedex (unlabel x t) () nf
-valueNotRedex (f $ˡ Γ , v) () nf
+valueNotRedex ∙ () nf
 
 -- In principle once we prove the bijection between typed and untyped semantics
 -- we can keep only one proof and derive the other.
@@ -79,10 +127,6 @@ determinism (AppL s₁) (AppL s₂) rewrite determinism s₁ s₂ = refl
 determinism (AppL ()) Beta
 determinism Beta (AppL ())
 determinism Beta Beta = refl
-determinism (AppLˡ s₁) (AppLˡ s₂) rewrite determinism s₁ s₂ = refl
-determinism (AppLˡ ()) Betaˡ
-determinism Betaˡ (AppLˡ ())
-determinism Betaˡ Betaˡ = refl
 determinism Lookup Lookup = refl
 determinism Dist-$ Dist-$ = refl
 determinism Dist-If Dist-If = refl
@@ -117,6 +161,7 @@ determinism (unlabel p) (unlabel .p) = refl
 determinism (unlabel p) (unlabelCtx .p ())
 determinism (unlabelCtx p ()) (unlabel .p)
 determinism (unlabelCtx p s₁) (unlabelCtx .p s₂) rewrite determinism s₁ s₂ = refl
+determinism Dist-∙ Dist-∙ = refl 
 determinism Hole Hole = refl
 
 preservation : ∀ {τ} {c₁ c₂ : CTerm τ} -> c₁ ⟼ c₂ -> τ ≡ τ
