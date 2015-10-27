@@ -8,7 +8,13 @@ open import Untyped.Proofs
 open import Conversion.Base
 open import Relation.Binary.PropositionalEquality
 
--- Equivalence between typed and untyped terms
+--------------------------------------------------------------------------------
+-- Soundness results
+--------------------------------------------------------------------------------
+
+-- Soundness for typed terms
+
+-- A typed term preserves its type when converted.
 sound-⌞_⌟ : ∀ {τ Δ} -> (t : Termᵗ Δ τ) -> Δ ⊢ ⌞ t ⌟ ∷ τ
 sound-⌞ True ⌟ = True
 sound-⌞ False ⌟ = False
@@ -29,7 +35,7 @@ sound-⌞ unlabel x t ⌟ = unlabel x (sound-⌞ t ⌟)
 sound-⌞ ∙ ⌟ = ∙
 
 -- Soundness
--- Converted typed closed term preserve type 
+-- A typed closed term preserves its type when converted 
 sound-⟦_⟧  : ∀ {τ} -> (c : CTermᵗ τ) -> ⟦ c ⟧ :: τ
 sound-map⟦_⟧ : ∀ {Δ} -> (Γ : Envᵗ Δ) -> TEnv Δ map⟦ Γ ⟧
 
@@ -45,13 +51,21 @@ sound-map⟦ [] ⟧ = []
 sound-map⟦ x ∷ Γ ⟧ = sound-⟦ x ⟧ ∷ sound-map⟦ Γ ⟧
 
 --------------------------------------------------------------------------------
+
+-- The soundness proofs for the untyped terms are implicit in the
+-- conversion functionsm because their signatures
+-- already guarantees that they produce typed terms (CTermᵗ, Envᵗ and Termᵗ)  
+-- of the right type.
+
+--------------------------------------------------------------------------------
 -- Completeness results
 --------------------------------------------------------------------------------
 
--- Typed to untyped conversion
+-- Completeness for typed terms 
 
--- Simple terms
-complete-⌞_⌟ : ∀ {Δ τ} -> (t : Termᵗ Δ τ) -> ⌜ sound-⌞ t ⌟ ⌝ ≡ t
+-- ⌜_⌝ ∘ ⌞_⌟ ≡ id
+complete-⌞_⌟ : ∀ {Δ τ} -> (t : Termᵗ Δ τ) -> 
+               let p = sound-⌞ t ⌟ in ⌜ ⌞ t ⌟ ⌝ ≡ t
 complete-⌞ True ⌟ = refl
 complete-⌞ False ⌟ = refl
 complete-⌞ Var x ⌟ = refl
@@ -71,10 +85,13 @@ complete-⌞ unlabel x t ⌟ rewrite complete-⌞ t ⌟ = refl
 complete-⌞ ∙ ⌟ = refl
 
 -- Closed terms
-complete-⟦_⟧  : ∀ {τ} -> (c : CTermᵗ τ) -> ⟪ sound-⟦ c ⟧ ⟫ ≡ c
+-- ⟪_⟫ ∘ ⟦_⟧ ≡ id
+complete-⟦_⟧  : ∀ {τ} -> (c : CTermᵗ τ) -> 
+                let p = sound-⟦ c ⟧ in ⟪ ⟦ c ⟧ ⟫ ≡ c
 
 -- Enviroments
-complete-map⟦_⟧ : ∀ {Δ} -> (Γ : Envᵗ Δ) -> map⟪ sound-map⟦ Γ ⟧ ⟫ ≡ Γ 
+complete-map⟦_⟧ : ∀ {Δ} -> (Γ : Envᵗ Δ) -> 
+                  let p = sound-map⟦ Γ ⟧ in map⟪ map⟦ Γ ⟧ ⟫ ≡ Γ 
 
 complete-⟦ Γ , t ⟧ rewrite complete-map⟦ Γ ⟧ | complete-⌞ t ⌟ = refl
 complete-⟦ f $ x ⟧ rewrite complete-⟦ f ⟧ | complete-⟦ x ⟧ = refl
@@ -87,9 +104,16 @@ complete-⟦ ∙ ⟧ = refl
 complete-map⟦ [] ⟧ = refl
 complete-map⟦ x ∷ Γ ⟧ rewrite complete-⟦ x ⟧ | complete-map⟦ Γ ⟧ = refl
 
--- Untyped to typed conversion
+--------------------------------------------------------------------------------
 
-complete-⌜_⌝ : ∀ {Δ τ} {t : Termᵘ (length Δ)} -> (p : Δ ⊢ t ∷ τ) -> ⌞ ⌜ p ⌝ ⌟ ≡ t
+-- Completness for untyped terms
+-- Unfortunately not always the instance arguments are not resolved in the 
+-- signatures so I need to pass them explicitly.
+-- I provided the uncluttered version in a comment
+
+-- ⌞ ⌜ t ⌝ ⌟ ≡ t
+-- ⌞_⌟ ∘ ⌜_⌝ ≡ id
+complete-⌜_⌝ : ∀ {Δ τ} {t : Termᵘ (length Δ)} -> (p : Δ ⊢ t ∷ τ) -> ⌞ ⌜_⌝ t {{p}} ⌟ ≡ t 
 complete-⌜ True ⌝ = refl
 complete-⌜ False ⌝ = refl
 complete-⌜ App f x ⌝ rewrite complete-⌜ f ⌝ | complete-⌜ x ⌝ = refl
@@ -108,8 +132,12 @@ complete-⌜ unlabel x t ⌝ rewrite complete-⌜ t ⌝ = refl
 complete-⌜ Res t ⌝ rewrite complete-⌜ t ⌝ = refl
 complete-⌜ ∙ ⌝ = refl
 
-complete-⟪_⟫ : ∀ {τ c} (p : c :: τ) -> ⟦ ⟪ p ⟫ ⟧ ≡ c
-complete-map⟪_⟫ : ∀ {Δ} {Γ : Envᵘ (length Δ)} -> (Γᵗ : TEnv Δ Γ) -> map⟦ map⟪ Γᵗ ⟫ ⟧ ≡ Γ
+-- ⟦ ⟪ c ⟫ ⟧ ≡ c
+-- ⟦_⟧ ∘ ⟪⟫ ≡ id
+complete-⟪_⟫ : ∀ {c τ} (p : c :: τ) -> ⟦ ⟪_⟫ c {{p}} ⟧ ≡ c
+
+-- map⟦ map⟪ c ⟫ ⟧ ≡ c
+complete-map⟪_⟫ : ∀ {Δ} {Γ : Envᵘ (length Δ)} -> (Γᵗ : TEnv Δ Γ) -> map⟦ map⟪_⟫ Γ {{Γᵗ}} ⟧ ≡ Γ
 
 complete-map⟪ [] ⟫ = refl
 complete-map⟪ c ∷ Γ ⟫ rewrite complete-⟪ c ⟫ | complete-map⟪ Γ ⟫ = refl 
@@ -126,12 +154,14 @@ complete-⟪ ∙ ⟫ = refl
 -- Equivalence between small step semantics
 --------------------------------------------------------------------------------
 
-lookup⟪_,_⟫ : ∀ {Δ τ} {Γ : Envᵘ (length Δ)} (Γᵗ : TEnv Δ Γ) (p : τ ∈ Δ) -> ⟪ lookup-fin p Γᵗ ⟫ ≡ p !! map⟪ Γᵗ ⟫
+lookup⟪_,_⟫ : ∀ {Δ τ} {Γ : Envᵘ (length Δ)} (Γᵗ : TEnv Δ Γ) (x : τ ∈ Δ) ->
+              let p = lookup-fin x Γᵗ in ⟪ lookup (fin x) Γ ⟫ ≡ x !! map⟪ Γ ⟫
 lookup⟪ x ∷ Γᵗ , Here ⟫ = refl
 lookup⟪ x ∷ Γᵗ , There p ⟫ rewrite lookup⟪ Γᵗ , p ⟫ = refl
 
 -- If c₁ ⟼ᵘ c₂ and c₁ is well-typed then we can produce an equivalent typed small step between
-stepᵘᵗ : ∀ {τ} {c₁ c₂ : CTermᵘ} -> (p : c₁ :: τ) -> (s : c₁ ⟼ᵘ c₂) -> ⟪ p ⟫ ⟼ᵗ ⟪ preservation p s ⟫
+stepᵘᵗ : ∀ {τ} {c₁ c₂ : CTermᵘ} -> (p₁ : c₁ :: τ) -> (s : c₁ ⟼ᵘ c₂) -> 
+         let p₂ = preservation p₁ s in ⟪ c₁ ⟫ ⟼ᵗ ⟪ c₂ ⟫
 stepᵘᵗ (p $ p₁) (AppL s) = AppL (stepᵘᵗ p s)
 stepᵘᵗ (Γ , Abs t $ p₁) Beta = Beta
 stepᵘᵗ (Γ , Var p) Lookup rewrite lookup⟪ Γ , p ⟫ = Lookup
@@ -167,7 +197,7 @@ stepᵘᵗ ∙ Hole = Hole
 
 -- Just a better looking entry point for stepᵘᵗ, where the proof that c₁ is well-typed
 -- is passed as an instance argument
-step⟪_⟫ : ∀ {τ} {c₁ c₂ : CTermᵘ} {{p : c₁ :: τ}} -> (s : c₁ ⟼ᵘ c₂) -> ⟪ p ⟫ ⟼ᵗ ⟪ preservation p s ⟫
+step⟪_⟫ : ∀ {τ} {c₁ c₂ : CTermᵘ} {{p : c₁ :: τ}} -> (s : c₁ ⟼ᵘ c₂) -> ⟪ c₁ ⟫ ⟼ᵗ ⟪ c₂ ⟫
 step⟪_⟫ {{p}} s = stepᵘᵗ p s
 
 -- It is possible instead to safely remove types from the typed small step semantics
@@ -205,3 +235,4 @@ step⟦ Dist-∙ ⟧ = Dist-∙
 step⟦ Hole ⟧ = Hole
 
 --------------------------------------------------------------------------------
+

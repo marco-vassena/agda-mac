@@ -64,36 +64,32 @@ convertᵘᵗ (unlabel x t) = unlabel x (convertᵘᵗ t)
 convertᵘᵗ (Res t) = Res (convertᵘᵗ t)
 convertᵘᵗ ∙ = ∙
 
-⌜_⌝ : ∀ {Δ τ} {t : Termᵘ (length Δ)} -> Δ ⊢ t ∷ τ -> Termᵗ Δ τ
-⌜ True ⌝ = True
-⌜ False ⌝ = False
-⌜ App f x ⌝ = App ⌜ f ⌝ ⌜ x ⌝
-⌜ Abs t ⌝ = Abs ⌜ t ⌝
-⌜ Var p ⌝ = Var p
-⌜ If c Then t Else e ⌝ = If ⌜ c ⌝ Then ⌜ t ⌝ Else ⌜ e ⌝
-⌜ Return t ⌝ = Return ⌜ t ⌝
-⌜ m >>= k ⌝ = ⌜ m ⌝ >>= ⌜ k ⌝
-⌜ ξ ⌝ = ξ
-⌜ Throw t ⌝ = Throw ⌜ t ⌝
-⌜ Catch m h ⌝ = Catch ⌜ m ⌝ ⌜ h ⌝
-⌜ Mac t ⌝ = Mac ⌜ t ⌝
-⌜ Macₓ t ⌝ = Macₓ ⌜ t ⌝
-⌜ label p t ⌝ = label p ⌜ t ⌝
-⌜ unlabel x t ⌝ = unlabel x ⌜ t ⌝
-⌜ Res t ⌝ = Res ⌜ t ⌝
-⌜ ∙ ⌝ = ∙
+-- Just a better looking for the conversion function convertᵘᵗ in which
+-- the typing judgment is passed as an instance argument
+⌜_⌝ : ∀ {Δ τ} (t : Termᵘ (length Δ)) ->{{p : Δ ⊢ t ∷ τ}} -> Termᵗ Δ τ
+⌜_⌝ _ {{p}} = convertᵘᵗ p
 
--- Conversion for closed untyped term
-⟪_⟫ : ∀ {τ c} -> c :: τ -> CTermᵗ τ
-map⟪_⟫ : ∀ {Δ} {Γ : Envᵘ (length Δ)} -> TEnv Δ Γ -> Envᵗ Δ
+-- Conversion from well-typed closed term to typed closed term
+convertCᵘᵗ : ∀ {τ c} -> c :: τ -> CTermᵗ τ
 
-⟪ Γ , t ⟫ = map⟪ Γ ⟫ , ⌜ t ⌝
-⟪ f $ x ⟫ = ⟪ f ⟫ $ ⟪ x ⟫
-⟪ If c Then t Else e ⟫ = If ⟪ c ⟫ Then ⟪ t ⟫ Else ⟪ e ⟫
-⟪ m >>= k ⟫ = ⟪ m ⟫ >>= ⟪ k ⟫
-⟪ Catch m k ⟫ = Catch ⟪ m ⟫ ⟪ k ⟫
-⟪ unlabel x c ⟫ = unlabel x ⟪ c ⟫
-⟪ ∙ ⟫ = ∙ 
+-- Conversion from well-typed enviroment to typed environment
+convertEnvᵘᵗ : ∀ {Δ} {Γ : Envᵘ (length Δ)} -> TEnv Δ Γ -> Envᵗ Δ
 
-map⟪ [] ⟫ = []
-map⟪ x ∷ Γ ⟫ = ⟪ x ⟫ ∷ map⟪ Γ ⟫
+convertCᵘᵗ (Γ , t) = convertEnvᵘᵗ Γ , convertᵘᵗ t
+convertCᵘᵗ (f $ x) = (convertCᵘᵗ f) $ (convertCᵘᵗ x)
+convertCᵘᵗ (If c Then t Else e) = If (convertCᵘᵗ c) Then (convertCᵘᵗ t) Else (convertCᵘᵗ e)
+convertCᵘᵗ (m >>= k) = (convertCᵘᵗ m) >>= (convertCᵘᵗ k)
+convertCᵘᵗ (Catch m h) = Catch (convertCᵘᵗ m) (convertCᵘᵗ h)
+convertCᵘᵗ (unlabel x c) = unlabel x (convertCᵘᵗ c)
+convertCᵘᵗ ∙ = ∙
+
+convertEnvᵘᵗ [] = []
+convertEnvᵘᵗ (c ∷ Γ) = (convertCᵘᵗ c) ∷ (convertEnvᵘᵗ Γ)
+
+-- Better looking entry points for conversion functions in which
+-- the well-typedness proof is passed as an implicit parameter
+⟪_⟫ : ∀ {{τ}} -> (c : CTermᵘ) -> {{p : c :: τ}} -> CTermᵗ τ
+⟪_⟫ _ {{p}} = convertCᵘᵗ p
+
+map⟪_⟫ : ∀ {Δ} -> (Γ : Envᵘ (length Δ)) -> {{p : TEnv Δ Γ}} -> Envᵗ Δ
+map⟪_⟫ _ {{p}} = convertEnvᵘᵗ p
