@@ -1,31 +1,12 @@
-module Misc where
+module Conversion.Proofs where
 
 open import Typed.Base renaming (Term to Termᵗ ; CTerm to CTermᵗ ; Env to Envᵗ)
 open import Typed.Semantics renaming (_⟼_ to _⟼ᵗ_)
 open import Untyped.Base renaming (Term to Termᵘ ; CTerm to CTermᵘ ; Env to Envᵘ)
 open import Untyped.Semantics renaming (_⟼_ to _⟼ᵘ_)
 open import Untyped.Proofs
+open import Conversion.Base
 open import Relation.Binary.PropositionalEquality
-
--- Untype function
-⌞_⌟ : ∀ {τ Δ} -> Termᵗ Δ τ -> Termᵘ (length Δ)
-⌞ True ⌟ = True
-⌞ False ⌟ = False
-⌞ Var x ⌟ = Var (fin x)
-⌞ Abs t ⌟ = Abs ⌞ t ⌟
-⌞ App f x ⌟ = App ⌞ f ⌟ ⌞ x ⌟
-⌞ If c Then t Else e ⌟ = If ⌞ c ⌟ Then ⌞ t ⌟ Else ⌞ e ⌟
-⌞ Return t ⌟ = Return ⌞ t ⌟
-⌞ m >>= k ⌟ = ⌞ m ⌟ >>= ⌞ k ⌟
-⌞ ξ ⌟ = ξ
-⌞ Throw t ⌟ = Throw ⌞ t ⌟
-⌞ Catch m h ⌟ = Catch ⌞ m ⌟ ⌞ h ⌟
-⌞ Mac t ⌟ = Mac ⌞ t ⌟
-⌞ Macₓ t ⌟ = Macₓ ⌞ t ⌟
-⌞ Res {{l}} t ⌟ = Res l ⌞ t ⌟
-⌞ label x t ⌟ = label x ⌞ t ⌟
-⌞ unlabel x t ⌟ = unlabel ⌞ t ⌟
-⌞ ∙ ⌟ = ∙
 
 -- Equivalence between typed and untyped terms
 sound-⌞_⌟ : ∀ {τ Δ} -> (t : Termᵗ Δ τ) -> Δ ⊢ ⌞ t ⌟ ∷ τ
@@ -47,20 +28,6 @@ sound-⌞ label x t ⌟ = label x (sound-⌞ t ⌟)
 sound-⌞ unlabel x t ⌟ = unlabel x (sound-⌞ t ⌟)
 sound-⌞ ∙ ⌟ = ∙
 
-⟦_⟧ : ∀ {τ} -> CTermᵗ τ -> CTermᵘ
-map⟦_⟧ : ∀ {Δ} -> Envᵗ Δ -> Envᵘ (length Δ)
-
-⟦ Γ , t ⟧ = map⟦ Γ ⟧ , ⌞ t ⌟
-⟦ f $ x ⟧ = ⟦ f ⟧ $ ⟦ x ⟧
-⟦ If c Then t Else e ⟧ = If ⟦ c ⟧ Then ⟦ t ⟧ Else ⟦ e ⟧
-⟦ m >>= k ⟧ = ⟦ m ⟧ >>= ⟦ k ⟧
-⟦ Catch m h ⟧ = Catch ⟦ m ⟧ ⟦ h ⟧
-⟦ unlabel x c ⟧ = unlabel ⟦ c ⟧
-⟦ ∙ ⟧ = ∙
-
-map⟦ [] ⟧ = []
-map⟦ x ∷ Γ ⟧ = ⟦ x ⟧ ∷ map⟦ Γ ⟧
-
 -- Soundness
 -- Converted typed closed term preserve type 
 sound-⟦_⟧  : ∀ {τ} -> (c : CTermᵗ τ) -> ⟦ c ⟧ :: τ
@@ -76,42 +43,6 @@ sound-⟦ ∙ ⟧ = ∙
 
 sound-map⟦ [] ⟧ = []
 sound-map⟦ x ∷ Γ ⟧ = sound-⟦ x ⟧ ∷ sound-map⟦ Γ ⟧
-
---------------------------------------------------------------------------------
-
-⌜_⌝ : ∀ {Δ τ} {t : Termᵘ (length Δ)} -> Δ ⊢ t ∷ τ -> Termᵗ Δ τ
-⌜ True ⌝ = True
-⌜ False ⌝ = False
-⌜ App f x ⌝ = App ⌜ f ⌝ ⌜ x ⌝
-⌜ Abs t ⌝ = Abs ⌜ t ⌝
-⌜ Var p ⌝ = Var p
-⌜ If c Then t Else e ⌝ = If ⌜ c ⌝ Then ⌜ t ⌝ Else ⌜ e ⌝
-⌜ Return t ⌝ = Return ⌜ t ⌝
-⌜ m >>= k ⌝ = ⌜ m ⌝ >>= ⌜ k ⌝
-⌜ ξ ⌝ = ξ
-⌜ Throw t ⌝ = Throw ⌜ t ⌝
-⌜ Catch m h ⌝ = Catch ⌜ m ⌝ ⌜ h ⌝
-⌜ Mac t ⌝ = Mac ⌜ t ⌝
-⌜ Macₓ t ⌝ = Macₓ ⌜ t ⌝
-⌜ label p t ⌝ = label p ⌜ t ⌝
-⌜ unlabel x t ⌝ = unlabel x ⌜ t ⌝
-⌜ Res t ⌝ = Res ⌜ t ⌝
-⌜ ∙ ⌝ = ∙
-
--- Conversion for closed untyped term
-⟪_⟫ : ∀ {τ c} -> c :: τ -> CTermᵗ τ
-map⟪_⟫ : ∀ {Δ} {Γ : Envᵘ (length Δ)} -> TEnv Δ Γ -> Envᵗ Δ
-
-⟪ Γ , t ⟫ = map⟪ Γ ⟫ , ⌜ t ⌝
-⟪ f $ x ⟫ = ⟪ f ⟫ $ ⟪ x ⟫
-⟪ If c Then t Else e ⟫ = If ⟪ c ⟫ Then ⟪ t ⟫ Else ⟪ e ⟫
-⟪ m >>= k ⟫ = ⟪ m ⟫ >>= ⟪ k ⟫
-⟪ Catch m k ⟫ = Catch ⟪ m ⟫ ⟪ k ⟫
-⟪ unlabel x c ⟫ = unlabel x ⟪ c ⟫
-⟪ ∙ ⟫ = ∙ 
-
-map⟪ [] ⟫ = []
-map⟪ x ∷ Γ ⟫ = ⟪ x ⟫ ∷ map⟪ Γ ⟫
 
 --------------------------------------------------------------------------------
 -- Completeness results
