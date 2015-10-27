@@ -22,7 +22,7 @@ progress (Γ , Macₓ e) = inj₂ tt
 progress (Γ , label p t) = inj₁ (Step (label p))
 progress (Γ , unlabel p t) = inj₁ (Step Dist-unlabel)
 progress (Γ , Res t) = inj₂ tt
-progress (Γ , ∙) = inj₁ (Step Hole)
+progress (Γ , ∙) = inj₁ (Step Dist-∙)
 progress (f $ x) with progress f
 progress (f $ x) | inj₁ (Step s) = inj₁ (Step (AppL s))
 progress (Γ₁ , App f f₁ $ x₁) | inj₂ ()
@@ -94,7 +94,7 @@ progress (unlabel x (Γ₁ , ∙)) | inj₂ ()
 progress (unlabel x (t₁ $ t₂)) | inj₂ ()
 progress (unlabel x (If t₁ Then t₂ Else t₃)) | inj₂ ()
 progress (unlabel x ∙) | inj₂ ()
-progress ∙ = inj₁ (Step Hole')
+progress ∙ = inj₁ (Step Hole)
 
 -- Lemma.
 -- Values are not reducible.
@@ -166,34 +166,40 @@ determinism unlabel unlabel = refl
 determinism unlabel (unlabelCtx ())
 determinism (unlabelCtx ()) unlabel
 determinism (unlabelCtx s₁) (unlabelCtx s₂) rewrite determinism s₁ s₂ = refl
+determinism Dist-∙ Dist-∙ = refl
 determinism Hole Hole = refl
-determinism Hole' Hole' = refl
+
+-- Typed id cterm
+idᵗ : ∀ {Δ τ} {Γ : Env (length Δ)} {{Γᵗ : TEnv Δ Γ}} -> id {{n = length Δ}} :: (τ => τ)
+idᵗ {{Γᵗ = Γᵗ}} = Γᵗ , Abs (Var Here)
+  
+lookup-fin : ∀ {τ Δ} {Γ : Env (length Δ)} (p : τ ∈ Δ) (Γᵗ : TEnv Δ Γ) -> lookup (fin p) Γ :: τ 
+lookup-fin Here (x ∷ Γ) = x
+lookup-fin (There p) (x ∷ Γ) = lookup-fin p Γ
 
 -- A well-typed closed term when reduced preserves its type.
 preservation : ∀ {τ} {c₁ c₂ : CTerm} -> c₁ :: τ -> c₁ ⟼ c₂ -> c₂ :: τ
 preservation (f $ x) (AppL s) = preservation f s $ x
-preservation (Γ , Abs t $ x) Beta = x ∷ Γ , t
-preservation ([] , Var ()) Lookup
-preservation (x ∷ Γ , Var Here) Lookup = x
-preservation (x ∷ Γ , Var (There p)) Lookup = preservation (Γ , Var p) Lookup
+preservation (Γ , Abs t $ x) Beta = idᵗ $ x ∷ Γ , t
+preservation (Γ , Var p) (Lookup {Γ = Γ'}) = idᵗ $ lookup-fin p Γ
 preservation (Γ , App f x) Dist-$ = Γ , f $ Γ , x
 preservation (Γ , (If c Then t Else e)) Dist-If = If Γ , c Then Γ , t Else (Γ , e)
 preservation (If c Then t Else e) (IfCond s) = If preservation c s Then t Else e
-preservation (If Γ , True Then t₂ Else t₃) IfTrue = t₂
-preservation (If Γ , False Then t₂ Else t₃) IfFalse = t₃
-preservation (Γ , Return t) Return = Γ , (Mac t)
+preservation (If Γ , True Then t₂ Else t₃) IfTrue = idᵗ $ t₂
+preservation (If Γ , False Then t₂ Else t₃) IfFalse = idᵗ $ t₃ 
+preservation (Γ , Return t) Return = idᵗ $ Γ , (Mac t)
 preservation (Γ , m >>= k) Dist->>= = (Γ , m) >>= (Γ , k)
 preservation (m >>= k) (BindCtx s) = preservation m s >>= k
 preservation ((Γ , Mac m) >>= k) Bind = k $ Γ , m
-preservation ((Γ , Macₓ e) >>= k) BindEx = Γ , (Throw e)
-preservation (Γ , Throw t) Throw = Γ , (Macₓ t)
+preservation ((Γ , Macₓ e) >>= k) BindEx = idᵗ $  Γ , (Throw e)
+preservation (Γ , Throw t) Throw = idᵗ $ Γ , (Macₓ t)
 preservation (Γ , Catch m h) Dist-Catch = Catch (Γ , m) (Γ , h)
 preservation (Catch m h) (CatchCtx s) = Catch (preservation m s) h
-preservation (Catch (Γ , Mac t) h) Catch = Γ , (Return t)
+preservation (Catch (Γ , Mac t) h) Catch = idᵗ $  Γ , (Return t)
 preservation (Catch (Γ , Macₓ t) h) CatchEx = h $ (Γ , t)
-preservation (Γ , label p t) (label .p) = Γ , (Return (Res t))
+preservation (Γ , label p t) (label .p) = idᵗ $  Γ , (Return (Res t))
 preservation (Γ , unlabel x t) Dist-unlabel = unlabel x (Γ , t)
-preservation (unlabel x (Γ , Res t)) unlabel = Γ , (Return t)
+preservation (unlabel x (Γ , Res t)) unlabel = idᵗ $ Γ , (Return t) 
 preservation (unlabel x t) (unlabelCtx s) = unlabel x (preservation t s)
-preservation (Γ , ∙) Hole = Γ , ∙
-preservation ∙ Hole' = ∙
+preservation (Γ , ∙) Dist-∙ = ∙
+preservation ∙ Hole = ∙

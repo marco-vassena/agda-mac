@@ -34,7 +34,7 @@ data Term (n : ℕ) : Set where
   label : ∀ {l h} -> l ⊑ h -> Term n -> Term n -- TODO we need only l for ε 
   unlabel : Term n -> Term n
 
-  --   lErased term
+  --   Erased term
   ∙ : Term n
 
 -- Typing judgments, which define well-typed terms.
@@ -121,8 +121,6 @@ mutual
     unlabel : CTerm -> CTerm
 
     -- Erased closed term
-    -- TODO ∙ is present both as a Term and as a CTerm
-    -- Can we keep it only as a CTerm?
     ∙ : CTerm
 
   Env : ℕ -> Set

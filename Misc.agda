@@ -76,6 +76,8 @@ convertCᵘ ∙ = ∙
 convertΓᵘ [] = []
 convertΓᵘ (x ∷ Γ) = convertCᵘ x ∷ convertΓᵘ Γ
 
+--------------------------------------------------------------------------------
+
 -- Convertion in the opposite direction, from untyped to typed
 ⌜_⌝ : ∀ {Δ τ} {t : Termᵘ (length Δ)} -> Δ ⊢ t ∷ τ -> Termᵗ Δ τ
 ⌜ True ⌝ = True
@@ -109,26 +111,55 @@ map⟪_⟫ : ∀ {Δ} {Γ : Envᵘ (length Δ)} -> TEnv Δ Γ -> Envᵗ Δ
 ⟪ ∙ ⟫ = ∙ 
 
 map⟪ [] ⟫ = []
-map⟪ x ∷ Γ ⟫ = ∙ ∷ map⟪ Γ ⟫
+map⟪ x ∷ Γ ⟫ = ⟪ x ⟫ ∷ map⟪ Γ ⟫
 
 --------------------------------------------------------------------------------
 -- Equivalence between small step semantics
 --------------------------------------------------------------------------------
 
--- TODO remove
--- @Ale This lemma cannot be proved and shows how the typed small semantics is strictly more 
--- expressive. In particular in the recursive cases subterms of the typing judgments are not
--- shared.
--- TODO try to use preservation to deduce q from p and the step
--- stepᵘᵗ : ∀ {τ} {c₁ c₂ : CTermᵘ} -> (p : c₁ :: τ) -> c₁ ⟼ᵘ c₂ -> (q : c₂ :: τ) -> ⟪ p ⟫ ⟼ᵗ ⟪ q ⟫
--- stepᵘᵗ (Γ , t) s q = {!!}
--- stepᵘᵗ (p $ p₁) (AppL s) (q $ q₁) = {!AppL ?!}
--- stepᵘᵗ (p $ p₁) Beta q = {!!}
--- stepᵘᵗ (If p Then p₁ Else p₂) s q = {!!}
--- stepᵘᵗ (p >>= p₁) s q = {!!}
--- stepᵘᵗ (Catch p p₁) s q = {!!}
--- stepᵘᵗ (unlabel x p) s q = {!!}
--- stepᵘᵗ ∙ s q = {!!}
+lookup⟪_,_⟫ : ∀ {Δ τ} {Γ : Envᵘ (length Δ)} (Γᵗ : TEnv Δ Γ) (p : τ ∈ Δ) -> ⟪ lookup-fin p Γᵗ ⟫ ≡ p !! map⟪ Γᵗ ⟫
+lookup⟪ x ∷ Γᵗ , Here ⟫ = refl
+lookup⟪ x ∷ Γᵗ , There p ⟫ rewrite lookup⟪ Γᵗ , p ⟫ = refl
+
+-- If c₁ ⟼ᵘ c₂ and c₁ is well-typed then we can produce an equivalent typed small step between
+stepᵘᵗ : ∀ {τ} {c₁ c₂ : CTermᵘ} -> (p : c₁ :: τ) -> (s : c₁ ⟼ᵘ c₂) -> ⟪ p ⟫ ⟼ᵗ ⟪ preservation p s ⟫
+stepᵘᵗ (p $ p₁) (AppL s) = AppL (stepᵘᵗ p s)
+stepᵘᵗ (Γ , Abs t $ p₁) Beta = Beta
+stepᵘᵗ (Γ , Var p) Lookup rewrite lookup⟪ Γ , p ⟫ = Lookup
+stepᵘᵗ (Γ , App t t₃) Dist-$ = Dist-$
+stepᵘᵗ (Γ , (If t₃ Then t₄ Else t₅)) Dist-If = Dist-If
+stepᵘᵗ (If p Then p₁ Else p₂) (IfCond s) = IfCond (stepᵘᵗ p s)
+stepᵘᵗ (If Γ , True Then p₁ Else p₂) IfTrue = IfTrue
+stepᵘᵗ (If Γ , False Then p₁ Else p₂) IfFalse = IfFalse
+stepᵘᵗ (Γ , Return t₁) Return = Return
+stepᵘᵗ (Γ , t >>= t₁) Dist->>= = Dist->>=
+stepᵘᵗ (p >>= p₁) (BindCtx s) = BindCtx (stepᵘᵗ p s)
+stepᵘᵗ ((Γ , Mac t₁) >>= p₁) Bind = Bind
+stepᵘᵗ ((Γ , Macₓ t₁) >>= p₁) BindEx = BindEx
+stepᵘᵗ (Γ , Throw t) Throw = Throw
+stepᵘᵗ (Γ , Catch t₁ t₂) Dist-Catch = Dist-Catch
+stepᵘᵗ (Catch p p₁) (CatchCtx s) = CatchCtx (stepᵘᵗ p s)
+stepᵘᵗ (Catch (Γ , Mac t₁) p₁) Catch = Catch
+stepᵘᵗ (Catch (Γ , Macₓ t₁) p₁) CatchEx = CatchEx
+stepᵘᵗ (Γ , label p t₁) (label .p) = label p
+stepᵘᵗ (Γ , unlabel x t₁) Dist-unlabel = Dist-unlabel x
+stepᵘᵗ (unlabel x (Γ , Res t₁)) unlabel = unlabel x
+stepᵘᵗ (unlabel x (Γ , App t t₃)) (unlabelCtx Dist-$) = unlabelCtx x Dist-$
+stepᵘᵗ (unlabel x (Γ , Var p)) (unlabelCtx Lookup) = unlabelCtx x (stepᵘᵗ (Γ , Var p) Lookup )
+stepᵘᵗ (unlabel x (Γ , (If t Then t₄ Else t₅))) (unlabelCtx Dist-If) = unlabelCtx x Dist-If
+stepᵘᵗ (unlabel x (Γ , Res t₁)) (unlabelCtx ())
+stepᵘᵗ (unlabel x (Γ , ∙)) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ (Γ , ∙) s)
+stepᵘᵗ (unlabel x (p $ p₁)) (unlabelCtx (AppL s)) = unlabelCtx x (AppL (stepᵘᵗ p s))
+stepᵘᵗ (unlabel x (p $ p₁)) (unlabelCtx Beta) = unlabelCtx x (stepᵘᵗ (p $ p₁) Beta)
+stepᵘᵗ (unlabel x (If p Then p₁ Else p₂)) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ (If p Then p₁ Else p₂) s)
+stepᵘᵗ (unlabel x ∙) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ ∙ s)
+stepᵘᵗ (Γ , ∙) Dist-∙ = Dist-∙
+stepᵘᵗ ∙ Hole = Hole
+
+-- Just a better looking entry point for stepᵘᵗ, where the proof that c₁ is well-typed
+-- is passed as an instance argument
+step⟪_⟫ : ∀ {τ} {c₁ c₂ : CTermᵘ} {{p : c₁ :: τ}} -> (s : c₁ ⟼ᵘ c₂) -> ⟪ p ⟫ ⟼ᵗ ⟪ preservation p s ⟫
+step⟪_⟫ {{p}} s = stepᵘᵗ p s
 
 -- It is possible instead to safely remove types from the typed small step semantics
 -- and retrieve the untyped semantics
@@ -141,7 +172,7 @@ lookup⟦_⟧ {{Γ = x ∷ Γ}} (There p) rewrite lookup⟦ p ⟧ = refl
 
 step⟦ AppL s ⟧ = AppL step⟦ s ⟧
 step⟦ Beta ⟧ = Beta
-step⟦_⟧ {_} {c₁ = Γ , Var p} Lookup rewrite lookup⟦ p ⟧ = Lookup
+step⟦_⟧ {c₁ = Γ , Var p} Lookup rewrite lookup⟦ p ⟧ = Lookup
 step⟦ Dist-$ ⟧ = Dist-$
 step⟦ Dist-If ⟧ = Dist-If
 step⟦ IfCond s ⟧ = IfCond step⟦ s ⟧
@@ -158,8 +189,8 @@ step⟦ CatchCtx s ⟧ = CatchCtx step⟦ s ⟧
 step⟦ Catch ⟧ = Catch
 step⟦ CatchEx ⟧ = CatchEx
 step⟦ label p ⟧ = label p
-step⟦ Dist-unlabel ⟧ = Dist-unlabel
-step⟦ unlabel ⟧ = unlabel
-step⟦ unlabelCtx s ⟧ = unlabelCtx step⟦ s ⟧
+step⟦ Dist-unlabel p ⟧ = Dist-unlabel
+step⟦ unlabel p ⟧ = unlabel
+step⟦ unlabelCtx p s ⟧ = unlabelCtx step⟦ s ⟧
+step⟦ Dist-∙ ⟧ = Dist-∙
 step⟦ Hole ⟧ = Hole
-step⟦ Hole' ⟧ = Hole'
