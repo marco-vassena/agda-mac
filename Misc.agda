@@ -28,24 +28,24 @@ open import Relation.Binary.PropositionalEquality
 ⌞ ∙ ⌟ = ∙
 
 -- Equivalence between typed and untyped terms
-convert : ∀ {τ Δ} -> (t : Termᵗ Δ τ) -> Δ ⊢ ⌞ t ⌟ ∷ τ
-convert True = True
-convert False = False
-convert (Var x) = Var x
-convert (Abs t) = Abs (convert t)
-convert (App t t₁) = App (convert t) (convert t₁)
-convert (If t Then t₁ Else t₂) = If convert t Then convert t₁ Else convert t₂
-convert (Return t) = Return (convert t)
-convert (t >>= t₁) = convert t >>= convert t₁
-convert ξ = ξ
-convert (Throw t) = Throw (convert t)
-convert (Catch t t₁) = Catch (convert t) (convert t₁)
-convert (Mac t) = Mac (convert t)
-convert (Macₓ t) = Macₓ (convert t)
-convert (Res t) = Res (convert t)
-convert (label x t) = label x (convert t)
-convert (unlabel x t) = unlabel x (convert t)
-convert ∙ = ∙
+sound-⌞_⌟ : ∀ {τ Δ} -> (t : Termᵗ Δ τ) -> Δ ⊢ ⌞ t ⌟ ∷ τ
+sound-⌞ True ⌟ = True
+sound-⌞ False ⌟ = False
+sound-⌞ Var x ⌟ = Var x
+sound-⌞ Abs t ⌟ = Abs (sound-⌞ t ⌟)
+sound-⌞ App t t₁ ⌟ = App (sound-⌞ t ⌟) (sound-⌞ t₁ ⌟)
+sound-⌞ If t Then t₁ Else t₂ ⌟ = If sound-⌞ t ⌟ Then sound-⌞ t₁ ⌟ Else sound-⌞ t₂ ⌟
+sound-⌞ Return t ⌟ = Return (sound-⌞ t ⌟)
+sound-⌞ t >>= t₁ ⌟ = sound-⌞ t ⌟ >>= sound-⌞ t₁ ⌟
+sound-⌞ ξ ⌟ = ξ
+sound-⌞ Throw t ⌟ = Throw (sound-⌞ t ⌟)
+sound-⌞ Catch t t₁ ⌟ = Catch (sound-⌞ t ⌟) (sound-⌞ t₁ ⌟)
+sound-⌞ Mac t ⌟ = Mac (sound-⌞ t ⌟)
+sound-⌞ Macₓ t ⌟ = Macₓ (sound-⌞ t ⌟)
+sound-⌞ Res t ⌟ = Res (sound-⌞ t ⌟)
+sound-⌞ label x t ⌟ = label x (sound-⌞ t ⌟)
+sound-⌞ unlabel x t ⌟ = unlabel x (sound-⌞ t ⌟)
+sound-⌞ ∙ ⌟ = ∙
 
 ⟦_⟧ : ∀ {τ} -> CTermᵗ τ -> CTermᵘ
 map⟦_⟧ : ∀ {Δ} -> Envᵗ Δ -> Envᵘ (length Δ)
@@ -61,24 +61,24 @@ map⟦_⟧ : ∀ {Δ} -> Envᵗ Δ -> Envᵘ (length Δ)
 map⟦ [] ⟧ = []
 map⟦ x ∷ Γ ⟧ = ⟦ x ⟧ ∷ map⟦ Γ ⟧
 
--- Convert closed term
-convertCᵘ  : ∀ {τ} -> (c : CTermᵗ τ) -> ⟦ c ⟧ :: τ
-convertΓᵘ : ∀ {Δ} -> (Γ : Envᵗ Δ) -> TEnv Δ map⟦ Γ ⟧
+-- Soundness
+-- Converted typed closed term preserve type 
+sound-⟦_⟧  : ∀ {τ} -> (c : CTermᵗ τ) -> ⟦ c ⟧ :: τ
+sound-map⟦_⟧ : ∀ {Δ} -> (Γ : Envᵗ Δ) -> TEnv Δ map⟦ Γ ⟧
 
-convertCᵘ (Γ , t) = (convertΓᵘ Γ) , convert t
-convertCᵘ (f $ x) = (convertCᵘ f) $ (convertCᵘ x)
-convertCᵘ (If c Then t Else e) = If (convertCᵘ c) Then (convertCᵘ t) Else (convertCᵘ e)
-convertCᵘ (m >>= k) = (convertCᵘ m) >>= (convertCᵘ k)
-convertCᵘ (Catch m h) = Catch (convertCᵘ m) (convertCᵘ h)
-convertCᵘ (unlabel x c) = unlabel x (convertCᵘ c)
-convertCᵘ ∙ = ∙
+sound-⟦ Γ , t ⟧ = sound-map⟦ Γ ⟧ , sound-⌞ t ⌟
+sound-⟦ f $ x ⟧ = sound-⟦ f ⟧ $ sound-⟦ x ⟧
+sound-⟦ (If c Then t Else e) ⟧ = If sound-⟦ c ⟧ Then sound-⟦ t ⟧ Else sound-⟦ e ⟧
+sound-⟦ m >>= k ⟧ = (sound-⟦_⟧ m) >>= (sound-⟦ k ⟧)
+sound-⟦ Catch m h ⟧ = Catch (sound-⟦_⟧ m) (sound-⟦ h ⟧)
+sound-⟦ unlabel x c ⟧ = unlabel x (sound-⟦ c ⟧)
+sound-⟦ ∙ ⟧ = ∙
 
-convertΓᵘ [] = []
-convertΓᵘ (x ∷ Γ) = convertCᵘ x ∷ convertΓᵘ Γ
+sound-map⟦ [] ⟧ = []
+sound-map⟦ x ∷ Γ ⟧ = sound-⟦ x ⟧ ∷ sound-map⟦ Γ ⟧
 
 --------------------------------------------------------------------------------
 
--- Convertion in the opposite direction, from untyped to typed
 ⌜_⌝ : ∀ {Δ τ} {t : Termᵘ (length Δ)} -> Δ ⊢ t ∷ τ -> Termᵗ Δ τ
 ⌜ True ⌝ = True
 ⌜ False ⌝ = False
@@ -112,6 +112,84 @@ map⟪_⟫ : ∀ {Δ} {Γ : Envᵘ (length Δ)} -> TEnv Δ Γ -> Envᵗ Δ
 
 map⟪ [] ⟫ = []
 map⟪ x ∷ Γ ⟫ = ⟪ x ⟫ ∷ map⟪ Γ ⟫
+
+--------------------------------------------------------------------------------
+-- Completeness results
+--------------------------------------------------------------------------------
+
+-- Typed to untyped conversion
+
+-- Simple terms
+complete-⌞_⌟ : ∀ {Δ τ} -> (t : Termᵗ Δ τ) -> ⌜ sound-⌞ t ⌟ ⌝ ≡ t
+complete-⌞ True ⌟ = refl
+complete-⌞ False ⌟ = refl
+complete-⌞ Var x ⌟ = refl
+complete-⌞ Abs t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ App f x ⌟ rewrite complete-⌞ f ⌟ | complete-⌞ x ⌟ = refl
+complete-⌞ If c Then t Else e ⌟ rewrite complete-⌞ c ⌟ | complete-⌞ t ⌟ | complete-⌞ e ⌟ = refl
+complete-⌞ Return t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ m >>= k ⌟ rewrite complete-⌞ m ⌟ | complete-⌞ k ⌟ = refl
+complete-⌞ ξ ⌟ = refl
+complete-⌞ Throw t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ Catch m k ⌟ rewrite complete-⌞ m ⌟ | complete-⌞ k ⌟ = refl
+complete-⌞ Mac t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ Macₓ t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ Res t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ label x t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ unlabel x t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ ∙ ⌟ = refl
+
+-- Closed terms
+complete-⟦_⟧  : ∀ {τ} -> (c : CTermᵗ τ) -> ⟪ sound-⟦ c ⟧ ⟫ ≡ c
+
+-- Enviroments
+complete-map⟦_⟧ : ∀ {Δ} -> (Γ : Envᵗ Δ) -> map⟪ sound-map⟦ Γ ⟧ ⟫ ≡ Γ 
+
+complete-⟦ Γ , t ⟧ rewrite complete-map⟦ Γ ⟧ | complete-⌞ t ⌟ = refl
+complete-⟦ f $ x ⟧ rewrite complete-⟦ f ⟧ | complete-⟦ x ⟧ = refl
+complete-⟦ If c Then t Else e ⟧ rewrite complete-⟦ c ⟧ | complete-⟦ t ⟧ | complete-⟦ e ⟧ = refl
+complete-⟦ m >>= k ⟧ rewrite complete-⟦ m ⟧ | complete-⟦ k ⟧ = refl
+complete-⟦ Catch m h ⟧ rewrite complete-⟦ m ⟧ | complete-⟦ h ⟧ = refl
+complete-⟦ unlabel x c ⟧ rewrite complete-⟦ c ⟧ = refl
+complete-⟦ ∙ ⟧ = refl
+
+complete-map⟦ [] ⟧ = refl
+complete-map⟦ x ∷ Γ ⟧ rewrite complete-⟦ x ⟧ | complete-map⟦ Γ ⟧ = refl
+
+-- Untyped to typed conversion
+
+complete-⌜_⌝ : ∀ {Δ τ} {t : Termᵘ (length Δ)} -> (p : Δ ⊢ t ∷ τ) -> ⌞ ⌜ p ⌝ ⌟ ≡ t
+complete-⌜ True ⌝ = refl
+complete-⌜ False ⌝ = refl
+complete-⌜ App f x ⌝ rewrite complete-⌜ f ⌝ | complete-⌜ x ⌝ = refl
+complete-⌜ Abs t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ Var p ⌝ = refl
+complete-⌜ If c Then t Else e ⌝ rewrite complete-⌜ c ⌝ | complete-⌜ t ⌝ | complete-⌜ e ⌝ = refl
+complete-⌜ Return t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ m >>= k ⌝ rewrite complete-⌜ m ⌝ | complete-⌜ k ⌝ = refl
+complete-⌜ ξ ⌝ = refl
+complete-⌜ Throw t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ Catch m h ⌝ rewrite complete-⌜ m ⌝ | complete-⌜ h ⌝ = refl
+complete-⌜ Mac t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ Macₓ t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ label p t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ unlabel x t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ Res t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ ∙ ⌝ = refl
+
+complete-⟪_⟫ : ∀ {τ c} (p : c :: τ) -> ⟦ ⟪ p ⟫ ⟧ ≡ c
+complete-map⟪_⟫ : ∀ {Δ} {Γ : Envᵘ (length Δ)} -> (Γᵗ : TEnv Δ Γ) -> map⟦ map⟪ Γᵗ ⟫ ⟧ ≡ Γ
+
+complete-map⟪ [] ⟫ = refl
+complete-map⟪ c ∷ Γ ⟫ rewrite complete-⟪ c ⟫ | complete-map⟪ Γ ⟫ = refl 
+
+complete-⟪ Γ , t ⟫ rewrite complete-map⟪ Γ ⟫ | complete-⌜ t ⌝ = refl
+complete-⟪ f $ x ⟫ rewrite complete-⟪ f ⟫ | complete-⟪ x ⟫ = refl
+complete-⟪ If c Then t Else e ⟫ rewrite complete-⟪ c ⟫ | complete-⟪ t ⟫ | complete-⟪ e ⟫ = refl
+complete-⟪ m >>= k ⟫ rewrite complete-⟪ m ⟫ | complete-⟪ k ⟫ = refl
+complete-⟪ Catch m h ⟫ rewrite complete-⟪ m ⟫ | complete-⟪ h ⟫ = refl
+complete-⟪ unlabel x c ⟫ rewrite complete-⟪ c ⟫ = refl
+complete-⟪ ∙ ⟫ = refl
 
 --------------------------------------------------------------------------------
 -- Equivalence between small step semantics
@@ -194,3 +272,5 @@ step⟦ unlabel p ⟧ = unlabel
 step⟦ unlabelCtx p s ⟧ = unlabelCtx step⟦ s ⟧
 step⟦ Dist-∙ ⟧ = Dist-∙
 step⟦ Hole ⟧ = Hole
+
+--------------------------------------------------------------------------------

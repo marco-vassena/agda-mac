@@ -56,6 +56,7 @@ open import Relation.Binary.PropositionalEquality
 -- ε l t transform a term t in ∙ if it is above the security level l.
 εᶜ : ∀ {τ} -> Label -> CTerm τ -> CTerm τ
 εᶜ-env : ∀ {Δ} -> Label -> Env Δ -> Env Δ
+<<<<<<< Updated upstream
 
 εᶜ-Mac : ∀ {τ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
 εᶜ-Mac lₐ p (Γ , t) = (εᶜ-env lₐ Γ) , (ε-Mac lₐ p t)
@@ -90,6 +91,52 @@ open import Relation.Binary.PropositionalEquality
 εᶜ lₐ (f $ x) = εᶜ lₐ f $ εᶜ lₐ x
 εᶜ lₐ (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ lₐ t) Else (εᶜ lₐ e)
 εᶜ lₐ ∙ = ∙
+=======
+εᶜ-Labeled : ∀ {τ l₂} -> (l₁ : Label) -> l₁ ⊑ l₂ -> CTerm (Labeled l₂ τ) -> CTerm (Labeled l₂ τ)
+εᶜ-Mac : ∀ {τ l₂} -> (l₁ : Label) -> l₁ ⊑ l₂ -> CTerm (Mac l₂ τ) -> CTerm (Mac l₂ τ)
+εᶜ-Bool : Label -> CTerm Bool -> CTerm Bool
+εᶜ-Excpetion : Label -> CTerm Exception -> CTerm Exception
+εᶜ-Fun : ∀ {α β} -> Label -> CTerm (α => β) -> CTerm (α => β)
+
+εᶜ {Bool} l c = εᶜ-Bool l c
+εᶜ {τ => τ₁} l c = εᶜ-Fun l c
+εᶜ {Mac l₂ τ} l₁ c with l₁ ⊑? l₂
+εᶜ {Mac l₂ τ} l₁ c | yes p = εᶜ-Mac l₁ p c
+εᶜ {Mac l₂ τ} l₁ (Γ , t) | no ¬p = εᶜ-env l₁ Γ , ∙ 
+εᶜ {Mac l₂ τ} l₁ c | no ¬p = ∙
+εᶜ {Labeled l₂ τ} l₁ c with l₁ ⊑? l₂
+εᶜ {Labeled l₂ τ} l₁ c | yes p = εᶜ-Labeled l₁ p c
+εᶜ {Labeled l₂ τ} l₁ c | no ¬p = ∙
+εᶜ {Exception} l c = εᶜ-Excpetion l c
+
+εᶜ-Bool l (Γ , t) = (εᶜ-env l Γ) , (ε-Bool l t)
+εᶜ-Bool l (f $ x) = (εᶜ-Fun l f) $ (εᶜ l x) -- Should I inspect α ? or should I apply homomorphically?
+εᶜ-Bool l (If c Then t Else e) = If (εᶜ-Bool l c) Then (εᶜ-Bool l t) Else εᶜ-Bool l e
+εᶜ-Bool l ∙ = ∙
+
+εᶜ-Excpetion l (Γ , t) = εᶜ-env l Γ , ε-Exception l t
+εᶜ-Excpetion l (f $ x) = (εᶜ-Fun l f) $ (εᶜ l x)
+εᶜ-Excpetion l (If c Then t Else e) = If (εᶜ-Bool l c) Then (εᶜ-Excpetion l t) Else (εᶜ-Excpetion l e)
+εᶜ-Excpetion l ∙ = ∙
+
+εᶜ-Fun l (Γ , t) = εᶜ-env l Γ , ε-Fun l t
+εᶜ-Fun l (f $ x) = (εᶜ-Fun l f) $ (εᶜ l x)
+εᶜ-Fun l (If c Then t Else e) = If (εᶜ-Bool l c) Then (εᶜ-Fun l t) Else εᶜ-Fun l e
+εᶜ-Fun l ∙ = ∙
+
+εᶜ-Labeled l₁ p (Γ , t) = (εᶜ-env l₁ Γ) , ε-Labeled l₁ p t
+εᶜ-Labeled l₁ p (f $ x) = (εᶜ-Fun l₁ f) $ (εᶜ l₁ x)
+εᶜ-Labeled l₁ p (If c Then t Else e) = If εᶜ-Bool l₁ c Then εᶜ-Labeled l₁ p t Else εᶜ-Labeled l₁ p e
+εᶜ-Labeled l₁ p ∙ = ∙
+
+εᶜ-Mac l₁ p (Γ , t) = (εᶜ-env l₁ Γ) , (ε-Mac l₁ p t)
+εᶜ-Mac l₁ p (f $ x) = (εᶜ-Fun l₁ f) $ (εᶜ l₁ x)
+εᶜ-Mac l₁ p (If c Then t Else e) = If (εᶜ-Bool l₁ c) Then (εᶜ-Mac l₁ p t) Else (εᶜ-Mac l₁ p e)
+εᶜ-Mac l₁ p (m >>= k) = (εᶜ-Mac l₁ p m) >>= (εᶜ-Fun l₁ k)
+εᶜ-Mac l₁ p (Catch m h) = Catch (εᶜ-Mac l₁ p m) (εᶜ-Fun l₁ h)
+εᶜ-Mac l₁ p (unlabel x c) = unlabel x (εᶜ l₁ c)
+εᶜ-Mac l₁ p ∙ = ∙
+>>>>>>> Stashed changes
 
 εᶜ-env l [] = []
 εᶜ-env l (x ∷ Γ) = εᶜ l x ∷ εᶜ-env l Γ
