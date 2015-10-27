@@ -5,7 +5,7 @@ open import Typed.Semantics renaming (_⟼_ to _⟼ᵗ_)
 open import Untyped.Base renaming (Term to Termᵘ ; CTerm to CTermᵘ ; Env to Envᵘ)
 open import Untyped.Semantics renaming (_⟼_ to _⟼ᵘ_)
 open import Untyped.Proofs
-open import Conversion.Base
+open import Conversion.Base public
 open import Relation.Binary.PropositionalEquality
 
 --------------------------------------------------------------------------------
