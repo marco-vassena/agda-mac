@@ -29,5 +29,6 @@ data _≈ᵘ_ {{l : Label}} (c₁ c₂ : CTermᵘ) : Set where
 -- Main result, non-interference for untyped terms
 -- Assuming that the two initial terms c₁ and c₂ are low-equivalent,
 -- if they reduce to two terms c₁' and c₂', they are also low equivalent.
+-- TODO: low equivalence for untyped terms makes no sense :)
 non-interferenceᵘ : ∀ {l} {c₁ c₂ c₁' c₂' : CTermᵘ} -> c₁ ≈ᵘ c₂ -> c₁ ⟼ᵘ c₁' -> c₂ ⟼ᵘ c₂' -> c₁' ≈ᵘ c₂'
 non-interferenceᵘ (εᶜ-≡ p q eq) s₁ s₂ = εᶜ-≡ (preservationᵘ p s₁) (preservationᵘ q s₂) (non-interferenceᵗ eq step⟪ s₁ ⟫ step⟪ s₂ ⟫)
