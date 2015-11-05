@@ -197,6 +197,10 @@ stepᵘᵗ ∙ Hole = Hole
 
 -- Just a better looking entry point for stepᵘᵗ, where the proof that c₁ is well-typed
 -- is passed as an instance argument
+
+-- TODO: Try to prove that the steps (both directions) do not miss the case where [[ ]] or << >> switch
+-- branches.
+
 step⟪_⟫ : ∀ {τ} {c₁ c₂ : CTermᵘ} {{p : c₁ :: τ}} -> (s : c₁ ⟼ᵘ c₂) ->
                 let arg = preservation p s in ⟪ c₁ ⟫ ⟼ᵗ ⟪ c₂ ⟫
 step⟪_⟫ {{p}} s = stepᵘᵗ p s
