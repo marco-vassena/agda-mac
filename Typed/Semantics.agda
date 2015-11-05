@@ -1,3 +1,15 @@
+{-
+
+TODO:
+
+ Show examples why we need (Γ, •) → • and why (Γ, •) → (Γ, •) does not work when
+ added (if considering • → •)
+
+ One case is function application where the argument is MAC H a, and the other one
+ is the binding at the close term level (but it applies to any closed level operator
+ with type MAC H a).
+-}
+
 module Typed.Semantics where
 
 open import Typed.Base public
