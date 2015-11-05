@@ -32,7 +32,7 @@ progress (Γ₁ , (If f Then f₁ Else f₂) $ x₁) | inj₂ ()
 progress (Γ₁ , ∙ $ x₁) | inj₂ ()
 progress ((f $ y) $ x) | inj₂ ()
 progress (If f Then f₁ Else f₂ $ x₁) | inj₂ ()
-progress (∙ $ x₁) | inj₂ () 
+progress (∙ $ x₁) | inj₂ ()
 progress (If c Then t Else e) with progress c
 progress (If c Then t Else e) | inj₁ (Step s) = inj₁ (Step (IfCond s))
 progress (If Γ₁ , True Then t₁ Else e₁) | inj₂ y = inj₁ (Step IfTrue)
@@ -170,10 +170,10 @@ determinism Dist-∙ Dist-∙ = refl
 determinism Hole Hole = refl
 
 -- Typed id cterm
-idᵗ : ∀ {Δ τ} {Γ : Env (length Δ)} {{Γᵗ : TEnv Δ Γ}} -> id {{n = length Δ}} :: (τ => τ)
+idᵗ : ∀ {Δ τ} {Γ : Env (length Δ)} {{Γᵗ : TEnv Δ Γ}} -> id {n = length Δ} :: (τ => τ)
 idᵗ {{Γᵗ = Γᵗ}} = Γᵗ , Abs (Var Here)
-  
-lookup-fin : ∀ {τ Δ} {Γ : Env (length Δ)} (p : τ ∈ Δ) (Γᵗ : TEnv Δ Γ) -> lookup (fin p) Γ :: τ 
+
+lookup-fin : ∀ {τ Δ} {Γ : Env (length Δ)} (p : τ ∈ Δ) (Γᵗ : TEnv Δ Γ) -> lookup (fin p) Γ :: τ
 lookup-fin Here (x ∷ Γ) = x
 lookup-fin (There p) (x ∷ Γ) = lookup-fin p Γ
 
@@ -186,7 +186,7 @@ preservation (Γ , App f x) Dist-$ = Γ , f $ Γ , x
 preservation (Γ , (If c Then t Else e)) Dist-If = If Γ , c Then Γ , t Else (Γ , e)
 preservation (If c Then t Else e) (IfCond s) = If preservation c s Then t Else e
 preservation (If Γ , True Then t₂ Else t₃) IfTrue = idᵗ $ t₂
-preservation (If Γ , False Then t₂ Else t₃) IfFalse = idᵗ $ t₃ 
+preservation (If Γ , False Then t₂ Else t₃) IfFalse = idᵗ $ t₃
 preservation (Γ , Return t) Return = idᵗ $ Γ , (Mac t)
 preservation (Γ , m >>= k) Dist->>= = (Γ , m) >>= (Γ , k)
 preservation (m >>= k) (BindCtx s) = preservation m s >>= k
@@ -199,7 +199,7 @@ preservation (Catch (Γ , Mac t) h) Catch = idᵗ $  Γ , (Return t)
 preservation (Catch (Γ , Macₓ t) h) CatchEx = h $ (Γ , t)
 preservation (Γ , label p t) (label .p) = idᵗ $  Γ , (Return (Res t))
 preservation (Γ , unlabel x t) Dist-unlabel = unlabel x (Γ , t)
-preservation (unlabel x (Γ , Res t)) unlabel = idᵗ $ Γ , (Return t) 
+preservation (unlabel x (Γ , Res t)) unlabel = idᵗ $ Γ , (Return t)
 preservation (unlabel x t) (unlabelCtx s) = unlabel x (preservation t s)
 preservation (Γ , ∙) Dist-∙ = ∙
 preservation ∙ Hole = ∙
