@@ -24,14 +24,14 @@ data Term (n : ℕ) : Set where
   Throw : Term n -> Term n
   Catch : Term n -> Term n -> Term n
 
-  -- Abstract constructors not available to the user
+  -- Constructor that denotes a successful Mac computation. 
   Mac : Term n -> Term n
-  -- Abstract constructor that denotes failure due to an exception
+  -- Constructor that denotes failure due to an exception
   Macₓ : Term n -> Term n
 
   Res : Label -> Term n -> Term n
 
-  label : ∀ {l h} -> l ⊑ h -> Term n -> Term n -- TODO we need only l for ε 
+  label : ∀ {l h} -> l ⊑ h -> Term n -> Term n
   unlabel : Term n -> Term n
 
   --   Erased term

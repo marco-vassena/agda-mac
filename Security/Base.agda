@@ -52,8 +52,28 @@ open import Relation.Binary.PropositionalEquality
 ε lₐ ξ = ξ
 ε lₐ ∙ = ∙
 
--- Erasure function.
--- ε l t transform a term t in ∙ if it is above the security level l.
+{- 
+  Typed-driven erasure function for closed terms.
+  
+  εᶜ l c transform a term t in ∙ if it is above the security level l.
+  
+  Note that the erasure function collapse to ∙ composed CTerm (e.g. f $ x, m >>= k),
+  but not simple closure (Γ , t), in which the enviroment Γ is erased and only
+  the term t is converted into ∙.
+  This distinction is essential, because distributivity would be broken otherwise.
+  Consider for instance applying the erasure function to the terms in the step Dist-$,
+  when the argument is a sensitive computation of type Mac H α:
+
+         (Γ , App f x)   ⟼            (Γ , f)  $  (Γ , x)
+    
+            ↧ εᶜ                                ↧ εᶜ 
+    
+    (εᶜ-env Γ, App f ∙)   ⟼   (εᶜ-env Γ, εᶜ f)   $   ∙
+         
+  The step in the erased term does not hold, because Dist-$ would require
+  (εᶜ-env Γ , ∙) ≠ ∙
+
+-}
 εᶜ : ∀ {τ} -> Label -> CTerm τ -> CTerm τ
 εᶜ-env : ∀ {Δ} -> Label -> Env Δ -> Env Δ
 

@@ -1,15 +1,3 @@
-{-
-
-TODO:
-
- Show examples why we need (Γ, •) → • and why (Γ, •) → (Γ, •) does not work when
- added (if considering • → •)
-
- One case is function application where the argument is MAC H a, and the other one
- is the binding at the close term level (but it applies to any closed level operator
- with type MAC H a).
--}
-
 module Typed.Semantics where
 
 open import Typed.Base public
@@ -18,6 +6,69 @@ open import Typed.Base public
 id : ∀ {α} {Δ} {{Γ : Env Δ}} -> CTerm (α => α)
 id {{Γ = Γ}} = Γ , Abs (Var Here)
 
+{-
+  TODO I have not introduced the erasure function. 
+  Should this be moved in the security submodue? 
+
+  In the small step semantics there are two steps that reduce bullets.
+    Dist-∙ : (Γ , ∙) ⟼ ∙ 
+    Hole   : ∙ ⟼ ∙
+
+  Another rule that has been considered instead of Dist-∙ is:
+    THole : (Γ , ∙) ⟼ (Γ , ∙)
+ 
+  Unforunately rules Hole and THole alone do not preserve distributivity.
+  Consider for instance erasing the terms involved in the Dist-$ rule,
+  when the whole expression is a sensitive computation of type Mac H α
+
+         (Γ , App f x)   ⟼  (Γ , f)  $  (Γ , x)
+    
+               ↧ εᶜ              ↧ εᶜ 
+    
+         (εᶜ-env Γ, ∙)   ⟼       ∙
+
+  There is not such step because we removed Dist-∙. Note that adding
+  also this step would make the small step semantics non deterministic
+  because both Dist-∙ and THole would reduce (Γ , ∙).
+
+  Also note that we cannot avoid to have two different bullets (Term and CTerm).
+  If we had only the ∙ CTerm this same example would not go through as we would 
+  need a reduction (Γ , App f x) ⟼ ∙
+  
+  A Term bullet alone would also break distributivity.
+  Composite CTerms such as f $ x could not properly be erased because they
+  do not expose their enviroment. At best we could only apply the erasure
+  homomorphically, but this is unsatisfactory. 
+  Consider the previous example:
+
+    (Γ , App f x)      ⟼           (Γ , f)   $   (Γ , x)
+    
+         ↧ εᶜ                                 ↧ εᶜ 
+    
+    (εᶜ-env Γ, ∙)       ⟼   (εᶜ-env Γ , εᶜ f)  $  (εᶜ-env Γ , εᶜ x)    
+
+  Lastly some steps have been slightly modified as follows:
+  from c₁ ⟼ c₂ to c₁ ⟼ (id $ c₂).
+  Consider the original version of the Return step:
+
+    (Γ , Return x)     ⟼    (Γ , Mac x)
+    
+          ↧ εᶜ                    ↧ εᶜ 
+    
+    (εᶜ-env Γ , ∙)     ⟼    (εᶜ-env Γ , ∙)    
+
+  The only step that applies here is Dist-∙ (THole has been ruled out), but the reduced term should be
+  ∙ instead of (Γ , ∙). With the proposed adjustment, we obtain a CTerm bullet, because id $ x
+  is a composite CTerm and it is collapsed to ∙ at once.
+  Furthermore since id x = x, this change does not affect the meaning of any program.
+
+      (Γ , Return x)     ⟼    id $ (Γ , Mac x)
+    
+          ↧ εᶜ                    ↧ εᶜ 
+    
+    (εᶜ-env Γ , ∙)     ⟼    (εᶜ-env Γ , ∙)    
+
+-}
 data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
     -- Reduces the function in an application
   AppL : ∀ {α β} {c₁ c₂ : CTerm (α => β)} {x : CTerm α} -> c₁ ⟼ c₂ -> (c₁ $ x) ⟼ (c₂ $ x)
@@ -82,7 +133,6 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
                  (Γ , unlabel p t) ⟼ unlabel p (Γ , t)
 
   unlabel : ∀ {l Δ h α} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
-            -- MOre complex but maybe it could work (λ x . x) $ (Γ , Return e)
             unlabel p (Γ , Res t) ⟼ (id {{Γ}} $ (Γ , Return t))
 
   unlabelCtx : ∀ {l h α} {c c' : CTerm (Labeled l α)} -> (p : l ⊑ h) -> c ⟼ c' ->

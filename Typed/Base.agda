@@ -43,7 +43,7 @@ mutual
     Catch : ∀ {l α} -> CTerm (Mac l α) -> CTerm (Exception => Mac l α) -> CTerm (Mac l α)
     unlabel : ∀ {l τ h} -> l ⊑ h -> CTerm (Labeled l τ) -> CTerm (Mac h τ)
 
-    -- Erased term
+    -- Erased closed term
     ∙ : ∀ {τ} -> CTerm τ
 
   data Env : (Δ : Context) -> Set where
