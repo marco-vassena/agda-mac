@@ -16,19 +16,24 @@ open import Relation.Binary.PropositionalEquality
 data _≈ᵗ_ {{l : Label}} {τ : Ty} (c₁ c₂ : CTermᵗ τ) : Set where
   εᶜ-≡ : εᶜ l c₁ ≡ εᶜ l c₂ -> c₁ ≈ᵗ c₂
 
--- Non-interference for typed small step
--- As expected we need only determinism.
+-- Non-interference for typed terms.
+-- As expected we need only determinism of the small step semantics and distributivity of εᶜ.
 non-interferenceᵗ : ∀ {l τ} {c₁ c₂ c₁' c₂' : CTermᵗ τ} -> c₁ ≈ᵗ c₂ -> c₁ ⟼ᵗ c₁' -> c₂ ⟼ᵗ c₂' -> c₁' ≈ᵗ c₂'
 non-interferenceᵗ {l} (εᶜ-≡ eq) s₁ s₂ = εᶜ-≡ (aux eq (εᶜ-distributes l s₁) (εᶜ-distributes l s₂))
   where aux : ∀ {τ} {c₁ c₂ c₃ c₄ : CTermᵗ τ} -> c₁ ≡ c₂ -> c₁ ⟼ᵗ c₃ -> c₂ ⟼ᵗ c₄ -> c₃ ≡ c₄
         aux refl s₁ s₂ = determinismᵗ s₁ s₂
 
-data _≈ᵘ_ {{l : Label}} (c₁ c₂ : CTermᵘ) : Set where
-  εᶜ-≡ : ∀ {τ} -> (p : c₁ :: τ) (q : c₂ :: τ) -> (⟪_⟫ c₁ {{p}}) ≈ᵗ (⟪_⟫ c₂ {{q}}) -> c₁ ≈ᵘ c₂
-
--- Main result, non-interference for untyped terms
+-- Non-interference for untyped terms
 -- Assuming that the two initial terms c₁ and c₂ are low-equivalent,
 -- if they reduce to two terms c₁' and c₂', they are also low equivalent.
--- TODO: low equivalence for untyped terms makes no sense :)
-non-interferenceᵘ : ∀ {l} {c₁ c₂ c₁' c₂' : CTermᵘ} -> c₁ ≈ᵘ c₂ -> c₁ ⟼ᵘ c₁' -> c₂ ⟼ᵘ c₂' -> c₁' ≈ᵘ c₂'
-non-interferenceᵘ (εᶜ-≡ p q eq) s₁ s₂ = εᶜ-≡ (preservationᵘ p s₁) (preservationᵘ q s₂) (non-interferenceᵗ eq step⟪ s₁ ⟫ step⟪ s₂ ⟫)
+-- 
+-- The theorem more formally says that given:
+-- c₁ :: τ , c₂ :: τ, ⟪ c₁ ⟫ ≈ᵗ ⟪ c₂ ⟫, c₁ ⟼ᵘ c₁', c₂ ⟼ᵘ c₂'
+-- then
+-- ⟪ c₁' ⟫ ≈ᵗ ⟪ c₂' ⟫
+non-interferenceᵘ : ∀ {l} {τ : Ty} {c₁ c₂ c₁' c₂' : CTermᵘ} -> 
+                      (p₁ : c₁ :: τ) (p₂ : c₂ :: τ) -> (⟪_⟫ c₁ {{p₁}}) ≈ᵗ (⟪_⟫ c₂ {{p₂}}) -> 
+                      (s₁ : c₁ ⟼ᵘ c₁') (s₂ : c₂ ⟼ᵘ c₂') -> 
+                      let q₁ = preservationᵘ p₁ s₁
+                          q₂ = preservationᵘ p₂ s₂ in (⟪_⟫ c₁' {{q₁}}) ≈ᵗ (⟪_⟫  c₂' {{q₂}})
+non-interferenceᵘ p₁ p₂ eq s₁ s₂ = non-interferenceᵗ eq step⟪ s₁ ⟫ step⟪ s₂ ⟫
