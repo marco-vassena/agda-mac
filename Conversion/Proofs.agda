@@ -240,3 +240,43 @@ step⟦ Dist-∙ ⟧ = Dist-∙
 step⟦ Hole ⟧ = Hole
 
 --------------------------------------------------------------------------------
+
+-- Completness for small-step semantics transformations.
+-- Converting a typed step to untyped and back to typed does not change the semantics, i.e. 
+-- we get the same step.
+
+-- Lemma
+-- Each type of small step as at most one inhabitant.
+uniqueStep : ∀ {c₁ c₂} -> (p q : c₁ ⟼ᵘ c₂) -> p ≡ q
+uniqueStep (AppL p) (AppL q) rewrite uniqueStep p q = refl
+uniqueStep Beta Beta = refl
+uniqueStep Lookup Lookup = refl
+uniqueStep Dist-$ Dist-$ = refl
+uniqueStep Dist-If Dist-If = refl
+uniqueStep (IfCond p) (IfCond q) rewrite uniqueStep p q = refl
+uniqueStep IfTrue IfTrue = refl
+uniqueStep IfFalse IfFalse = refl
+uniqueStep Return Return = refl
+uniqueStep Dist->>= Dist->>= = refl
+uniqueStep (BindCtx p) (BindCtx q) rewrite uniqueStep p q = refl
+uniqueStep Bind Bind = refl
+uniqueStep BindEx BindEx = refl
+uniqueStep Throw Throw = refl
+uniqueStep Dist-Catch Dist-Catch = refl
+uniqueStep (CatchCtx p) (CatchCtx q) rewrite uniqueStep p q = refl
+uniqueStep Catch Catch = refl
+uniqueStep CatchEx CatchEx = refl
+uniqueStep (label p) (label .p) = refl
+uniqueStep Dist-unlabel Dist-unlabel = refl
+uniqueStep unlabel unlabel = refl
+uniqueStep (unlabelCtx p) (unlabelCtx q) rewrite uniqueStep p q = refl
+uniqueStep Dist-∙ Dist-∙ = refl
+uniqueStep Hole Hole = refl
+
+open import Relation.Binary.HeterogeneousEquality
+
+complete-step⟪_,_⟫ : ∀ {c₁ c₂ τ} {{p : c₁ :: τ}} {{q : c₂ :: τ}} ->
+                              (s₁ : c₁ ⟼ᵘ c₂) (s₂ : ⟦ ⟪_⟫ c₁ {{p}} ⟧ ⟼ᵘ ⟦ ⟪_⟫ c₂ {{q}} ⟧) -> s₁ ≅ s₂
+complete-step⟪_,_⟫ {{p}} {{q}} s₁ s₂ rewrite complete-⟪ p ⟫ | complete-⟪ q ⟫ | uniqueStep s₁ s₂ = refl
+
+-- TODO prove similarly complete-step⟦_,_⟧
