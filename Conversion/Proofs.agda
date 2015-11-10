@@ -247,36 +247,123 @@ step⟦ Hole ⟧ = Hole
 
 -- Lemma
 -- Each type of small step as at most one inhabitant.
-uniqueStep : ∀ {c₁ c₂} -> (p q : c₁ ⟼ᵘ c₂) -> p ≡ q
-uniqueStep (AppL p) (AppL q) rewrite uniqueStep p q = refl
-uniqueStep Beta Beta = refl
-uniqueStep Lookup Lookup = refl
-uniqueStep Dist-$ Dist-$ = refl
-uniqueStep Dist-If Dist-If = refl
-uniqueStep (IfCond p) (IfCond q) rewrite uniqueStep p q = refl
-uniqueStep IfTrue IfTrue = refl
-uniqueStep IfFalse IfFalse = refl
-uniqueStep Return Return = refl
-uniqueStep Dist->>= Dist->>= = refl
-uniqueStep (BindCtx p) (BindCtx q) rewrite uniqueStep p q = refl
-uniqueStep Bind Bind = refl
-uniqueStep BindEx BindEx = refl
-uniqueStep Throw Throw = refl
-uniqueStep Dist-Catch Dist-Catch = refl
-uniqueStep (CatchCtx p) (CatchCtx q) rewrite uniqueStep p q = refl
-uniqueStep Catch Catch = refl
-uniqueStep CatchEx CatchEx = refl
-uniqueStep (label p) (label .p) = refl
-uniqueStep Dist-unlabel Dist-unlabel = refl
-uniqueStep unlabel unlabel = refl
-uniqueStep (unlabelCtx p) (unlabelCtx q) rewrite uniqueStep p q = refl
-uniqueStep Dist-∙ Dist-∙ = refl
-uniqueStep Hole Hole = refl
+uniqueStepᵘ : ∀ {c₁ c₂} -> (p q : c₁ ⟼ᵘ c₂) -> p ≡ q
+uniqueStepᵘ (AppL p) (AppL q) rewrite uniqueStepᵘ p q = refl
+uniqueStepᵘ Beta Beta = refl
+uniqueStepᵘ Lookup Lookup = refl
+uniqueStepᵘ Dist-$ Dist-$ = refl
+uniqueStepᵘ Dist-If Dist-If = refl
+uniqueStepᵘ (IfCond p) (IfCond q) rewrite uniqueStepᵘ p q = refl
+uniqueStepᵘ IfTrue IfTrue = refl
+uniqueStepᵘ IfFalse IfFalse = refl
+uniqueStepᵘ Return Return = refl
+uniqueStepᵘ Dist->>= Dist->>= = refl
+uniqueStepᵘ (BindCtx p) (BindCtx q) rewrite uniqueStepᵘ p q = refl
+uniqueStepᵘ Bind Bind = refl
+uniqueStepᵘ BindEx BindEx = refl
+uniqueStepᵘ Throw Throw = refl
+uniqueStepᵘ Dist-Catch Dist-Catch = refl
+uniqueStepᵘ (CatchCtx p) (CatchCtx q) rewrite uniqueStepᵘ p q = refl
+uniqueStepᵘ Catch Catch = refl
+uniqueStepᵘ CatchEx CatchEx = refl
+uniqueStepᵘ (label p) (label .p) = refl
+uniqueStepᵘ Dist-unlabel Dist-unlabel = refl
+uniqueStepᵘ unlabel unlabel = refl
+uniqueStepᵘ (unlabelCtx p) (unlabelCtx q) rewrite uniqueStepᵘ p q = refl
+uniqueStepᵘ Dist-∙ Dist-∙ = refl
+uniqueStepᵘ Hole Hole = refl
 
 open import Relation.Binary.HeterogeneousEquality
 
 complete-step⟪_,_⟫ : ∀ {c₁ c₂ τ} {{p : c₁ :: τ}} {{q : c₂ :: τ}} ->
                               (s₁ : c₁ ⟼ᵘ c₂) (s₂ : ⟦ ⟪_⟫ c₁ {{p}} ⟧ ⟼ᵘ ⟦ ⟪_⟫ c₂ {{q}} ⟧) -> s₁ ≅ s₂
-complete-step⟪_,_⟫ {{p}} {{q}} s₁ s₂ rewrite complete-⟪ p ⟫ | complete-⟪ q ⟫ | uniqueStep s₁ s₂ = refl
+complete-step⟪_,_⟫ {{p}} {{q}} s₁ s₂ rewrite complete-⟪ p ⟫ | complete-⟪ q ⟫ | uniqueStepᵘ s₁ s₂ = refl
 
--- TODO prove similarly complete-step⟦_,_⟧
+uniqueStepᵗ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (p q : c₁ ⟼ᵗ c₂) -> p ≡ q
+uniqueStepᵗ (AppL p) (AppL q) rewrite uniqueStepᵗ p q = refl
+uniqueStepᵗ Beta Beta = refl
+uniqueStepᵗ Lookup Lookup = refl
+uniqueStepᵗ Dist-$ Dist-$ = refl
+uniqueStepᵗ Dist-If Dist-If = refl
+uniqueStepᵗ (IfCond p) (IfCond q) rewrite uniqueStepᵗ p q = refl
+uniqueStepᵗ IfTrue IfTrue = refl
+uniqueStepᵗ IfFalse IfFalse = refl
+uniqueStepᵗ Return Return = refl
+uniqueStepᵗ Dist->>= Dist->>= = refl
+uniqueStepᵗ (BindCtx p) (BindCtx q) rewrite uniqueStepᵗ p q = refl
+uniqueStepᵗ Bind Bind = refl
+uniqueStepᵗ BindEx BindEx = refl
+uniqueStepᵗ Throw Throw = refl
+uniqueStepᵗ Dist-Catch Dist-Catch = refl
+uniqueStepᵗ (CatchCtx p) (CatchCtx q) rewrite uniqueStepᵗ p q = refl
+uniqueStepᵗ Catch Catch = refl
+uniqueStepᵗ CatchEx CatchEx = refl
+uniqueStepᵗ (label p) (label .p) = refl
+uniqueStepᵗ (Dist-unlabel p) (Dist-unlabel .p) = refl
+uniqueStepᵗ (unlabel p) (unlabel .p) = refl
+uniqueStepᵗ (unlabelCtx x p) (unlabelCtx .x q) rewrite uniqueStepᵗ p q = refl
+uniqueStepᵗ Dist-∙ Dist-∙ = refl
+uniqueStepᵗ Hole Hole = refl
+
+complete-step⟦_,_⟧ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (s₁ : c₁ ⟼ᵗ c₂) ->
+                     let p₁ = sound-⟦ c₁ ⟧
+                         p₂ = sound-⟦ c₂ ⟧ in (s₂ : ⟪ ⟦ c₁ ⟧ ⟫ ⟼ᵗ ⟪ ⟦ c₂ ⟧ ⟫) -> s₁ ≅ s₂
+complete-step⟦_,_⟧ {_} {c₁} {c₂} s₁ s₂ rewrite complete-⟦ c₁ ⟧ | complete-⟦ c₂ ⟧ | uniqueStepᵗ s₁ s₂ = refl
+
+--------------------------------------------------------------------------------
+
+-- TODO remove
+
+-- Equivalence of proofs between preservation and sound-⟦_⟧
+-- lemma-step⟦_⟧ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (s : c₁ ⟼ᵗ c₂) -> sound-⟦ c₂ ⟧ ≡ preservation sound-⟦ c₁ ⟧ step⟦ s ⟧
+-- lemma-step⟦ AppL s ⟧ rewrite lemma-step⟦ s ⟧ = refl
+-- lemma-step⟦ Beta ⟧ = refl
+-- lemma-step⟦ Lookup ⟧ = {!refl!} -- Need lemma
+-- lemma-step⟦ Dist-$ ⟧ = refl
+-- lemma-step⟦ Dist-If ⟧ = refl
+-- lemma-step⟦ IfCond s ⟧ rewrite lemma-step⟦ s ⟧ = refl
+-- lemma-step⟦ IfTrue ⟧ = refl
+-- lemma-step⟦ IfFalse ⟧ = refl
+-- lemma-step⟦ Return ⟧ = refl
+-- lemma-step⟦ Dist->>= ⟧ = refl
+-- lemma-step⟦ BindCtx s ⟧ rewrite lemma-step⟦ s ⟧ = refl
+-- lemma-step⟦ Bind ⟧ = refl
+-- lemma-step⟦ BindEx ⟧ = refl
+-- lemma-step⟦ Throw ⟧ = refl
+-- lemma-step⟦ Dist-Catch ⟧ = refl
+-- lemma-step⟦ CatchCtx s ⟧ rewrite lemma-step⟦ s ⟧ = refl
+-- lemma-step⟦ Catch ⟧ = refl
+-- lemma-step⟦ CatchEx ⟧ = refl
+-- lemma-step⟦ label p ⟧ = refl
+-- lemma-step⟦ Dist-unlabel p ⟧ = refl
+-- lemma-step⟦ unlabel p ⟧ = refl
+-- lemma-step⟦ unlabelCtx p (AppL s) ⟧ rewrite lemma-step⟦ s ⟧ = refl
+-- lemma-step⟦ unlabelCtx p Beta ⟧ = refl
+-- lemma-step⟦ unlabelCtx p Lookup ⟧ = {!refl!} -- Idem
+-- lemma-step⟦ unlabelCtx p Dist-$ ⟧ = refl
+-- lemma-step⟦ unlabelCtx p Dist-If ⟧ = refl
+-- lemma-step⟦ unlabelCtx p (IfCond s) ⟧ rewrite lemma-step⟦ s ⟧ = refl
+-- lemma-step⟦ unlabelCtx p IfTrue ⟧ = refl
+-- lemma-step⟦ unlabelCtx p IfFalse ⟧ = refl
+-- lemma-step⟦ unlabelCtx p Dist-∙ ⟧ = refl
+-- lemma-step⟦ unlabelCtx p Hole ⟧ = refl
+-- lemma-step⟦ Dist-∙ ⟧ = refl
+-- lemma-step⟦ Hole ⟧ = refl
+
+-- A corollary of complete-step
+-- s ≅ step⟪ step⟦ s ⟧ ⟫
+-- complete-step⟦_⟧' : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (s : c₁ ⟼ᵗ c₂) -> 
+--                   let p₁ = sound-⟦ c₁ ⟧
+--                       p₂ = sound-⟦ c₂ ⟧ in s ≅ (step⟪_⟫ {τ} step⟦ s ⟧)
+-- complete-step⟦_⟧' {_} {c₁} {c₂} s with sound-⟦ c₂ ⟧ | preservation sound-⟦ c₁ ⟧ step⟦ s ⟧ | lemma-step⟦ s ⟧
+-- ... | a | b | r = {! !}
+
+-- It does not work because of the limitations in agda rewriting system, but it
+-- should hold. The main result complete-step⟦ s ⟧ shows the equivalence between any 
+-- step s₁ : c₁ ⟼ᵗ c₂ and any other step s₂ : ⟪ ⟦ c₁ ⟧ ⟫ ⟼ ⟪ ⟦ c₂ ⟧ ⟫.
+-- This lemma would pick a specific one.
+-- The problem is that suddenly we have shifted to the type level instead of terms, hence
+-- heterogeneous equality ≅ is needed.
+
+-- TODO (After working on join)
+-- Could we show instead that given s₁ : c₁ ⟼ᵗ c₂ and s₂ : ⟪ ⟦ c₁ ⟧ ⟫ ⟼ ⟪ ⟦ c₂ ⟧ ⟫ then s₂ ≅ step⟪ step⟦ s₁ ⟧ ⟫ 
