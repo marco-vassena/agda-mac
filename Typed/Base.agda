@@ -26,6 +26,8 @@ data Term (Δ : Context) : Ty -> Set where
 
   label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Labeled h α))
   unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Mac h α)
+
+  join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
   
   -- Erased term ∙
   ∙ : ∀ {τ} -> Term Δ τ
@@ -42,6 +44,7 @@ mutual
     _>>=_ : ∀ {l α β} -> CTerm (Mac l α) -> CTerm (α => Mac l β) -> CTerm (Mac l β)
     Catch : ∀ {l α} -> CTerm (Mac l α) -> CTerm (Exception => Mac l α) -> CTerm (Mac l α)
     unlabel : ∀ {l τ h} -> l ⊑ h -> CTerm (Labeled l τ) -> CTerm (Mac h τ)
+    join : ∀ {l h α} -> l ⊑ h -> CTerm (Mac h α) -> CTerm (Mac l (Labeled h α))
 
     -- Erased closed term
     ∙ : ∀ {τ} -> CTerm τ
@@ -73,6 +76,7 @@ IsValue (Γ , Mac m) = ⊤
 IsValue (Γ , Macₓ j) = ⊤
 IsValue (Γ , label x t) = ⊥
 IsValue (Γ , unlabel x t) = ⊥
+IsValue (Γ , join p t) = ⊥
 IsValue (Γ , Res t) = ⊤
 IsValue (Γ , ∙) = ⊥
 IsValue (c₁ $ c₂) = ⊥
@@ -80,4 +84,5 @@ IsValue (If c Then t Else e) = ⊥
 IsValue (m >>= k) = ⊥
 IsValue (Catch m h) = ⊥
 IsValue (unlabel p t) = ⊥
+IsValue (join p m) = ⊥
 IsValue ∙ = ⊥

@@ -21,6 +21,7 @@ progress (Γ , Macₓ t) = inj₂ tt
 progress (Γ , Res t) = inj₂ tt
 progress (Γ , label x t) = inj₁ (Step (label x))
 progress (Γ , unlabel x t) = inj₁ (Step (Dist-unlabel x))
+progress (Γ , join p t) = inj₁ (Step (Dist-join p))
 progress (Γ , ∙) = inj₁ (Step Dist-∙)
 progress (c $ c₁) with progress c
 progress (c $ c₁) | inj₁ (Step x) = inj₁ (Step (AppL x))
@@ -56,6 +57,7 @@ progress ((x , Mac x₁) >>= c₁) | inj₂ tt = inj₁ (Step Bind)
 progress ((Γ , Macₓ e) >>= k) | inj₂ tt = inj₁ (Step BindEx)
 progress ((x , label x₁ x₂) >>= c₁) | inj₂ ()
 progress ((x , unlabel x₁ x₂) >>= c₁) | inj₂ ()
+progress ((Γ , join p t) >>= k) | inj₂ ()
 progress ((x , ∙) >>= c₁) | inj₂ ()
 progress ((c $ c₁) >>= c₂) | inj₂ ()
 progress (If c Then c₁ Else c₂ >>= c₃) | inj₂ ()
@@ -63,6 +65,29 @@ progress (c >>= c₁ >>= c₂) | inj₂ ()
 progress (Catch c c₁ >>= c₂) | inj₂ ()
 progress (unlabel x c >>= c₁) | inj₂ ()
 progress (∙ >>= c₁) | inj₂ ()
+progress (join p c >>= k) | inj₂ ()
+progress (join p c) with progress c
+progress (join p c) | inj₁ (Step x) = inj₁ (Step (joinCtx p x))
+progress (join p (x , Var x₁)) | inj₂ ()
+progress (join p (x , App x₁ x₂)) | inj₂ ()
+progress (join p (x , If x₁ Then x₂ Else x₃)) | inj₂ ()
+progress (join p (x , Return x₁)) | inj₂ ()
+progress (join p (x , x₁ >>= x₂)) | inj₂ ()
+progress (join p (x , Throw x₁)) | inj₂ ()
+progress (join p (x , Catch x₁ x₂)) | inj₂ ()
+progress (join p (x , Mac x₁)) | inj₂ y = inj₁ (Step (join p))
+progress (join p (x , Macₓ x₁)) | inj₂ y = inj₁ (Step (joinEx p))
+progress (join p (x , label x₁ x₂)) | inj₂ ()
+progress (join p (x , unlabel x₁ x₂)) | inj₂ ()
+progress (join p (x , join x₁ x₂)) | inj₂ ()
+progress (join p (x , ∙)) | inj₂ ()
+progress (join p (c $ c₁)) | inj₂ ()
+progress (join p (If c Then c₁ Else c₂)) | inj₂ ()
+progress (join p (c >>= c₁)) | inj₂ ()
+progress (join p (Catch c c₁)) | inj₂ ()
+progress (join p (unlabel x c)) | inj₂ ()
+progress (join p (join x c)) | inj₂ ()
+progress (join p ∙) | inj₂ ()
 progress (Catch c c₁) with progress c
 progress (Catch c c₁) | inj₁ (Step x) = inj₁ (Step (CatchCtx x))
 progress (Catch (x , Var x₁) c₁) | inj₂ ()
@@ -76,12 +101,14 @@ progress (Catch (x , Mac x₁) c₁) | inj₂ tt = inj₁ (Step Catch)
 progress (Catch (x , Macₓ x₁) c₁) | inj₂ y = inj₁ (Step CatchEx)
 progress (Catch (x , label x₁ x₂) c₁) | inj₂ ()
 progress (Catch (x , unlabel x₁ x₂) c₁) | inj₂ ()
+progress (Catch (Γ , join p t) h₁) | inj₂ ()
 progress (Catch (x , ∙) c₁) | inj₂ ()
 progress (Catch (c $ c₁) c₂) | inj₂ ()
 progress (Catch (If c Then c₁ Else c₂) c₃) | inj₂ ()
 progress (Catch (c >>= c₁) c₂) | inj₂ ()
 progress (Catch (Catch c c₁) c₂) | inj₂ ()
 progress (Catch (unlabel x c) c₁) | inj₂ ()
+progress (Catch (join p c) h₁) | inj₂ ()
 progress (Catch ∙ c₁) | inj₂ ()
 progress (unlabel x c) with progress c
 progress (unlabel x₁ c) | inj₁ (Step x) = inj₁ (Step (unlabelCtx x₁ x))
@@ -112,12 +139,14 @@ valueNotRedex (Γ , Macₓ t) isV (Step ())
 valueNotRedex (Γ , label x t) () nf
 valueNotRedex (Γ , unlabel x t) () nf
 valueNotRedex (Γ , Res t) isV (Step ())
+valueNotRedex (Γ , join p t) () s
 valueNotRedex (Γ , ∙) () s
 valueNotRedex (f $ x) () nf
 valueNotRedex (If c Then t Else e) () nf
 valueNotRedex (m >>= k) () s
 valueNotRedex (Catch m h) () nf
 valueNotRedex (unlabel x t) () nf
+valueNotRedex (join p c) () nf
 valueNotRedex ∙ () nf
 
 -- In principle once we prove the bijection between typed and untyped semantics
@@ -161,6 +190,14 @@ determinism (unlabel p) (unlabel .p) = refl
 determinism (unlabel p) (unlabelCtx .p ())
 determinism (unlabelCtx p ()) (unlabel .p)
 determinism (unlabelCtx p s₁) (unlabelCtx .p s₂) rewrite determinism s₁ s₂ = refl
+determinism (Dist-join p) (Dist-join .p) = refl
+determinism (joinCtx p s₁) (joinCtx .p s₂) rewrite determinism s₁ s₂ = refl
+determinism (joinCtx p ()) (join .p)
+determinism (joinCtx p ()) (joinEx .p)
+determinism (join p) (joinCtx .p ())
+determinism (join p) (join .p) = refl
+determinism (joinEx p) (joinCtx .p ())
+determinism (joinEx p) (joinEx .p) = refl
 determinism Dist-∙ Dist-∙ = refl 
 determinism Hole Hole = refl
 
