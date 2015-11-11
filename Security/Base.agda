@@ -21,6 +21,9 @@ open import Relation.Binary.PropositionalEquality
 ε-Mac lₐ p₁ (label d⊑h t) | yes p = label d⊑h (ε lₐ t)
 ε-Mac lₐ p (label d⊑h t) | no ¬p = label d⊑h ∙ 
 ε-Mac lₐ p (unlabel x t) = unlabel x (ε lₐ t)
+ε-Mac lₐ p (join {l = lᵈ} {h = lʰ} d⊑h t) with lʰ ⊑? lₐ
+ε-Mac lₐ p (join d⊑h t) | yes h⊑a = join d⊑h (ε-Mac lₐ h⊑a t)
+ε-Mac lₐ p (join d⊑h t) | no ¬h⊑a = join d⊑h ∙
 ε-Mac lₐ p ∙ = ∙
 
 ε-Labeled : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> Term Δ (Labeled lᵈ τ) -> Term Δ (Labeled lᵈ τ)
@@ -84,6 +87,7 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac lₐ p (m >>= k) = (εᶜ-Mac lₐ p m) >>= (εᶜ lₐ k)
 εᶜ-Mac lₐ p (Catch m h) = Catch (εᶜ-Mac lₐ p m) (εᶜ lₐ h)
 εᶜ-Mac lₐ p (unlabel x c) = unlabel x (εᶜ lₐ c) 
+εᶜ-Mac lₐ p (join d⊑h c) = join d⊑h (εᶜ lₐ c)
 εᶜ-Mac lₐ p ∙ = ∙
 
 εᶜ-Labeled : ∀ {τ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> CTerm (Labeled lᵈ τ) -> CTerm (Labeled lᵈ τ)
