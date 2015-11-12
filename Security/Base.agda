@@ -34,9 +34,9 @@ open import Relation.Binary.PropositionalEquality
 ε-Labeled lₐ p ∙ = ∙
 
 ε-Labeled-∙ : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> Term Δ (Labeled lᵈ τ) -> Term Δ (Labeled lᵈ τ)
-ε-Labeled-∙ lₐ ¬p (Var x) = ∙
-ε-Labeled-∙ lₐ ¬p (App f x) = ∙
-ε-Labeled-∙ lₐ ¬p (If t Then t₁ Else t₂) = ∙
+ε-Labeled-∙ lₐ ¬p (Var x) = Var x
+ε-Labeled-∙ lₐ ¬p (App f x) = App (ε lₐ f) (ε lₐ x)
+ε-Labeled-∙ lₐ ¬p (If c Then t Else e) = If ε lₐ c Then ε-Labeled-∙ lₐ ¬p t Else ε-Labeled-∙ lₐ ¬p e
 ε-Labeled-∙ lₐ ¬p (Res t) = Res ∙
 ε-Labeled-∙ lₐ ¬p ∙ = ∙
 
@@ -102,7 +102,9 @@ open import Relation.Binary.PropositionalEquality
 
 εᶜ-Labeled-∙ : ∀ {lᵈ τ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> CTerm (Labeled lᵈ τ) -> CTerm (Labeled lᵈ τ)
 εᶜ-Labeled-∙ lₐ ¬p (Γ , t) = εᶜ-env lₐ Γ , ε-Labeled-∙ lₐ ¬p t
-εᶜ-Labeled-∙ lₐ ¬p c = ∙ 
+εᶜ-Labeled-∙ lₐ ¬p (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
+εᶜ-Labeled-∙ lₐ ¬p (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Labeled-∙ lₐ ¬p t) Else εᶜ-Labeled-∙ lₐ ¬p e
+εᶜ-Labeled-∙ lₐ ¬p ∙ = ∙ 
 
 εᶜ {Mac lᵈ τ} lₐ c with lᵈ ⊑? lₐ
 εᶜ {Mac lᵈ τ} lₐ c | yes p = εᶜ-Mac lₐ p c
