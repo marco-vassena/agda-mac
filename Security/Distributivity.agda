@@ -17,6 +17,17 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Labeled-lookup p (x ∷ Γ) Here | no ¬p = ⊥-elim (¬p p)
 εᶜ-Labeled-lookup p (_ ∷ Γ) (There x) rewrite εᶜ-Labeled-lookup p Γ x = refl
 
+
+-- TODO
+-- Why for εᶜ-Labeled-lookup we need extensionality and here we do not?
+-- Maybe adjusting the definition we can avoid that postulate.
+εᶜ-Labeled-∙-lookup : ∀ {lᵈ τ Δ} {lₐ : Label} (¬p : ¬ (lᵈ ⊑ lₐ)) (Γ : Env Δ) (x : Labeled lᵈ τ ∈ Δ) -> 
+                          εᶜ-Labeled-∙ lₐ ¬p (x !! Γ) ≡ x !! εᶜ-env lₐ Γ
+εᶜ-Labeled-∙-lookup {lᵈ} {lₐ = lₐ} ¬p (x ∷ Γ) Here with lᵈ ⊑? lₐ
+εᶜ-Labeled-∙-lookup ¬p (x ∷ Γ) Here | yes p = ⊥-elim (¬p p)
+εᶜ-Labeled-∙-lookup ¬p₁ (x ∷ Γ) Here | no ¬p = refl
+εᶜ-Labeled-∙-lookup ¬p (_ ∷ Γ) (There x) rewrite εᶜ-Labeled-∙-lookup ¬p Γ x = refl
+
 εᶜ-Labeled-distributes : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Labeled lᵈ τ)} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) -> 
                        c₁ ⟼ c₂ -> (εᶜ-Labeled lₐ p c₁) ⟼ (εᶜ-Labeled lₐ p c₂)
 εᶜ-Labeled-distributes lₐ p (AppL s) = AppL (εᶜ-distributes lₐ s)
@@ -40,14 +51,22 @@ open import Relation.Binary.PropositionalEquality
 
 εᶜ-Labeled-∙-distributes : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Labeled lᵈ τ)} -> (lₐ : Label) -> (p : ¬ (lᵈ ⊑ lₐ)) -> 
                        c₁ ⟼ c₂ -> (εᶜ-Labeled-∙ lₐ p c₁) ⟼ (εᶜ-Labeled-∙ lₐ p c₂)
-εᶜ-Labeled-∙-distributes lₐ ¬p (AppL s) = Hole
-εᶜ-Labeled-∙-distributes lₐ ¬p Beta = Hole
-εᶜ-Labeled-∙-distributes lₐ ¬p Lookup = Dist-∙
-εᶜ-Labeled-∙-distributes lₐ ¬p Dist-$ = Dist-∙
-εᶜ-Labeled-∙-distributes lₐ ¬p Dist-If = Dist-∙
-εᶜ-Labeled-∙-distributes lₐ ¬p (IfCond s) = Hole
-εᶜ-Labeled-∙-distributes lₐ ¬p IfTrue = Hole
-εᶜ-Labeled-∙-distributes lₐ ¬p IfFalse = Hole
+εᶜ-Labeled-∙-distributes lₐ ¬p (AppL s) = AppL (εᶜ-distributes lₐ s)
+εᶜ-Labeled-∙-distributes {lᵈ} lₐ ¬p Beta with lᵈ ⊑? lₐ
+εᶜ-Labeled-∙-distributes lₐ ¬p Beta | yes p = ⊥-elim (¬p p)
+εᶜ-Labeled-∙-distributes lₐ ¬p₁ Beta | no ¬p = Beta
+εᶜ-Labeled-∙-distributes {lᵈ} {c₁ = (Γ , Var x)} lₐ ¬p Lookup with lᵈ ⊑? lₐ
+εᶜ-Labeled-∙-distributes {c₁ = (Γ , Var x)} lₐ ¬p Lookup | yes p = ⊥-elim (¬p p)
+εᶜ-Labeled-∙-distributes {c₁ = (Γ , Var x)} lₐ ¬p₁ Lookup | no ¬p rewrite εᶜ-Labeled-∙-lookup ¬p Γ x = Lookup
+εᶜ-Labeled-∙-distributes {c₁ = Γ , App f x} lₐ ¬p Dist-$ rewrite εᶜ-Closure {t = x} lₐ = Dist-$
+εᶜ-Labeled-∙-distributes lₐ ¬p Dist-If = Dist-If
+εᶜ-Labeled-∙-distributes lₐ ¬p (IfCond s) = IfCond (εᶜ-distributes lₐ s)
+εᶜ-Labeled-∙-distributes {lᵈ} lₐ ¬p IfTrue with lᵈ ⊑? lₐ
+εᶜ-Labeled-∙-distributes lₐ ¬p IfTrue | yes p = ⊥-elim (¬p p)
+εᶜ-Labeled-∙-distributes lₐ ¬p₁ IfTrue | no ¬p = IfTrue
+εᶜ-Labeled-∙-distributes {lᵈ} lₐ ¬p IfFalse with lᵈ ⊑? lₐ
+εᶜ-Labeled-∙-distributes lₐ ¬p IfFalse | yes p = ⊥-elim (¬p p)
+εᶜ-Labeled-∙-distributes lₐ ¬p₁ IfFalse | no ¬p = IfFalse
 εᶜ-Labeled-∙-distributes lₐ ¬p Dist-∙ = Dist-∙
 εᶜ-Labeled-∙-distributes lₐ ¬p Hole = Hole
 
