@@ -76,8 +76,23 @@ data _⟼_ : CTerm -> CTerm -> Set where
   unlabel : ∀ {n t l} {Γ : Env n} ->
             unlabel (Γ , Res l t) ⟼ (id {{Γ}} $ (Γ , Return t))
 
+  unlabelEx : ∀ {n e l} {Γ : Env n} ->
+              unlabel (Γ , Resₓ l e) ⟼ (id {{Γ}} $ (Γ , Throw e))
+
   unlabelCtx : ∀ {c c'} -> c ⟼ c' ->
                unlabel c ⟼ unlabel c'
+
+  Dist-join : ∀ {l h n} {Γ : Env n} {t : Term n} -> (p : l ⊑ h) ->
+                (Γ , join p t) ⟼ join p (Γ , t)
+
+  joinCtx : ∀ {l h c c'} -> (p : l ⊑ h) ->
+               c ⟼ c' -> join p c ⟼ join p c'
+
+  join : ∀ {l h n} {Γ : Env n} {t : Term n} (p : l ⊑ h) -> 
+              join p (Γ , Mac t) ⟼ (id {{Γ = Γ}} $ (Γ , (Return (Res h t))))
+
+  joinEx : ∀ {l h n} {Γ : Env n} {e : Term n} (p : l ⊑ h) -> 
+              join p (Γ , Macₓ e) ⟼ (id {{Γ = Γ}} $ (Γ , Return (Resₓ h e)))
 
   Dist-∙ : ∀ {n} {Γ : Env n} -> (Γ , ∙) ⟼ ∙
 

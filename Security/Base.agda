@@ -8,6 +8,29 @@ open import Relation.Binary.PropositionalEquality
 ε : ∀ {τ Δ} -> Label -> Term Δ τ -> Term Δ τ
 
 ε-Mac : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> Term Δ (Mac lᵈ τ) -> Term Δ (Mac lᵈ τ)
+
+-- When we don't have a specific value to erase we erase the whole computation
+-- afterall it is not visible to the attacker: lʰ ⊑ lₐ
+ε-Mac-Labeled-∙ : ∀ {lᵈ lʰ Δ τ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> ¬ (lʰ ⊑ lₐ) -> 
+                  Term Δ (Mac lʰ τ) -> Term Δ (Mac lʰ τ)
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Var x) = ∙
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (App f x) = ∙
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (If c Then t Else e) 
+  = ∙ -- If (ε lₐ c) Then (ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a t) Else (ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a e)
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Return t) = ∙
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (m >>= k) = ∙
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Throw t) = ∙
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Catch m h) = ∙ -- Catch (ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a m) (ε lₐ h)
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Mac t) = Mac ∙
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Macₓ t) = Macₓ ∙
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (label x t) = ∙
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (unlabel x t) = ∙
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (join {h = lʰ} d⊑h t) = ∙
+--  with lʰ ⊑? lₐ
+-- ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (join d⊑h t) | yes h⊑a = join d⊑h (ε-Mac lₐ h⊑a t)
+-- ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (join d⊑h t) | no ¬h⊑a' = join d⊑h (ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a' t) 
+ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a ∙ = ∙
+
 ε-Mac lₐ p (Var x) = Var x
 ε-Mac lₐ p (App f x) = App (ε lₐ f) (ε lₐ x)
 ε-Mac lₐ p (If c Then t Else e) = If (ε lₐ c) Then (ε-Mac lₐ p t) Else ε-Mac lₐ p e
@@ -23,7 +46,7 @@ open import Relation.Binary.PropositionalEquality
 ε-Mac lₐ p (unlabel x t) = unlabel x (ε lₐ t)
 ε-Mac lₐ p (join {l = lᵈ} {h = lʰ} d⊑h t) with lʰ ⊑? lₐ
 ε-Mac lₐ p (join d⊑h t) | yes h⊑a = join d⊑h (ε-Mac lₐ h⊑a t)
-ε-Mac lₐ p (join d⊑h t) | no ¬h⊑a = join d⊑h ∙
+ε-Mac lₐ d⊑a (join d⊑h t) | no ¬h⊑a = join d⊑h (ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a t)
 ε-Mac lₐ p ∙ = ∙
 
 ε-Labeled : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> Term Δ (Labeled lᵈ τ) -> Term Δ (Labeled lᵈ τ)
@@ -31,13 +54,15 @@ open import Relation.Binary.PropositionalEquality
 ε-Labeled lₐ p (App f x) = App (ε lₐ f) (ε lₐ x)
 ε-Labeled lₐ p (If c Then t Else e) = If (ε lₐ c) Then (ε-Labeled lₐ p t) Else (ε-Labeled lₐ p e)
 ε-Labeled lₐ p (Res t) = Res (ε lₐ t)
+ε-Labeled lₐ p (Resₓ t) = Resₓ (ε lₐ t)
 ε-Labeled lₐ p ∙ = ∙
 
 ε-Labeled-∙ : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> Term Δ (Labeled lᵈ τ) -> Term Δ (Labeled lᵈ τ)
 ε-Labeled-∙ lₐ ¬p (Var x) = Var x
 ε-Labeled-∙ lₐ ¬p (App f x) = App (ε lₐ f) (ε lₐ x)
-ε-Labeled-∙ lₐ ¬p (If c Then t Else e) = If ε lₐ c Then ε-Labeled-∙ lₐ ¬p t Else ε-Labeled-∙ lₐ ¬p e
+ε-Labeled-∙ lₐ ¬p (If t Then t₁ Else t₂) = If ε lₐ t Then ε-Labeled-∙ lₐ ¬p t₁ Else ε-Labeled-∙ lₐ ¬p t₂
 ε-Labeled-∙ lₐ ¬p (Res t) = Res ∙
+ε-Labeled-∙ lₐ ¬p (Resₓ t) = Resₓ ∙ -- It is not possible to distinguish between Res and Resₓ so its fine to erase the exception only
 ε-Labeled-∙ lₐ ¬p ∙ = ∙
 
 ε {Mac lᵈ τ} lₐ t with lᵈ ⊑? lₐ
@@ -77,17 +102,42 @@ open import Relation.Binary.PropositionalEquality
   (εᶜ-env Γ , ∙) ≠ ∙
 
 -}
+
 εᶜ : ∀ {τ} -> Label -> CTerm τ -> CTerm τ
 εᶜ-env : ∀ {Δ} -> Label -> Env Δ -> Env Δ
 
 εᶜ-Mac : ∀ {τ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
+εᶜ-Mac-Labeled-∙ : ∀ {lᵈ lʰ τ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> ¬ (lʰ ⊑ lₐ) -> 
+                  CTerm (Mac lʰ τ) -> CTerm (Mac lʰ τ)
+εᶜ-Mac-∙ : ∀ {lᵈ τ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
+
+εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Γ , t) = (εᶜ-env lₐ Γ) , (ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a t)
+εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (f $ x) = ∙
+εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (If c Then t Else e) 
+  = ∙ -- If (εᶜ lₐ c) Then (εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a t) Else (εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a e)
+εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (m >>= k) = ∙
+εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Catch m h) = ∙ -- Catch (εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a m) (εᶜ lₐ h)
+εᶜ-Mac-Labeled-∙ lₐ d⊑a _ (unlabel {h = lʰ} h⊑a c) = ∙ -- unlabel h⊑a (εᶜ lₐ c)
+εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (join {h = lʰ} d⊑h c) = ∙ 
+--  with lʰ ⊑? lₐ
+-- εᶜ-Mac-Labeled-∙ lₐ d⊑a _ (join d⊑h c) | yes h⊑a = join d⊑h (εᶜ-Mac lₐ h⊑a c)
+-- εᶜ-Mac-Labeled-∙ lₐ d⊑a _ (join d⊑h c) | no ¬h⊑a = ∙ -- {!!} -- ljoin d⊑h (εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a c)
+-- join x {!!}
+εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a ∙ = ∙
+
 εᶜ-Mac lₐ p (Γ , t) = (εᶜ-env lₐ Γ) , (ε-Mac lₐ p t)
 εᶜ-Mac lₐ p (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
 εᶜ-Mac lₐ p (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Mac lₐ p t) Else εᶜ-Mac lₐ p e
 εᶜ-Mac lₐ p (m >>= k) = (εᶜ-Mac lₐ p m) >>= (εᶜ lₐ k)
 εᶜ-Mac lₐ p (Catch m h) = Catch (εᶜ-Mac lₐ p m) (εᶜ lₐ h)
 εᶜ-Mac lₐ p (unlabel x c) = unlabel x (εᶜ lₐ c) 
-εᶜ-Mac lₐ p (join d⊑h c) = join d⊑h (εᶜ lₐ c)
+εᶜ-Mac lₐ p (join {l = lᵈ} {h = lʰ} d⊑h c) with lʰ ⊑? lₐ
+εᶜ-Mac lₐ p₁ (join {l = lᵈ} {h = lʰ} d⊑h c) | yes h⊑a = join d⊑h (εᶜ-Mac lₐ h⊑a c)
+εᶜ-Mac lₐ d⊑a (join {l = lᵈ} {h = lʰ} d⊑h c) | no ¬h⊑a = join d⊑h (εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a c) 
+-- Can we try to fix the definition here?
+-- Sketch pattern match on type and 
+-- in case of Labeled H α call εᶜ-Mac-Labeled-∙ : lᵈ ⊑ lₐ -> ¬ lʰ ⊑ lₐ -> Mac L (Labeled H a) -> Mac L (Labeled H a)
+-- which erases only the Labeled part
 εᶜ-Mac lₐ p ∙ = ∙
 
 εᶜ-Labeled : ∀ {τ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> CTerm (Labeled lᵈ τ) -> CTerm (Labeled lᵈ τ)
@@ -96,14 +146,13 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Labeled lₐ p (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Labeled lₐ p t) Else (εᶜ-Labeled lₐ p e)
 εᶜ-Labeled lₐ p ∙ = ∙
 
-εᶜ-Mac-∙ : ∀ {lᵈ τ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
 εᶜ-Mac-∙ lₐ ¬p (Γ , t) = εᶜ-env lₐ Γ , ∙
 εᶜ-Mac-∙ lₐ ¬p c = ∙
 
 εᶜ-Labeled-∙ : ∀ {lᵈ τ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> CTerm (Labeled lᵈ τ) -> CTerm (Labeled lᵈ τ)
 εᶜ-Labeled-∙ lₐ ¬p (Γ , t) = εᶜ-env lₐ Γ , ε-Labeled-∙ lₐ ¬p t
-εᶜ-Labeled-∙ lₐ ¬p (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
-εᶜ-Labeled-∙ lₐ ¬p (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Labeled-∙ lₐ ¬p t) Else εᶜ-Labeled-∙ lₐ ¬p e
+εᶜ-Labeled-∙ lₐ ¬p (f $ x) = εᶜ lₐ f $ εᶜ lₐ x
+εᶜ-Labeled-∙ lₐ ¬p (If c Then c₁ Else c₂) = If (εᶜ lₐ c) Then (εᶜ-Labeled-∙ lₐ ¬p c₁) Else (εᶜ-Labeled-∙ lₐ ¬p c₂)
 εᶜ-Labeled-∙ lₐ ¬p ∙ = ∙ 
 
 εᶜ {Mac lᵈ τ} lₐ c with lᵈ ⊑? lₐ

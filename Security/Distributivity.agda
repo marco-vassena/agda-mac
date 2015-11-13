@@ -17,16 +17,17 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Labeled-lookup p (x ∷ Γ) Here | no ¬p = ⊥-elim (¬p p)
 εᶜ-Labeled-lookup p (_ ∷ Γ) (There x) rewrite εᶜ-Labeled-lookup p Γ x = refl
 
+-- TODO move to base
+-- I think this is another axiom that we need.
+postulate extensional-¬⊑ : ∀ {l₁ l₂} -> (p₁ p₂ : ¬ l₁ ⊑ l₂) -> p₁ ≡ p₂
 
--- TODO
--- Why for εᶜ-Labeled-lookup we need extensionality and here we do not?
--- Maybe adjusting the definition we can avoid that postulate.
-εᶜ-Labeled-∙-lookup : ∀ {lᵈ τ Δ} {lₐ : Label} (¬p : ¬ (lᵈ ⊑ lₐ)) (Γ : Env Δ) (x : Labeled lᵈ τ ∈ Δ) -> 
+εᶜ-Labeled-∙-lookup : ∀ {lᵈ τ Δ} {lₐ : Label} (¬p : ¬ lᵈ ⊑ lₐ) (Γ : Env Δ) (x : Labeled lᵈ τ ∈ Δ) -> 
                           εᶜ-Labeled-∙ lₐ ¬p (x !! Γ) ≡ x !! εᶜ-env lₐ Γ
 εᶜ-Labeled-∙-lookup {lᵈ} {lₐ = lₐ} ¬p (x ∷ Γ) Here with lᵈ ⊑? lₐ
 εᶜ-Labeled-∙-lookup ¬p (x ∷ Γ) Here | yes p = ⊥-elim (¬p p)
-εᶜ-Labeled-∙-lookup ¬p₁ (x ∷ Γ) Here | no ¬p = refl
+εᶜ-Labeled-∙-lookup ¬p₁ (x ∷ Γ) Here | no ¬p rewrite extensional-¬⊑ ¬p ¬p₁ = refl
 εᶜ-Labeled-∙-lookup ¬p (_ ∷ Γ) (There x) rewrite εᶜ-Labeled-∙-lookup ¬p Γ x = refl
+
 
 εᶜ-Labeled-distributes : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Labeled lᵈ τ)} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) -> 
                        c₁ ⟼ c₂ -> (εᶜ-Labeled lₐ p c₁) ⟼ (εᶜ-Labeled lₐ p c₂)
@@ -53,11 +54,11 @@ open import Relation.Binary.PropositionalEquality
                        c₁ ⟼ c₂ -> (εᶜ-Labeled-∙ lₐ p c₁) ⟼ (εᶜ-Labeled-∙ lₐ p c₂)
 εᶜ-Labeled-∙-distributes lₐ ¬p (AppL s) = AppL (εᶜ-distributes lₐ s)
 εᶜ-Labeled-∙-distributes {lᵈ} lₐ ¬p Beta with lᵈ ⊑? lₐ
-εᶜ-Labeled-∙-distributes lₐ ¬p Beta | yes p = ⊥-elim (¬p p)
+εᶜ-Labeled-∙-distributes lₐ ¬p Beta | yes p = Beta
 εᶜ-Labeled-∙-distributes lₐ ¬p₁ Beta | no ¬p = Beta
-εᶜ-Labeled-∙-distributes {lᵈ} {c₁ = (Γ , Var x)} lₐ ¬p Lookup with lᵈ ⊑? lₐ
-εᶜ-Labeled-∙-distributes {c₁ = (Γ , Var x)} lₐ ¬p Lookup | yes p = ⊥-elim (¬p p)
-εᶜ-Labeled-∙-distributes {c₁ = (Γ , Var x)} lₐ ¬p₁ Lookup | no ¬p rewrite εᶜ-Labeled-∙-lookup ¬p Γ x = Lookup
+εᶜ-Labeled-∙-distributes {lᵈ} {c₁ = Γ , Var x} lₐ ¬p Lookup with lᵈ ⊑? lₐ
+εᶜ-Labeled-∙-distributes {c₁ = Γ , Var x} lₐ ¬p Lookup | yes p = ⊥-elim (¬p p)
+εᶜ-Labeled-∙-distributes {c₁ = Γ , Var x} lₐ ¬p₁ Lookup | no ¬p rewrite εᶜ-Labeled-∙-lookup ¬p Γ x = Lookup
 εᶜ-Labeled-∙-distributes {c₁ = Γ , App f x} lₐ ¬p Dist-$ rewrite εᶜ-Closure {t = x} lₐ = Dist-$
 εᶜ-Labeled-∙-distributes lₐ ¬p Dist-If = Dist-If
 εᶜ-Labeled-∙-distributes lₐ ¬p (IfCond s) = IfCond (εᶜ-distributes lₐ s)
@@ -85,6 +86,50 @@ open import Relation.Binary.PropositionalEquality
 
 εᶜ-Mac-∙-distributes : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Mac lᵈ τ)} -> (lₐ : Label) -> (p : ¬ (lᵈ ⊑ lₐ)) -> 
                        c₁ ⟼ c₂ -> (εᶜ-Mac-∙ lₐ p c₁) ⟼ (εᶜ-Mac-∙ lₐ p c₂)
+
+-- Issue 1: it looks like variables can escape the appropriate erasure
+-- when they are pushed in the environment
+
+εᶜ-Mac-Labeled-∙-dist : ∀ {lʰ lᵈ τ} {c₁ c₂ : CTerm (Mac lʰ τ)} -> (lₐ : Label) -> 
+                      (d⊑a : lᵈ ⊑ lₐ) -> (¬h⊑a : ¬ lʰ ⊑ lₐ) -> c₁ ⟼ c₂ ->
+                      εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a c₁ ⟼ εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a c₂
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (AppL s) = Hole
+εᶜ-Mac-Labeled-∙-dist {lʰ} lₐ d⊑a ¬h⊑a Beta with lʰ ⊑? lₐ
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Beta | yes h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Beta | no ¬h⊑a' = Hole
+εᶜ-Mac-Labeled-∙-dist {lʰ} lₐ d⊑a ¬h⊑a Lookup with lʰ ⊑? lₐ
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Lookup | yes h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Lookup | no ¬h⊑a' = Dist-∙
+εᶜ-Mac-Labeled-∙-dist {c₁ = Γ , App f x} lₐ d⊑a ¬h⊑a Dist-$ = Dist-∙
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Dist-If = Dist-∙
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (IfCond s) = Hole -- IfCond (εᶜ-distributes lₐ s)
+εᶜ-Mac-Labeled-∙-dist {lʰ} lₐ d⊑a ¬h⊑a IfTrue with lʰ ⊑? lₐ
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a IfTrue | yes h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a IfTrue | no ¬h⊑a' = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a IfFalse = Hole -- Same
+εᶜ-Mac-Labeled-∙-dist {lʰ} lₐ d⊑a ¬h⊑a Return with lʰ ⊑? lₐ
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Return | yes h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Return | no ¬h⊑a' = Dist-∙ -- Do we need Return ∙ or can we erase just to ‌∙
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Dist->>= = Dist-∙
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (BindCtx s) = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Bind = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a BindEx = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Throw = Dist-∙ -- How can we escape this?
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Dist-Catch = Dist-∙
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (CatchCtx s) = Hole -- CatchCtx (εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a s)
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Catch = Hole -- Labeled exceptions?
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a CatchEx = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (label p) = Dist-∙
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (Dist-unlabel p) = Dist-∙
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (unlabel p) = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (unlabelEx p) = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (unlabelCtx p s) = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (Dist-join {h = lʰ} p) = Dist-∙
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (joinCtx {h = lʰ} p s) = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ _ ¬d⊑a (join {l = lᵈ} {h = lʰ} d⊑h) = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (joinEx p) = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Dist-∙ = Dist-∙
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a Hole = Hole
 
 εᶜ-Mac-distributes lₐ p (AppL s) = AppL (εᶜ-distributes lₐ s)
 εᶜ-Mac-distributes {lᵈ} lₐ p Beta with lᵈ ⊑? lₐ
@@ -137,6 +182,13 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac-distributes lₐ h⊑a (unlabel {l = lᵈ} {h = lʰ} d⊑h) | no ¬d⊑a with lʰ ⊑? lₐ
 εᶜ-Mac-distributes lₐ h⊑a (unlabel d⊑h) | no ¬d⊑a | yes h⊑a' = ⊥-elim (¬d⊑a (trans-⊑ d⊑h h⊑a))
 εᶜ-Mac-distributes lₐ h⊑a (unlabel d⊑h) | no ¬d⊑a | no ¬h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx {l = lᵈ} {h = lʰ} d⊑h) with lᵈ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx {l = lᵈ} {h = lʰ} d⊑h) | yes p with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx d⊑h) | yes p₁ | yes p = unlabelEx d⊑h
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx d⊑h) | yes p | no ¬p = ⊥-elim (¬p h⊑a)
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx {l = lᵈ} {h = lʰ} d⊑h) | no ¬p with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx d⊑h) | no ¬p | yes p = ⊥-elim (¬p (trans-⊑ d⊑h h⊑a))
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p h⊑a)
 εᶜ-Mac-distributes lₐ h⊑a (unlabelCtx {l = lᵈ} {h = lʰ} d⊑h s) with lᵈ ⊑? lₐ
 εᶜ-Mac-distributes lₐ h⊑a (unlabelCtx d⊑h s) | yes d⊑a = unlabelCtx d⊑h (εᶜ-Labeled-distributes lₐ d⊑a s)
 εᶜ-Mac-distributes lₐ h⊑a (unlabelCtx d⊑h s) | no ¬p = unlabelCtx d⊑h (εᶜ-Labeled-∙-distributes lₐ ¬p s)
@@ -145,7 +197,7 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac-distributes lₐ d⊑a (Dist-join d⊑h) | no ¬h⊑a = Dist-join d⊑h
 εᶜ-Mac-distributes lₐ d⊑a (joinCtx {l = lᵈ} {h = lʰ} d⊑h s) with lʰ ⊑? lₐ
 εᶜ-Mac-distributes lₐ d⊑a (joinCtx d⊑h s) | yes h⊑a = joinCtx d⊑h (εᶜ-Mac-distributes lₐ h⊑a s)
-εᶜ-Mac-distributes lₐ d⊑a (joinCtx {l = lᵈ} {h = lʰ} d⊑h s) | no ¬h⊑a = joinCtx d⊑h (εᶜ-Mac-∙-distributes lₐ ¬h⊑a s)
+εᶜ-Mac-distributes lₐ d⊑a (joinCtx {l = lᵈ} {h = lʰ} d⊑h s) | no ¬h⊑a = joinCtx d⊑h (εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a s)
 εᶜ-Mac-distributes lₐ d⊑a (join {l = lᵈ} {h = lʰ} d⊑h) with lʰ ⊑? lₐ
 εᶜ-Mac-distributes lₐ d⊑a (join {l = lᵈ} {h = lʰ} d⊑h) | yes h⊑a with lᵈ ⊑? lₐ
 εᶜ-Mac-distributes lₐ d⊑a (join {l = lᵈ} {h = lʰ} d⊑h) | yes h⊑a | yes d⊑a' with lʰ ⊑? lₐ 
@@ -155,14 +207,18 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac-distributes lₐ d⊑a (join {l = lᵈ} {h = lʰ} d⊑h) | no ¬h⊑a with lᵈ ⊑? lₐ
 εᶜ-Mac-distributes lₐ d⊑a (join {l = lᵈ} {h = lʰ} d⊑h) | no ¬h⊑a | yes d⊑a' with lʰ ⊑? lₐ
 εᶜ-Mac-distributes lₐ d⊑a (join d⊑h) | no ¬h⊑a | yes d⊑a' | yes h⊑a = ⊥-elim (¬h⊑a h⊑a)
-εᶜ-Mac-distributes lₐ d⊑a (join d⊑h) | no ¬h⊑a | yes d⊑a' | no ¬h⊑a' = {!join d⊑h!} -- Mac t is erased to ∙ and join does not apply
+εᶜ-Mac-distributes lₐ d⊑a (join d⊑h) | no ¬h⊑a | yes d⊑a' | no ¬h⊑a' = join d⊑h
 εᶜ-Mac-distributes lₐ d⊑a (join d⊑h) | no ¬h⊑a | no ¬d⊑a = ⊥-elim (¬d⊑a d⊑a)
 εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) with lʰ ⊑? lₐ
 εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) | yes h⊑a with lᵈ ⊑? lₐ
-εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | yes h⊑a | yes d⊑a' = joinEx d⊑h
+εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) | yes h⊑a | yes d⊑a' with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | yes h⊑a | yes d⊑a' | yes h⊑a' = joinEx d⊑h
+εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | yes h⊑a | yes d⊑a' | no ¬h⊑a = ⊥-elim (¬h⊑a h⊑a)
 εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | yes h⊑a | no ¬d⊑a = ⊥-elim (¬d⊑a d⊑a)
 εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) | no ¬h⊑a with lᵈ ⊑? lₐ
-εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | no ¬h⊑a | yes d⊑a' = {!!}
+εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) | no ¬h⊑a | yes d⊑a' with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | no ¬h⊑a | yes d⊑a' | yes h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | no ¬h⊑a | yes d⊑a' | no ¬h⊑a' = joinEx d⊑h
 εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | no ¬h⊑a | no ¬d⊑a = ⊥-elim (¬d⊑a d⊑a)
 εᶜ-Mac-distributes lₐ p Dist-∙ = Dist-∙
 εᶜ-Mac-distributes lₐ p Hole = Hole
@@ -188,6 +244,7 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac-∙-distributes lₐ ¬p (label p) = Dist-∙
 εᶜ-Mac-∙-distributes lₐ ¬p (Dist-unlabel p) = Dist-∙
 εᶜ-Mac-∙-distributes lₐ ¬p (unlabel p) = Hole
+εᶜ-Mac-∙-distributes lₐ ¬p (unlabelEx p) = Hole
 εᶜ-Mac-∙-distributes lₐ ¬p (unlabelCtx p s) = Hole
 εᶜ-Mac-∙-distributes lₐ h⊑a (Dist-join d⊑h) = Dist-∙
 εᶜ-Mac-∙-distributes lₐ h⊑a (joinCtx d⊑h s) = Hole

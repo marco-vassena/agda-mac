@@ -23,6 +23,7 @@ data Term (Δ : Context) : Ty -> Set where
   Macₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Mac l α)
 
   Res : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Labeled l α)
+  Resₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Labeled l α)
 
   label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Labeled h α))
   unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Mac h α)
@@ -78,6 +79,7 @@ IsValue (Γ , label x t) = ⊥
 IsValue (Γ , unlabel x t) = ⊥
 IsValue (Γ , join p t) = ⊥
 IsValue (Γ , Res t) = ⊤
+IsValue (Γ , Resₓ e) = ⊤
 IsValue (Γ , ∙) = ⊥
 IsValue (c₁ $ c₂) = ⊥
 IsValue (If c Then t Else e) = ⊥

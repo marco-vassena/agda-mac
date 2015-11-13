@@ -30,8 +30,10 @@ sound-⌞ Catch t t₁ ⌟ = Catch (sound-⌞ t ⌟) (sound-⌞ t₁ ⌟)
 sound-⌞ Mac t ⌟ = Mac (sound-⌞ t ⌟)
 sound-⌞ Macₓ t ⌟ = Macₓ (sound-⌞ t ⌟)
 sound-⌞ Res t ⌟ = Res (sound-⌞ t ⌟)
+sound-⌞ Resₓ t ⌟ = Resₓ (sound-⌞ t ⌟)
 sound-⌞ label x t ⌟ = label x (sound-⌞ t ⌟)
 sound-⌞ unlabel x t ⌟ = unlabel x (sound-⌞ t ⌟)
+sound-⌞ join x t ⌟ = join x (sound-⌞ t ⌟)
 sound-⌞ ∙ ⌟ = ∙
 
 -- Soundness
@@ -45,6 +47,7 @@ sound-⟦ (If c Then t Else e) ⟧ = If sound-⟦ c ⟧ Then sound-⟦ t ⟧ Els
 sound-⟦ m >>= k ⟧ = (sound-⟦_⟧ m) >>= (sound-⟦ k ⟧)
 sound-⟦ Catch m h ⟧ = Catch (sound-⟦_⟧ m) (sound-⟦ h ⟧)
 sound-⟦ unlabel x c ⟧ = unlabel x (sound-⟦ c ⟧)
+sound-⟦ join x c ⟧ = join x (sound-⟦ c ⟧)
 sound-⟦ ∙ ⟧ = ∙
 
 sound-map⟦ [] ⟧ = []
@@ -80,8 +83,10 @@ complete-⌞ Catch m k ⌟ rewrite complete-⌞ m ⌟ | complete-⌞ k ⌟ = ref
 complete-⌞ Mac t ⌟ rewrite complete-⌞ t ⌟ = refl
 complete-⌞ Macₓ t ⌟ rewrite complete-⌞ t ⌟ = refl
 complete-⌞ Res t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ Resₓ t ⌟ rewrite complete-⌞ t ⌟ = refl
 complete-⌞ label x t ⌟ rewrite complete-⌞ t ⌟ = refl
 complete-⌞ unlabel x t ⌟ rewrite complete-⌞ t ⌟ = refl
+complete-⌞ join x t ⌟ rewrite complete-⌞ t ⌟ = refl
 complete-⌞ ∙ ⌟ = refl
 
 -- Closed terms
@@ -99,6 +104,7 @@ complete-⟦ If c Then t Else e ⟧ rewrite complete-⟦ c ⟧ | complete-⟦ t 
 complete-⟦ m >>= k ⟧ rewrite complete-⟦ m ⟧ | complete-⟦ k ⟧ = refl
 complete-⟦ Catch m h ⟧ rewrite complete-⟦ m ⟧ | complete-⟦ h ⟧ = refl
 complete-⟦ unlabel x c ⟧ rewrite complete-⟦ c ⟧ = refl
+complete-⟦ join x c ⟧ rewrite complete-⟦ c ⟧ = refl
 complete-⟦ ∙ ⟧ = refl
 
 complete-map⟦ [] ⟧ = refl
@@ -129,7 +135,9 @@ complete-⌜ Mac t ⌝ rewrite complete-⌜ t ⌝ = refl
 complete-⌜ Macₓ t ⌝ rewrite complete-⌜ t ⌝ = refl
 complete-⌜ label p t ⌝ rewrite complete-⌜ t ⌝ = refl
 complete-⌜ unlabel x t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ join x t ⌝ rewrite complete-⌜ t ⌝ = refl
 complete-⌜ Res t ⌝ rewrite complete-⌜ t ⌝ = refl
+complete-⌜ Resₓ t ⌝ rewrite complete-⌜ t ⌝ = refl
 complete-⌜ ∙ ⌝ = refl
 
 -- ⟦ ⟪ c ⟫ ⟧ ≡ c
@@ -148,6 +156,7 @@ complete-⟪ If c Then t Else e ⟫ rewrite complete-⟪ c ⟫ | complete-⟪ t 
 complete-⟪ m >>= k ⟫ rewrite complete-⟪ m ⟫ | complete-⟪ k ⟫ = refl
 complete-⟪ Catch m h ⟫ rewrite complete-⟪ m ⟫ | complete-⟪ h ⟫ = refl
 complete-⟪ unlabel x c ⟫ rewrite complete-⟪ c ⟫ = refl
+complete-⟪ join x c ⟫ rewrite complete-⟪ c ⟫ = refl
 complete-⟪ ∙ ⟫ = refl
 
 --------------------------------------------------------------------------------
@@ -182,7 +191,9 @@ stepᵘᵗ (Catch (Γ , Mac t₁) p₁) Catch = Catch
 stepᵘᵗ (Catch (Γ , Macₓ t₁) p₁) CatchEx = CatchEx
 stepᵘᵗ (Γ , label p t₁) (label .p) = label p
 stepᵘᵗ (Γ , unlabel x t₁) Dist-unlabel = Dist-unlabel x
-stepᵘᵗ (unlabel x (Γ , Res t₁)) unlabel = unlabel x
+stepᵘᵗ (Γ , join x t) (Dist-join .x) = Dist-join x
+stepᵘᵗ (unlabel x (Γ , Res t)) unlabel = unlabel x
+stepᵘᵗ (unlabel x (Γ , Resₓ e)) (unlabelCtx ())
 stepᵘᵗ (unlabel x (Γ , App t t₃)) (unlabelCtx Dist-$) = unlabelCtx x Dist-$
 stepᵘᵗ (unlabel x (Γ , Var p)) (unlabelCtx Lookup) = unlabelCtx x (stepᵘᵗ (Γ , Var p) Lookup )
 stepᵘᵗ (unlabel x (Γ , (If t Then t₄ Else t₅))) (unlabelCtx Dist-If) = unlabelCtx x Dist-If
@@ -192,6 +203,41 @@ stepᵘᵗ (unlabel x (p $ p₁)) (unlabelCtx (AppL s)) = unlabelCtx x (AppL (st
 stepᵘᵗ (unlabel x (p $ p₁)) (unlabelCtx Beta) = unlabelCtx x (stepᵘᵗ (p $ p₁) Beta)
 stepᵘᵗ (unlabel x (If p Then p₁ Else p₂)) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ (If p Then p₁ Else p₂) s)
 stepᵘᵗ (unlabel x ∙) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ ∙ s)
+stepᵘᵗ (unlabel x (Γ , Resₓ t)) unlabelEx = unlabelEx x
+-- Can this be refactored out?
+stepᵘᵗ (join x (Γ , Mac t)) (join .x) = join x
+stepᵘᵗ (join x (Γ , Macₓ t)) (joinEx .x) = joinEx x
+stepᵘᵗ (join x (Γ , App t t₃)) (joinCtx .x Dist-$) = joinCtx x Dist-$
+stepᵘᵗ (join x (Γ , Var p)) (joinCtx .x Lookup) = joinCtx x (stepᵘᵗ (Γ , Var p) Lookup )
+stepᵘᵗ (join x (Γ , (If t Then t₄ Else t₅))) (joinCtx .x Dist-If) = joinCtx x Dist-If
+stepᵘᵗ (join x (Γ , Return t₁)) (joinCtx .x Return) = joinCtx x Return
+stepᵘᵗ (join x (Γ , t₁ >>= t₂)) (joinCtx .x Dist->>=) = joinCtx x Dist->>=
+stepᵘᵗ (join x (Γ , Throw t₁)) (joinCtx .x Throw) = joinCtx x Throw
+stepᵘᵗ (join x (Γ , Catch t₁ t₂)) (joinCtx .x Dist-Catch) = joinCtx x Dist-Catch
+stepᵘᵗ (join x (Γ , Mac t₁)) (joinCtx .x ())
+stepᵘᵗ (join x (Γ , Macₓ t₁)) (joinCtx .x ())
+stepᵘᵗ (join x (Γ , label p t₁)) (joinCtx .x (label .p)) = joinCtx x (label p)
+stepᵘᵗ (join x (Γ , unlabel x₁ t₁)) (joinCtx .x Dist-unlabel) = joinCtx x (Dist-unlabel x₁)
+stepᵘᵗ (join x (Γ , join p t₁)) (joinCtx .x (Dist-join .p)) = joinCtx x (Dist-join p)
+stepᵘᵗ (join x (Γ , ∙)) (joinCtx .x Dist-∙) = joinCtx x Dist-∙
+stepᵘᵗ (join x (t $ t₁)) (joinCtx .x (AppL s)) = joinCtx x (AppL (stepᵘᵗ t s))
+stepᵘᵗ (join x (t₂ $ t₁)) (joinCtx .x Beta) = joinCtx x (stepᵘᵗ (t₂ $ t₁) Beta)
+stepᵘᵗ (join x (If t₁ Then t₂ Else t₃)) (joinCtx .x (IfCond s)) = joinCtx x (IfCond (stepᵘᵗ t₁ s))
+stepᵘᵗ (join x (If t₁ Then t₂ Else t₃)) (joinCtx .x IfTrue) = joinCtx x (stepᵘᵗ (If t₁ Then t₂ Else t₃) IfTrue)
+stepᵘᵗ (join x (If t₁ Then t₂ Else t₃)) (joinCtx .x IfFalse) = joinCtx x (stepᵘᵗ (If t₁ Then t₂ Else t₃) IfFalse)
+stepᵘᵗ (join x (t >>= t₁)) (joinCtx .x (BindCtx s)) = joinCtx x (BindCtx (stepᵘᵗ t s))
+stepᵘᵗ (join x (t₂ >>= t₁)) (joinCtx .x Bind) = joinCtx x (stepᵘᵗ (t₂ >>= t₁) Bind)
+stepᵘᵗ (join x (t >>= t₁)) (joinCtx .x BindEx) = joinCtx x (stepᵘᵗ (t >>= t₁) BindEx)
+stepᵘᵗ (join x (Catch t t₁)) (joinCtx .x (CatchCtx s)) = joinCtx x (CatchCtx (stepᵘᵗ t s))
+stepᵘᵗ (join x (Catch t₂ t₁)) (joinCtx .x Catch) = joinCtx x (stepᵘᵗ (Catch t₂ t₁) Catch)
+stepᵘᵗ (join x (Catch t t₁)) (joinCtx .x CatchEx) = joinCtx x (stepᵘᵗ (Catch t t₁) CatchEx)
+stepᵘᵗ (join x (unlabel x₁ t₁)) (joinCtx .x unlabel) = joinCtx x (stepᵘᵗ (unlabel x₁ t₁) unlabel)
+stepᵘᵗ (join x (unlabel x₁ t₁)) (joinCtx .x unlabelEx) = joinCtx x (stepᵘᵗ (unlabel x₁ t₁) unlabelEx)
+stepᵘᵗ (join x (unlabel x₁ t₁)) (joinCtx .x (unlabelCtx s)) = joinCtx x (stepᵘᵗ (unlabel x₁ t₁) (unlabelCtx s))
+stepᵘᵗ (join x (join x₁ t₁)) (joinCtx .x (joinCtx .x₁ s)) = joinCtx x (stepᵘᵗ (join x₁ t₁) (joinCtx x₁ s))
+stepᵘᵗ (join x (join x₁ t₁)) (joinCtx .x (join .x₁)) = joinCtx x (stepᵘᵗ (join x₁ t₁) (join x₁))
+stepᵘᵗ (join x (join x₁ t₁)) (joinCtx .x (joinEx .x₁)) = joinCtx x (stepᵘᵗ (join x₁ t₁) (joinEx x₁))
+stepᵘᵗ (join x ∙) (joinCtx .x Hole) = joinCtx x Hole
 stepᵘᵗ (Γ , ∙) Dist-∙ = Dist-∙
 stepᵘᵗ ∙ Hole = Hole
 
@@ -235,6 +281,11 @@ step⟦ CatchEx ⟧ = CatchEx
 step⟦ label p ⟧ = label p
 step⟦ Dist-unlabel p ⟧ = Dist-unlabel
 step⟦ unlabel p ⟧ = unlabel
+step⟦ unlabelEx p ⟧ = unlabelEx
+step⟦ Dist-join p ⟧ = Dist-join p
+step⟦ join x ⟧ = join x
+step⟦ joinEx x ⟧ = joinEx x
+step⟦ joinCtx x s ⟧ = joinCtx x step⟦ s ⟧
 step⟦ unlabelCtx p s ⟧ = unlabelCtx step⟦ s ⟧
 step⟦ Dist-∙ ⟧ = Dist-∙
 step⟦ Hole ⟧ = Hole
@@ -270,6 +321,11 @@ uniqueStepᵘ (label p) (label .p) = refl
 uniqueStepᵘ Dist-unlabel Dist-unlabel = refl
 uniqueStepᵘ unlabel unlabel = refl
 uniqueStepᵘ (unlabelCtx p) (unlabelCtx q) rewrite uniqueStepᵘ p q = refl
+uniqueStepᵘ unlabelEx unlabelEx = refl
+uniqueStepᵘ (Dist-join x) (Dist-join .x) = refl
+uniqueStepᵘ (joinCtx x s₁) (joinCtx .x s₂) rewrite uniqueStepᵘ s₁ s₂ = refl
+uniqueStepᵘ (join x) (join .x) = refl 
+uniqueStepᵘ (joinEx x) (joinEx .x) = refl
 uniqueStepᵘ Dist-∙ Dist-∙ = refl
 uniqueStepᵘ Hole Hole = refl
 
@@ -302,6 +358,11 @@ uniqueStepᵗ (label p) (label .p) = refl
 uniqueStepᵗ (Dist-unlabel p) (Dist-unlabel .p) = refl
 uniqueStepᵗ (unlabel p) (unlabel .p) = refl
 uniqueStepᵗ (unlabelCtx x p) (unlabelCtx .x q) rewrite uniqueStepᵗ p q = refl
+uniqueStepᵗ (unlabelEx .x) (unlabelEx x) = refl
+uniqueStepᵗ (Dist-join x) (Dist-join .x) = refl
+uniqueStepᵗ (joinCtx x s₁) (joinCtx .x s₂) rewrite uniqueStepᵗ s₁ s₂ = refl
+uniqueStepᵗ (join x) (join .x) = refl 
+uniqueStepᵗ (joinEx x) (joinEx .x) = refl
 uniqueStepᵗ Dist-∙ Dist-∙ = refl
 uniqueStepᵗ Hole Hole = refl
 

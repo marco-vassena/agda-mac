@@ -21,7 +21,9 @@ progress (Γ , Mac t) = inj₂ tt
 progress (Γ , Macₓ e) = inj₂ tt
 progress (Γ , label p t) = inj₁ (Step (label p))
 progress (Γ , unlabel p t) = inj₁ (Step Dist-unlabel)
+progress (Γ , join p t) = inj₁ (Step (Dist-join p))
 progress (Γ , Res t) = inj₂ tt
+progress (Γ , Resₓ t) = inj₂ tt
 progress (Γ , ∙) = inj₁ (Step Dist-∙)
 progress (f $ x) with progress f
 progress (f $ x) | inj₁ (Step s) = inj₁ (Step (AppL s))
@@ -57,12 +59,14 @@ progress ((Γ₁ , Mac x₁) >>= k₁) | inj₂ tt = inj₁ (Step Bind)
 progress ((Γ₁ , Macₓ x₁) >>= k₁) | inj₂ tt = inj₁ (Step BindEx)
 progress ((Γ₁ , label p x₁) >>= k₁) | inj₂ ()
 progress ((Γ₁ , unlabel x x₁) >>= k₁) | inj₂ ()
+progress ((Γ , join x t) >>= k) | inj₂ ()
 progress ((Γ₁ , ∙) >>= k₁) | inj₂ ()
 progress ((m₁ $ m₂) >>= k₁) | inj₂ ()
 progress ((If m₁ Then m₂ Else m₃) >>= k₁) | inj₂ ()
 progress (m₁ >>= m₂ >>= k₂) | inj₂ ()
 progress (Catch m₁ m₂ >>= k₁) | inj₂ ()
 progress (unlabel x m₁ >>= k₁) | inj₂ ()
+progress (join x t >>= k) | inj₂ ()
 progress (∙ >>= k₁) | inj₂ ()
 progress (Catch m h) with progress m
 progress (Catch m₁ h₁) | inj₁ (Step x) = inj₁ (Step (CatchCtx x))
@@ -77,12 +81,14 @@ progress (Catch (̋Γ , Mac m) h₁) | inj₂ y = inj₁ (Step Catch)
 progress (Catch (̋Γ , Macₓ m) h₁) | inj₂ y = inj₁ (Step CatchEx)
 progress (Catch (̋Γ , label p m) h₂) | inj₂ ()
 progress (Catch (̋Γ , unlabel x m) h₁) | inj₂ ()
+progress (Catch (Γ , join x t) h) | inj₂ ()
 progress (Catch (̋Γ , ∙) h₁) | inj₂ ()
 progress (Catch (m₁ $ m₂) h₁) | inj₂ ()
 progress (Catch (If m₁ Then m₂ Else m₃) h₁) | inj₂ ()
 progress (Catch (m₁ >>= m₂) h₁) | inj₂ ()
 progress (Catch (Catch m₁ m₂) h₂) | inj₂ ()
 progress (Catch (unlabel x m₁) h₁) | inj₂ ()
+progress (Catch (join x t) h) | inj₂ ()
 progress (Catch ∙ h₁) | inj₂ ()
 progress (unlabel x t) with progress t
 progress (unlabel _ t₁) | inj₁ (Step x) = inj₁ (Step (unlabelCtx x))
@@ -90,10 +96,33 @@ progress (unlabel x (Γ₁ , App t t₃)) | inj₂ ()
 progress (unlabel x (Γ₁ , Var p)) | inj₂ ()
 progress (unlabel x (Γ₁ , (If t Then t₄ Else t₅))) | inj₂ ()
 progress (unlabel x (Γ₁ , Res t₁)) | inj₂ tt = inj₁ (Step unlabel)
+progress (unlabel x (Γ₁ , Resₓ e)) | inj₂ tt = inj₁ (Step unlabelEx)
 progress (unlabel x (Γ₁ , ∙)) | inj₂ ()
 progress (unlabel x (t₁ $ t₂)) | inj₂ ()
 progress (unlabel x (If t₁ Then t₂ Else t₃)) | inj₂ ()
 progress (unlabel x ∙) | inj₂ ()
+progress (join x t) with progress t
+progress (join x₁ t₁) | inj₁ (Step s) = inj₁ (Step (joinCtx x₁ s))
+progress (join x (Γ , App t t₃)) | inj₂ ()
+progress (join x (Γ , Var p)) | inj₂ ()
+progress (join x (Γ , (If t Then t₄ Else t₅))) | inj₂ ()
+progress (join x (Γ , Return t₁)) | inj₂ ()
+progress (join x (Γ , t₁ >>= t₂)) | inj₂ ()
+progress (join x (Γ , Throw t₁)) | inj₂ ()
+progress (join x (Γ , Catch t₁ t₂)) | inj₂ ()
+progress (join x (Γ , Mac t₁)) | inj₂ y = inj₁ (Step (join x))
+progress (join x (Γ , Macₓ t₁)) | inj₂ y = inj₁ (Step (joinEx x))
+progress (join x (Γ , label p t₁)) | inj₂ ()
+progress (join x₁ (Γ , unlabel x t₁)) | inj₂ ()
+progress (join x (Γ , join p t₁)) | inj₂ ()
+progress (join x (Γ , ∙)) | inj₂ ()
+progress (join x₁ (t₁ $ t₂)) | inj₂ ()
+progress (join x (If t₁ Then t₂ Else t₃)) | inj₂ ()
+progress (join x (t₁ >>= t₂)) | inj₂ ()
+progress (join x (Catch t₁ t₂)) | inj₂ ()
+progress (join x₁ (unlabel x t₁)) | inj₂ ()
+progress (join x₁ (join x t₁)) | inj₂ ()
+progress (join x ∙) | inj₂ ()
 progress ∙ = inj₁ (Step Hole)
 
 -- Lemma.
@@ -114,13 +143,16 @@ valueNotRedex (Γ , Mac t) tt (Step ())
 valueNotRedex (Γ , Macₓ t) isV (Step ())
 valueNotRedex (Γ , label x t) () nf
 valueNotRedex (Γ , unlabel t) () nf
+valueNotRedex (Γ , join x t) () nf
 valueNotRedex (Γ , Res p t) isV (Step ())
+valueNotRedex (Γ , Resₓ p t) isV (Step ())
 valueNotRedex (Γ , ∙) () s
 valueNotRedex (f $ x) () nf
 valueNotRedex (If c Then t Else e) () nf
 valueNotRedex (m >>= k) () s
 valueNotRedex (Catch m h) () nf
 valueNotRedex (unlabel t) () nf
+valueNotRedex (join p t) () nf
 valueNotRedex ∙ () nf
 
 -- | The small step semantics is deterministic.
@@ -164,8 +196,19 @@ determinism (label p) (label .p) = refl
 determinism Dist-unlabel Dist-unlabel = refl
 determinism unlabel unlabel = refl
 determinism unlabel (unlabelCtx ())
+determinism unlabelEx unlabelEx = refl
+determinism unlabelEx (unlabelCtx ())
 determinism (unlabelCtx ()) unlabel
+determinism (unlabelCtx ()) unlabelEx
 determinism (unlabelCtx s₁) (unlabelCtx s₂) rewrite determinism s₁ s₂ = refl
+determinism (Dist-join x) (Dist-join .x) = refl
+determinism (joinCtx x s₁) (joinCtx .x s₂) rewrite determinism s₁ s₂ = refl
+determinism (joinCtx x ()) (join .x)
+determinism (joinCtx x ()) (joinEx .x)
+determinism (join x) (joinCtx .x ())
+determinism (join x) (join .x) = refl
+determinism (joinEx x) (joinCtx .x ())
+determinism (joinEx x) (joinEx .x) = refl
 determinism Dist-∙ Dist-∙ = refl
 determinism Hole Hole = refl
 
@@ -201,5 +244,10 @@ preservation (Γ , label p t) (label .p) = idᵗ $  Γ , (Return (Res t))
 preservation (Γ , unlabel x t) Dist-unlabel = unlabel x (Γ , t)
 preservation (unlabel x (Γ , Res t)) unlabel = idᵗ $ Γ , (Return t)
 preservation (unlabel x t) (unlabelCtx s) = unlabel x (preservation t s)
+preservation (unlabel x (Γ , Resₓ e)) unlabelEx = idᵗ $ (Γ , (Throw e)) 
+preservation (join x (Γ , Mac t)) (join .x) = idᵗ $ Γ , (Return (Res t))
+preservation (join x (Γ , Macₓ e)) (joinEx .x) = idᵗ $ Γ , (Return (Resₓ e))
+preservation (join x t) (joinCtx .x s) = join x (preservation t s)
+preservation (Γ , join x t) (Dist-join .x) = join x (Γ , t)
 preservation (Γ , ∙) Dist-∙ = ∙
 preservation ∙ Hole = ∙
