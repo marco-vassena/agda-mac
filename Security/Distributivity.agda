@@ -203,10 +203,14 @@ postulate extensional-¬⊑ : ∀ {l₁ l₂} -> (p₁ p₂ : ¬ l₁ ⊑ l₂) 
 εᶜ-Mac-distributes lₐ d⊑a (join d⊑h) | no ¬h⊑a | no ¬d⊑a = ⊥-elim (¬d⊑a d⊑a)
 εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) with lʰ ⊑? lₐ
 εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) | yes h⊑a with lᵈ ⊑? lₐ
-εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | yes h⊑a | yes d⊑a' = joinEx d⊑h
+εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) | yes h⊑a | yes d⊑a' with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | yes h⊑a | yes d⊑a' | yes h⊑a' = joinEx d⊑h
+εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | yes h⊑a | yes d⊑a' | no ¬h⊑a = ⊥-elim (¬h⊑a h⊑a)
 εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | yes h⊑a | no ¬d⊑a = ⊥-elim (¬d⊑a d⊑a)
 εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) | no ¬h⊑a with lᵈ ⊑? lₐ
-εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | no ¬h⊑a | yes d⊑a' = {!!} -- The exception must be wrapped in a Mac ∘ Res
+εᶜ-Mac-distributes lₐ d⊑a (joinEx {l = lᵈ} {h = lʰ} d⊑h) | no ¬h⊑a | yes d⊑a' with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | no ¬h⊑a | yes d⊑a' | yes h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | no ¬h⊑a | yes d⊑a' | no ¬h⊑a' = joinEx d⊑h
 εᶜ-Mac-distributes lₐ d⊑a (joinEx d⊑h) | no ¬h⊑a | no ¬d⊑a = ⊥-elim (¬d⊑a d⊑a)
 εᶜ-Mac-distributes lₐ p Dist-∙ = Dist-∙
 εᶜ-Mac-distributes lₐ p Hole = Hole

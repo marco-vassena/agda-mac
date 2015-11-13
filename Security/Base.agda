@@ -54,6 +54,7 @@ open import Relation.Binary.PropositionalEquality
 ε-Labeled lₐ p (App f x) = App (ε lₐ f) (ε lₐ x)
 ε-Labeled lₐ p (If c Then t Else e) = If (ε lₐ c) Then (ε-Labeled lₐ p t) Else (ε-Labeled lₐ p e)
 ε-Labeled lₐ p (Res t) = Res (ε lₐ t)
+ε-Labeled lₐ p (Resₓ t) = Resₓ (ε lₐ t)
 ε-Labeled lₐ p ∙ = ∙
 
 ε-Labeled-∙ : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> Term Δ (Labeled lᵈ τ) -> Term Δ (Labeled lᵈ τ)
@@ -61,6 +62,7 @@ open import Relation.Binary.PropositionalEquality
 ε-Labeled-∙ lₐ ¬p (App f x) = App (ε lₐ f) (ε lₐ x)
 ε-Labeled-∙ lₐ ¬p (If t Then t₁ Else t₂) = If ε lₐ t Then ε-Labeled-∙ lₐ ¬p t₁ Else ε-Labeled-∙ lₐ ¬p t₂
 ε-Labeled-∙ lₐ ¬p (Res t) = Res ∙
+ε-Labeled-∙ lₐ ¬p (Resₓ t) = Resₓ ∙ -- It is not possible to distinguish between Res and Resₓ so its fine to erase the exception only
 ε-Labeled-∙ lₐ ¬p ∙ = ∙
 
 ε {Mac lᵈ τ} lₐ t with lᵈ ⊑? lₐ

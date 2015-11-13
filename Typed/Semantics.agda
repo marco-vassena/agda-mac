@@ -134,7 +134,7 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   unlabel : ∀ {l Δ h α} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
             unlabel p (Γ , Res t) ⟼ (id {{Γ}} $ (Γ , Return t))
-
+  
   unlabelCtx : ∀ {l h α} {c c' : CTerm (Labeled l α)} -> (p : l ⊑ h) -> c ⟼ c' ->
                unlabel p c ⟼ unlabel p c'
 
@@ -148,7 +148,7 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
               join p (Γ , Mac t) ⟼ (id {{Γ = Γ}} $ (Γ , (Return (Res t))))
 
   joinEx : ∀ {l h α Δ} {Γ : Env Δ} {e : Term Δ Exception} (p : l ⊑ h) -> 
-              join {α = α} p (Γ , Macₓ e) ⟼ (id {{Γ = Γ}} $ (Γ , Throw {{α = Labeled h α}} e))
+              join {α = α} p (Γ , Macₓ e) ⟼ (id {{Γ = Γ}} $ (Γ , Return (Resₓ e)))
 
   Dist-∙ : ∀ {Δ} {α : Ty} {Γ : Env Δ} -> (Γ , (∙ {_} {α})) ⟼ ∙
 
