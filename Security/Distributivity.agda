@@ -122,6 +122,7 @@ postulate extensional-¬⊑ : ∀ {l₁ l₂} -> (p₁ p₂ : ¬ l₁ ⊑ l₂) 
 εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (label p) = Dist-∙
 εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (Dist-unlabel p) = Dist-∙
 εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (unlabel p) = Hole
+εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (unlabelEx p) = Hole
 εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (unlabelCtx p s) = Hole
 εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (Dist-join {h = lʰ} p) = Dist-∙
 εᶜ-Mac-Labeled-∙-dist lₐ d⊑a ¬h⊑a (joinCtx {h = lʰ} p s) = Hole
@@ -181,6 +182,13 @@ postulate extensional-¬⊑ : ∀ {l₁ l₂} -> (p₁ p₂ : ¬ l₁ ⊑ l₂) 
 εᶜ-Mac-distributes lₐ h⊑a (unlabel {l = lᵈ} {h = lʰ} d⊑h) | no ¬d⊑a with lʰ ⊑? lₐ
 εᶜ-Mac-distributes lₐ h⊑a (unlabel d⊑h) | no ¬d⊑a | yes h⊑a' = ⊥-elim (¬d⊑a (trans-⊑ d⊑h h⊑a))
 εᶜ-Mac-distributes lₐ h⊑a (unlabel d⊑h) | no ¬d⊑a | no ¬h⊑a = ⊥-elim (¬h⊑a h⊑a)
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx {l = lᵈ} {h = lʰ} d⊑h) with lᵈ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx {l = lᵈ} {h = lʰ} d⊑h) | yes p with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx d⊑h) | yes p₁ | yes p = unlabelEx d⊑h
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx d⊑h) | yes p | no ¬p = ⊥-elim (¬p h⊑a)
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx {l = lᵈ} {h = lʰ} d⊑h) | no ¬p with lʰ ⊑? lₐ
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx d⊑h) | no ¬p | yes p = ⊥-elim (¬p (trans-⊑ d⊑h h⊑a))
+εᶜ-Mac-distributes lₐ h⊑a (unlabelEx d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p h⊑a)
 εᶜ-Mac-distributes lₐ h⊑a (unlabelCtx {l = lᵈ} {h = lʰ} d⊑h s) with lᵈ ⊑? lₐ
 εᶜ-Mac-distributes lₐ h⊑a (unlabelCtx d⊑h s) | yes d⊑a = unlabelCtx d⊑h (εᶜ-Labeled-distributes lₐ d⊑a s)
 εᶜ-Mac-distributes lₐ h⊑a (unlabelCtx d⊑h s) | no ¬p = unlabelCtx d⊑h (εᶜ-Labeled-∙-distributes lₐ ¬p s)
@@ -236,6 +244,7 @@ postulate extensional-¬⊑ : ∀ {l₁ l₂} -> (p₁ p₂ : ¬ l₁ ⊑ l₂) 
 εᶜ-Mac-∙-distributes lₐ ¬p (label p) = Dist-∙
 εᶜ-Mac-∙-distributes lₐ ¬p (Dist-unlabel p) = Dist-∙
 εᶜ-Mac-∙-distributes lₐ ¬p (unlabel p) = Hole
+εᶜ-Mac-∙-distributes lₐ ¬p (unlabelEx p) = Hole
 εᶜ-Mac-∙-distributes lₐ ¬p (unlabelCtx p s) = Hole
 εᶜ-Mac-∙-distributes lₐ h⊑a (Dist-join d⊑h) = Dist-∙
 εᶜ-Mac-∙-distributes lₐ h⊑a (joinCtx d⊑h s) = Hole

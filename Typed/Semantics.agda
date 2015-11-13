@@ -134,7 +134,10 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   unlabel : ∀ {l Δ h α} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
             unlabel p (Γ , Res t) ⟼ (id {{Γ}} $ (Γ , Return t))
-  
+
+  unlabelEx : ∀ {l Δ h α} {Γ : Env Δ} {e : Term Δ Exception} -> (p : l ⊑ h) ->
+            unlabel p (Γ , Resₓ e) ⟼ (id {{Γ}} $ (Γ , Throw e))
+
   unlabelCtx : ∀ {l h α} {c c' : CTerm (Labeled l α)} -> (p : l ⊑ h) -> c ⟼ c' ->
                unlabel p c ⟼ unlabel p c'
 

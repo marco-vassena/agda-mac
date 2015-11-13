@@ -30,9 +30,12 @@ data Term (n : ℕ) : Set where
   Macₓ : Term n -> Term n
 
   Res : Label -> Term n -> Term n
+  Resₓ : Label -> Term n -> Term n
 
   label : ∀ {l h} -> l ⊑ h -> Term n -> Term n
   unlabel : Term n -> Term n
+
+  join : ∀ {l h} -> l ⊑ h -> Term n -> Term n
 
   --   Erased term
   ∙ : Term n
@@ -89,9 +92,18 @@ data _⊢_∷_ (Δ : Context) : Term (length Δ) -> Ty -> Set where
               Δ ⊢ t ∷ Labeled l τ ->
               Δ ⊢ unlabel t ∷ Mac h τ
 
+  join : ∀ {t τ l h} ->
+          (p : l ⊑ h) ->
+          Δ ⊢ t ∷ Mac h τ ->
+          Δ ⊢ join p t ∷ Mac l (Labeled h τ)
+
   Res : ∀ {t τ} {{l}} ->
         Δ ⊢ t ∷ τ ->
         Δ ⊢ Res l t ∷ Labeled l τ
+
+  Resₓ : ∀ {t} {{l τ}}  ->
+        Δ ⊢ t ∷ Exception ->
+        Δ ⊢ Resₓ l t ∷ Labeled l τ
 
   ∙ : ∀ {τ} -> Δ ⊢ ∙ ∷ τ
 
@@ -120,6 +132,8 @@ mutual
 
     unlabel : CTerm -> CTerm
 
+    join : ∀ {l h} -> l ⊑ h -> CTerm -> CTerm
+
     -- Erased closed term
     ∙ : CTerm
 
@@ -147,13 +161,16 @@ IsValue (Γ , Mac m) = ⊤
 IsValue (Γ , Macₓ j) = ⊤
 IsValue (Γ , label x t) = ⊥
 IsValue (Γ , unlabel t) = ⊥
+IsValue (Γ , join x t) = ⊥
 IsValue (Γ , Res l j) = ⊤
+IsValue (Γ , Resₓ l t) = ⊤
 IsValue (Γ , ∙) = ⊥
 IsValue (c₁ $ c₂) = ⊥
 IsValue (If c Then t Else e) = ⊥
 IsValue (m >>= k) = ⊥
 IsValue (Catch m h) = ⊥
 IsValue (unlabel t) = ⊥
+IsValue (join x t) = ⊥
 IsValue ∙ = ⊥
 
 mutual
@@ -165,6 +182,8 @@ mutual
     _>>=_ : ∀ {m k l α β} -> m :: Mac l α -> k :: (α => Mac l β) -> (m >>= k) :: Mac l β
     Catch : ∀ {m h l α} -> m :: Mac l α -> h :: (Exception => Mac l α) -> Catch m h :: Mac l α
     unlabel : ∀ {t τ l h} -> l ⊑ h -> t :: Labeled l τ -> unlabel t :: Mac h τ
+    join : ∀ {t τ l h} -> (x : l ⊑ h) -> t :: Mac h τ -> join x t :: Mac l (Labeled h τ)
+
     ∙ : ∀ {τ} -> ∙ :: τ
 
   -- Typed environment

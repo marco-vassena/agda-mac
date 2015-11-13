@@ -19,6 +19,7 @@ progress (Γ , Catch m h) = inj₁ (Step Dist-Catch)
 progress (Γ , Mac t) = inj₂ tt
 progress (Γ , Macₓ t) = inj₂ tt
 progress (Γ , Res t) = inj₂ tt
+progress (Γ , Resₓ t) = inj₂ tt
 progress (Γ , label x t) = inj₁ (Step (label x))
 progress (Γ , unlabel x t) = inj₁ (Step (Dist-unlabel x))
 progress (Γ , join p t) = inj₁ (Step (Dist-join p))
@@ -116,6 +117,7 @@ progress (unlabel x₂ (x , Var x₁)) | inj₂ ()
 progress (unlabel x₃ (x , App x₁ x₂)) | inj₂ ()
 progress (unlabel x₄ (x , If x₁ Then x₂ Else x₃)) | inj₂ ()
 progress (unlabel x₂ (x , Res x₁)) | inj₂ tt = inj₁ (Step (unlabel x₂))
+progress (unlabel x₂ (x , Resₓ x₁)) | inj₂ tt = inj₁ (Step (unlabelEx x₂))
 progress (unlabel x₂ (x , ∙)) | inj₂ ()
 progress (unlabel x (c $ c₁)) | inj₂ ()
 progress (unlabel x (If c Then c₁ Else c₂)) | inj₂ ()
@@ -139,6 +141,7 @@ valueNotRedex (Γ , Macₓ t) isV (Step ())
 valueNotRedex (Γ , label x t) () nf
 valueNotRedex (Γ , unlabel x t) () nf
 valueNotRedex (Γ , Res t) isV (Step ())
+valueNotRedex (Γ , Resₓ t) isV (Step ())
 valueNotRedex (Γ , join p t) () s
 valueNotRedex (Γ , ∙) () s
 valueNotRedex (f $ x) () nf
@@ -189,7 +192,10 @@ determinism (Dist-unlabel p) (Dist-unlabel .p) = refl
 determinism (unlabel p) (unlabel .p) = refl
 determinism (unlabel p) (unlabelCtx .p ())
 determinism (unlabelCtx p ()) (unlabel .p)
+determinism (unlabelCtx p ()) (unlabelEx .p)
 determinism (unlabelCtx p s₁) (unlabelCtx .p s₂) rewrite determinism s₁ s₂ = refl
+determinism (unlabelEx p) (unlabelEx .p) = refl
+determinism (unlabelEx p) (unlabelCtx .p ())
 determinism (Dist-join p) (Dist-join .p) = refl
 determinism (joinCtx p s₁) (joinCtx .p s₂) rewrite determinism s₁ s₂ = refl
 determinism (joinCtx p ()) (join .p)

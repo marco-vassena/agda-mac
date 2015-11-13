@@ -24,8 +24,10 @@ open import Untyped.Semantics renaming (_⟼_ to _⟼ᵘ_)
 ⌞ Mac t ⌟ = Mac ⌞ t ⌟
 ⌞ Macₓ t ⌟ = Macₓ ⌞ t ⌟
 ⌞ Res {{l}} t ⌟ = Res l ⌞ t ⌟
+⌞ Resₓ {{l}} t ⌟ = Resₓ l ⌞ t ⌟
 ⌞ label x t ⌟ = label x ⌞ t ⌟
 ⌞ unlabel x t ⌟ = unlabel ⌞ t ⌟
+⌞ join p t ⌟ = join p ⌞ t ⌟
 ⌞ ∙ ⌟ = ∙
 
 ⟦_⟧ : ∀ {τ} -> CTermᵗ τ -> CTermᵘ
@@ -37,6 +39,7 @@ map⟦_⟧ : ∀ {Δ} -> Envᵗ Δ -> Envᵘ (length Δ)
 ⟦ m >>= k ⟧ = ⟦ m ⟧ >>= ⟦ k ⟧
 ⟦ Catch m h ⟧ = Catch ⟦ m ⟧ ⟦ h ⟧
 ⟦ unlabel x c ⟧ = unlabel ⟦ c ⟧
+⟦ join x c ⟧ = join x ⟦ c ⟧
 ⟦ ∙ ⟧ = ∙
 
 map⟦ [] ⟧ = []
@@ -61,7 +64,9 @@ convertᵘᵗ (Mac t) = Mac (convertᵘᵗ t)
 convertᵘᵗ (Macₓ t) = Macₓ (convertᵘᵗ t)
 convertᵘᵗ (label p t) = label p (convertᵘᵗ t)
 convertᵘᵗ (unlabel x t) = unlabel x (convertᵘᵗ t)
+convertᵘᵗ (join x t) = join x (convertᵘᵗ t)
 convertᵘᵗ (Res t) = Res (convertᵘᵗ t)
+convertᵘᵗ (Resₓ t) = Resₓ (convertᵘᵗ t)
 convertᵘᵗ ∙ = ∙
 
 -- Just a better looking for the conversion function convertᵘᵗ in which
@@ -81,6 +86,7 @@ convertCᵘᵗ (If c Then t Else e) = If (convertCᵘᵗ c) Then (convertCᵘᵗ
 convertCᵘᵗ (m >>= k) = (convertCᵘᵗ m) >>= (convertCᵘᵗ k)
 convertCᵘᵗ (Catch m h) = Catch (convertCᵘᵗ m) (convertCᵘᵗ h)
 convertCᵘᵗ (unlabel x c) = unlabel x (convertCᵘᵗ c)
+convertCᵘᵗ (join x c) = join x (convertCᵘᵗ c)
 convertCᵘᵗ ∙ = ∙
 
 convertEnvᵘᵗ [] = []
