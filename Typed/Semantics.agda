@@ -7,24 +7,24 @@ id : ∀ {α} {Δ} {{Γ : Env Δ}} -> CTerm (α => α)
 id {{Γ = Γ}} = Γ , Abs (Var Here)
 
 {-
-  TODO I have not introduced the erasure function. 
-  Should this be moved in the security submodue? 
+  TODO I have not introduced the erasure function.
+  Should this be moved in the security submodue?
 
   In the small step semantics there are two steps that reduce bullets.
-    Dist-∙ : (Γ , ∙) ⟼ ∙ 
+    Dist-∙ : (Γ , ∙) ⟼ ∙
     Hole   : ∙ ⟼ ∙
 
   Another rule that has been considered instead of Dist-∙ is:
     THole : (Γ , ∙) ⟼ (Γ , ∙)
- 
+
   Unforunately rules Hole and THole alone do not preserve distributivity.
   Consider for instance erasing the terms involved in the Dist-$ rule,
   when the whole expression is a sensitive computation of type Mac H α
 
          (Γ , App f x)   ⟼  (Γ , f)  $  (Γ , x)
-    
-               ↧ εᶜ              ↧ εᶜ 
-    
+
+               ↧ εᶜ              ↧ εᶜ
+
          (εᶜ-env Γ, ∙)   ⟼       ∙
 
   There is not such step because we removed Dist-∙. Note that adding
@@ -32,30 +32,30 @@ id {{Γ = Γ}} = Γ , Abs (Var Here)
   because both Dist-∙ and THole would reduce (Γ , ∙).
 
   Also note that we cannot avoid to have two different bullets (Term and CTerm).
-  If we had only the ∙ CTerm this same example would not go through as we would 
+  If we had only the ∙ CTerm this same example would not go through as we would
   need a reduction (Γ , App f x) ⟼ ∙
-  
+
   A Term bullet alone would also break distributivity.
   Composite CTerms such as f $ x could not properly be erased because they
   do not expose their enviroment. At best we could only apply the erasure
-  homomorphically, but this is unsatisfactory. 
+  homomorphically, but this is unsatisfactory.
   Consider the previous example:
 
     (Γ , App f x)      ⟼           (Γ , f)   $   (Γ , x)
-    
-         ↧ εᶜ                                 ↧ εᶜ 
-    
-    (εᶜ-env Γ, ∙)       ⟼   (εᶜ-env Γ , εᶜ f)  $  (εᶜ-env Γ , εᶜ x)    
+
+         ↧ εᶜ                                 ↧ εᶜ
+
+    (εᶜ-env Γ, ∙)       ⟼   (εᶜ-env Γ , εᶜ f)  $  (εᶜ-env Γ , εᶜ x)
 
   Lastly some steps have been slightly modified as follows:
   from c₁ ⟼ c₂ to c₁ ⟼ (id $ c₂).
   Consider the original version of the Return step:
 
     (Γ , Return x)     ⟼    (Γ , Mac x)
-    
-          ↧ εᶜ                    ↧ εᶜ 
-    
-    (εᶜ-env Γ , ∙)     ⟼    (εᶜ-env Γ , ∙)    
+
+          ↧ εᶜ                    ↧ εᶜ
+
+    (εᶜ-env Γ , ∙)     ⟼    (εᶜ-env Γ , ∙)
 
   The only step that applies here is Dist-∙ (THole has been ruled out), but the reduced term should be
   ∙ instead of (Γ , ∙). With the proposed adjustment, we obtain a CTerm bullet, because id $ x
@@ -63,10 +63,10 @@ id {{Γ = Γ}} = Γ , Abs (Var Here)
   Furthermore since id x = x, this change does not affect the meaning of any program.
 
       (Γ , Return x)     ⟼    id $ (Γ , Mac x)
-    
-          ↧ εᶜ                    ↧ εᶜ 
-    
-    (εᶜ-env Γ , ∙)     ⟼    (εᶜ-env Γ , ∙)    
+
+          ↧ εᶜ                    ↧ εᶜ
+
+    (εᶜ-env Γ , ∙)     ⟼    (εᶜ-env Γ , ∙)
 
 -}
 data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
@@ -136,7 +136,7 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
             unlabel p (Γ , Res t) ⟼ (id {{Γ}} $ (Γ , Return t))
 
   unlabelEx : ∀ {l Δ h α} {Γ : Env Δ} {e : Term Δ Exception} -> (p : l ⊑ h) ->
-            unlabel p (Γ , Resₓ e) ⟼ (id {{Γ}} $ (Γ , Throw e))
+            unlabel {l} {α} {h}  p (Γ , Resₓ e) ⟼ (id {{Γ}} $ (Γ , Throw e))
 
   unlabelCtx : ∀ {l h α} {c c' : CTerm (Labeled l α)} -> (p : l ⊑ h) -> c ⟼ c' ->
                unlabel p c ⟼ unlabel p c'
@@ -147,10 +147,10 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   joinCtx : ∀ {l h α} {c c' : CTerm (Mac h α)} -> (p : l ⊑ h) ->
                c ⟼ c' -> join p c ⟼ join p c'
 
-  join : ∀ {l h α Δ} {Γ : Env Δ} {t : Term Δ α} (p : l ⊑ h) -> 
+  join : ∀ {l h α Δ} {Γ : Env Δ} {t : Term Δ α} (p : l ⊑ h) ->
               join p (Γ , Mac t) ⟼ (id {{Γ = Γ}} $ (Γ , (Return (Res t))))
 
-  joinEx : ∀ {l h α Δ} {Γ : Env Δ} {e : Term Δ Exception} (p : l ⊑ h) -> 
+  joinEx : ∀ {l h α Δ} {Γ : Env Δ} {e : Term Δ Exception} (p : l ⊑ h) ->
               join {α = α} p (Γ , Macₓ e) ⟼ (id {{Γ = Γ}} $ (Γ , Return (Resₓ e)))
 
   Dist-∙ : ∀ {Δ} {α : Ty} {Γ : Env Δ} -> (Γ , (∙ {_} {α})) ⟼ ∙
