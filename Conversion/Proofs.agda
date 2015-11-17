@@ -6,7 +6,9 @@ open import Untyped.Base renaming (Term to Termᵘ ; CTerm to CTermᵘ ; Env to 
 open import Untyped.Semantics renaming (_⟼_ to _⟼ᵘ_)
 open import Untyped.Proofs
 open import Conversion.Base public
+
 open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.HeterogeneousEquality
 
 --------------------------------------------------------------------------------
 -- Soundness results
@@ -94,7 +96,7 @@ complete-⌞ ∙ ⌟ = refl
 complete-⟦_⟧  : ∀ {τ} -> (c : CTermᵗ τ) ->
                 let p = sound-⟦ c ⟧ in ⟪ ⟦ c ⟧ ⟫ ≡ c
 
--- Enviroments
+-- Completness for enviroments
 complete-map⟦_⟧ : ∀ {Δ} -> (Γ : Envᵗ Δ) ->
                   let p = sound-map⟦ Γ ⟧ in map⟪ map⟦ Γ ⟧ ⟫ ≡ Γ
 
@@ -113,7 +115,7 @@ complete-map⟦ x ∷ Γ ⟧ rewrite complete-⟦ x ⟧ | complete-map⟦ Γ ⟧
 --------------------------------------------------------------------------------
 
 -- Completness for untyped terms
--- Unfortunately not always the instance arguments are not resolved in the
+-- Unfortunately not always the instance arguments are resolved in the
 -- signatures so I need to pass them explicitly.
 -- I provided the uncluttered version in a comment
 
@@ -193,59 +195,16 @@ stepᵘᵗ (Γ , label p t₁) (label .p) = label p
 stepᵘᵗ (Γ , unlabel x t₁) Dist-unlabel = Dist-unlabel x
 stepᵘᵗ (Γ , join x t) (Dist-join .x) = Dist-join x
 stepᵘᵗ (unlabel x (Γ , Res t)) unlabel = unlabel x
-stepᵘᵗ (unlabel x (Γ , Resₓ e)) (unlabelCtx ())
-stepᵘᵗ (unlabel x (Γ , App t t₃)) (unlabelCtx Dist-$) = unlabelCtx x Dist-$
-stepᵘᵗ (unlabel x (Γ , Var p)) (unlabelCtx Lookup) = unlabelCtx x (stepᵘᵗ (Γ , Var p) Lookup )
-stepᵘᵗ (unlabel x (Γ , (If t Then t₄ Else t₅))) (unlabelCtx Dist-If) = unlabelCtx x Dist-If
-stepᵘᵗ (unlabel x (Γ , Res t₁)) (unlabelCtx ())
-stepᵘᵗ (unlabel x (Γ , ∙)) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ (Γ , ∙) s)
-stepᵘᵗ (unlabel x (p $ p₁)) (unlabelCtx (AppL s)) = unlabelCtx x (AppL (stepᵘᵗ p s))
-stepᵘᵗ (unlabel x (p $ p₁)) (unlabelCtx Beta) = unlabelCtx x (stepᵘᵗ (p $ p₁) Beta)
-stepᵘᵗ (unlabel x (If p Then p₁ Else p₂)) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ (If p Then p₁ Else p₂) s)
-stepᵘᵗ (unlabel x ∙) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ ∙ s)
 stepᵘᵗ (unlabel x (Γ , Resₓ t)) unlabelEx = unlabelEx x
--- Can this be refactored out?
+stepᵘᵗ (unlabel x c) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ c s)
+stepᵘᵗ (join x c) (joinCtx .x s) = joinCtx x (stepᵘᵗ c s)
 stepᵘᵗ (join x (Γ , Mac t)) (join .x) = join x
 stepᵘᵗ (join x (Γ , Macₓ t)) (joinEx .x) = joinEx x
-stepᵘᵗ (join x (Γ , App t t₃)) (joinCtx .x Dist-$) = joinCtx x Dist-$
-stepᵘᵗ (join x (Γ , Var p)) (joinCtx .x Lookup) = joinCtx x (stepᵘᵗ (Γ , Var p) Lookup )
-stepᵘᵗ (join x (Γ , (If t Then t₄ Else t₅))) (joinCtx .x Dist-If) = joinCtx x Dist-If
-stepᵘᵗ (join x (Γ , Return t₁)) (joinCtx .x Return) = joinCtx x Return
-stepᵘᵗ (join x (Γ , t₁ >>= t₂)) (joinCtx .x Dist->>=) = joinCtx x Dist->>=
-stepᵘᵗ (join x (Γ , Throw t₁)) (joinCtx .x Throw) = joinCtx x Throw
-stepᵘᵗ (join x (Γ , Catch t₁ t₂)) (joinCtx .x Dist-Catch) = joinCtx x Dist-Catch
-stepᵘᵗ (join x (Γ , Mac t₁)) (joinCtx .x ())
-stepᵘᵗ (join x (Γ , Macₓ t₁)) (joinCtx .x ())
-stepᵘᵗ (join x (Γ , label p t₁)) (joinCtx .x (label .p)) = joinCtx x (label p)
-stepᵘᵗ (join x (Γ , unlabel x₁ t₁)) (joinCtx .x Dist-unlabel) = joinCtx x (Dist-unlabel x₁)
-stepᵘᵗ (join x (Γ , join p t₁)) (joinCtx .x (Dist-join .p)) = joinCtx x (Dist-join p)
-stepᵘᵗ (join x (Γ , ∙)) (joinCtx .x Dist-∙) = joinCtx x Dist-∙
-stepᵘᵗ (join x (t $ t₁)) (joinCtx .x (AppL s)) = joinCtx x (AppL (stepᵘᵗ t s))
-stepᵘᵗ (join x (t₂ $ t₁)) (joinCtx .x Beta) = joinCtx x (stepᵘᵗ (t₂ $ t₁) Beta)
-stepᵘᵗ (join x (If t₁ Then t₂ Else t₃)) (joinCtx .x (IfCond s)) = joinCtx x (IfCond (stepᵘᵗ t₁ s))
-stepᵘᵗ (join x (If t₁ Then t₂ Else t₃)) (joinCtx .x IfTrue) = joinCtx x (stepᵘᵗ (If t₁ Then t₂ Else t₃) IfTrue)
-stepᵘᵗ (join x (If t₁ Then t₂ Else t₃)) (joinCtx .x IfFalse) = joinCtx x (stepᵘᵗ (If t₁ Then t₂ Else t₃) IfFalse)
-stepᵘᵗ (join x (t >>= t₁)) (joinCtx .x (BindCtx s)) = joinCtx x (BindCtx (stepᵘᵗ t s))
-stepᵘᵗ (join x (t₂ >>= t₁)) (joinCtx .x Bind) = joinCtx x (stepᵘᵗ (t₂ >>= t₁) Bind)
-stepᵘᵗ (join x (t >>= t₁)) (joinCtx .x BindEx) = joinCtx x (stepᵘᵗ (t >>= t₁) BindEx)
-stepᵘᵗ (join x (Catch t t₁)) (joinCtx .x (CatchCtx s)) = joinCtx x (CatchCtx (stepᵘᵗ t s))
-stepᵘᵗ (join x (Catch t₂ t₁)) (joinCtx .x Catch) = joinCtx x (stepᵘᵗ (Catch t₂ t₁) Catch)
-stepᵘᵗ (join x (Catch t t₁)) (joinCtx .x CatchEx) = joinCtx x (stepᵘᵗ (Catch t t₁) CatchEx)
-stepᵘᵗ (join x (unlabel x₁ t₁)) (joinCtx .x unlabel) = joinCtx x (stepᵘᵗ (unlabel x₁ t₁) unlabel)
-stepᵘᵗ (join x (unlabel x₁ t₁)) (joinCtx .x unlabelEx) = joinCtx x (stepᵘᵗ (unlabel x₁ t₁) unlabelEx)
-stepᵘᵗ (join x (unlabel x₁ t₁)) (joinCtx .x (unlabelCtx s)) = joinCtx x (stepᵘᵗ (unlabel x₁ t₁) (unlabelCtx s))
-stepᵘᵗ (join x (join x₁ t₁)) (joinCtx .x (joinCtx .x₁ s)) = joinCtx x (stepᵘᵗ (join x₁ t₁) (joinCtx x₁ s))
-stepᵘᵗ (join x (join x₁ t₁)) (joinCtx .x (join .x₁)) = joinCtx x (stepᵘᵗ (join x₁ t₁) (join x₁))
-stepᵘᵗ (join x (join x₁ t₁)) (joinCtx .x (joinEx .x₁)) = joinCtx x (stepᵘᵗ (join x₁ t₁) (joinEx x₁))
-stepᵘᵗ (join x ∙) (joinCtx .x Hole) = joinCtx x Hole
 stepᵘᵗ (Γ , ∙) Dist-∙ = Dist-∙
 stepᵘᵗ ∙ Hole = Hole
 
 -- Just a better looking entry point for stepᵘᵗ, where the proof that c₁ is well-typed
 -- is passed as an instance argument
-
--- TODO: Try to prove that the steps (both directions) do not miss the case where [[ ]] or << >> switch
--- branches.
 
 step⟪_⟫ : ∀ {τ} {c₁ c₂ : CTermᵘ} {{p : c₁ :: τ}} -> (s : c₁ ⟼ᵘ c₂) ->
                 let arg = preservation p s in ⟪ c₁ ⟫ ⟼ᵗ ⟪ c₂ ⟫
@@ -290,8 +249,6 @@ step⟦ unlabelCtx p s ⟧ = unlabelCtx step⟦ s ⟧
 step⟦ Dist-∙ ⟧ = Dist-∙
 step⟦ Hole ⟧ = Hole
 
---------------------------------------------------------------------------------
-
 -- Completness for small-step semantics transformations.
 -- Converting a typed step to untyped and back to typed does not change the semantics, i.e. 
 -- we get the same step.
@@ -329,11 +286,11 @@ uniqueStepᵘ (joinEx x) (joinEx .x) = refl
 uniqueStepᵘ Dist-∙ Dist-∙ = refl
 uniqueStepᵘ Hole Hole = refl
 
-open import Relation.Binary.HeterogeneousEquality
-
 complete-step⟪_,_⟫ : ∀ {c₁ c₂ τ} {{p : c₁ :: τ}} {{q : c₂ :: τ}} ->
                               (s₁ : c₁ ⟼ᵘ c₂) (s₂ : ⟦ ⟪_⟫ c₁ {{p}} ⟧ ⟼ᵘ ⟦ ⟪_⟫ c₂ {{q}} ⟧) -> s₁ ≅ s₂
 complete-step⟪_,_⟫ {{p}} {{q}} s₁ s₂ rewrite complete-⟪ p ⟫ | complete-⟪ q ⟫ | uniqueStepᵘ s₁ s₂ = refl
+
+--------------------------------------------------------------------------------
 
 uniqueStepᵗ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (p q : c₁ ⟼ᵗ c₂) -> p ≡ q
 uniqueStepᵗ (AppL p) (AppL q) rewrite uniqueStepᵗ p q = refl
@@ -370,61 +327,3 @@ complete-step⟦_,_⟧ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (s₁ : c₁ ⟼�
                      let p₁ = sound-⟦ c₁ ⟧
                          p₂ = sound-⟦ c₂ ⟧ in (s₂ : ⟪ ⟦ c₁ ⟧ ⟫ ⟼ᵗ ⟪ ⟦ c₂ ⟧ ⟫) -> s₁ ≅ s₂
 complete-step⟦_,_⟧ {_} {c₁} {c₂} s₁ s₂ rewrite complete-⟦ c₁ ⟧ | complete-⟦ c₂ ⟧ | uniqueStepᵗ s₁ s₂ = refl
-
---------------------------------------------------------------------------------
-
--- TODO remove
-
--- Equivalence of proofs between preservation and sound-⟦_⟧
--- lemma-step⟦_⟧ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (s : c₁ ⟼ᵗ c₂) -> sound-⟦ c₂ ⟧ ≡ preservation sound-⟦ c₁ ⟧ step⟦ s ⟧
--- lemma-step⟦ AppL s ⟧ rewrite lemma-step⟦ s ⟧ = refl
--- lemma-step⟦ Beta ⟧ = refl
--- lemma-step⟦ Lookup ⟧ = {!refl!} -- Need lemma
--- lemma-step⟦ Dist-$ ⟧ = refl
--- lemma-step⟦ Dist-If ⟧ = refl
--- lemma-step⟦ IfCond s ⟧ rewrite lemma-step⟦ s ⟧ = refl
--- lemma-step⟦ IfTrue ⟧ = refl
--- lemma-step⟦ IfFalse ⟧ = refl
--- lemma-step⟦ Return ⟧ = refl
--- lemma-step⟦ Dist->>= ⟧ = refl
--- lemma-step⟦ BindCtx s ⟧ rewrite lemma-step⟦ s ⟧ = refl
--- lemma-step⟦ Bind ⟧ = refl
--- lemma-step⟦ BindEx ⟧ = refl
--- lemma-step⟦ Throw ⟧ = refl
--- lemma-step⟦ Dist-Catch ⟧ = refl
--- lemma-step⟦ CatchCtx s ⟧ rewrite lemma-step⟦ s ⟧ = refl
--- lemma-step⟦ Catch ⟧ = refl
--- lemma-step⟦ CatchEx ⟧ = refl
--- lemma-step⟦ label p ⟧ = refl
--- lemma-step⟦ Dist-unlabel p ⟧ = refl
--- lemma-step⟦ unlabel p ⟧ = refl
--- lemma-step⟦ unlabelCtx p (AppL s) ⟧ rewrite lemma-step⟦ s ⟧ = refl
--- lemma-step⟦ unlabelCtx p Beta ⟧ = refl
--- lemma-step⟦ unlabelCtx p Lookup ⟧ = {!refl!} -- Idem
--- lemma-step⟦ unlabelCtx p Dist-$ ⟧ = refl
--- lemma-step⟦ unlabelCtx p Dist-If ⟧ = refl
--- lemma-step⟦ unlabelCtx p (IfCond s) ⟧ rewrite lemma-step⟦ s ⟧ = refl
--- lemma-step⟦ unlabelCtx p IfTrue ⟧ = refl
--- lemma-step⟦ unlabelCtx p IfFalse ⟧ = refl
--- lemma-step⟦ unlabelCtx p Dist-∙ ⟧ = refl
--- lemma-step⟦ unlabelCtx p Hole ⟧ = refl
--- lemma-step⟦ Dist-∙ ⟧ = refl
--- lemma-step⟦ Hole ⟧ = refl
-
--- A corollary of complete-step
--- s ≅ step⟪ step⟦ s ⟧ ⟫
--- complete-step⟦_⟧' : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (s : c₁ ⟼ᵗ c₂) -> 
---                   let p₁ = sound-⟦ c₁ ⟧
---                       p₂ = sound-⟦ c₂ ⟧ in s ≅ (step⟪_⟫ {τ} step⟦ s ⟧)
--- complete-step⟦_⟧' {_} {c₁} {c₂} s with sound-⟦ c₂ ⟧ | preservation sound-⟦ c₁ ⟧ step⟦ s ⟧ | lemma-step⟦ s ⟧
--- ... | a | b | r = {! !}
-
--- It does not work because of the limitations in agda rewriting system, but it
--- should hold. The main result complete-step⟦ s ⟧ shows the equivalence between any 
--- step s₁ : c₁ ⟼ᵗ c₂ and any other step s₂ : ⟪ ⟦ c₁ ⟧ ⟫ ⟼ ⟪ ⟦ c₂ ⟧ ⟫.
--- This lemma would pick a specific one.
--- The problem is that suddenly we have shifted to the type level instead of terms, hence
--- heterogeneous equality ≅ is needed.
-
--- TODO (After working on join)
--- Could we show instead that given s₁ : c₁ ⟼ᵗ c₂ and s₂ : ⟪ ⟦ c₁ ⟧ ⟫ ⟼ ⟪ ⟦ c₂ ⟧ ⟫ then s₂ ≅ step⟪ step⟦ s₁ ⟧ ⟫ 
