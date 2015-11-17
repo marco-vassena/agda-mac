@@ -27,8 +27,8 @@ id {{Γ = Γ}} = Γ , Abs (Var Here)
 
          (εᶜ-env Γ, ∙)   ⟼       ∙
 
-  There is not such step because we removed Dist-∙. Note that adding
-  also this step would make the small step semantics non deterministic
+  There isn't any step (εᶜ-env Γ, ∙) ⟼ ∙ because we removed Dist-∙.
+  Note that adding also this step would make the small step semantics non deterministic
   because both Dist-∙ and THole would reduce (Γ , ∙).
 
   Also note that we cannot avoid to have two different bullets (Term and CTerm).
@@ -110,7 +110,8 @@ data _⟼_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   BindEx : ∀ {l Δ α β} {Γ : Env Δ} {e : Term Δ Exception} {k : CTerm (α => Mac l β)} ->
            ((Γ , Macₓ e) >>= k) ⟼ (id {{Γ}} $ (Γ , Throw e))  -- Rethrown as in LIO. It could be also (Γ , Macₓ e)
 
-  Throw : ∀ {l : Label} {Δ} {α : Ty} {Γ : Env Δ} {e : Term Δ Exception} -> (Γ , Throw {{l}} {{α}} e) ⟼ (id {{Γ}} $ (Γ , Macₓ e))
+  Throw : ∀ {l : Label} {Δ} {α : Ty} {Γ : Env Δ} {e : Term Δ Exception} ->
+            (Γ , Throw {{l}} {{α}} e) ⟼ (id {{Γ}} $ (Γ , Macₓ e))
 
   Dist-Catch : ∀ {l : Label} {Δ} {α : Ty} {Γ : Env Δ} {m : Term Δ (Mac l α)} {h : Term Δ (Exception => Mac l α)} ->
                  (Γ , Catch m h) ⟼ Catch (Γ , m) (Γ , h)

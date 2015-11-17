@@ -3,15 +3,6 @@ module Untyped.Semantics where
 open import Untyped.Base public
 open import Relation.Nullary using (¬_)
 
--- @Ale
--- In the untyped semantics we also need to use id application
--- otherwise we could not prove that the typed semantics is equivalent to the untyped semantics.
--- In particuar without id application the typed semantics
--- could be expressed only with multiple untyped steps ( ⟼* ).
--- In that case we could not prove interference for the untyped semantics, because
--- the theorem requires low-equivalence after each small step and typed steps are converted
--- into multiple untyped steps and
-
 -- id function as CTerm
 id : ∀ {n} {{Γ : Env n}} -> CTerm
 id {{Γ = Γ}} = Γ , Abs (Var zero)

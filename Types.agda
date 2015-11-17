@@ -20,6 +20,8 @@ postulate trans-⊑ : ∀ {l₁ l₂ l₃} -> l₁ ⊑ l₂ -> l₂ ⊑ l₃ -> 
 -- Essentially we are interested in the judgment of l₁ ⊑ l₂ in its broad sense, 
 -- and not in its actual shape.
 postulate extensional-⊑ : ∀ {l₁ l₂} -> (p q : l₁ ⊑ l₂) -> p ≡ q
+postulate extensional-¬⊑ : ∀ {l₁ l₂} -> (p₁ p₂ : ¬ l₁ ⊑ l₂) -> p₁ ≡ p₂
+
 
 open import Data.Nat using (ℕ ; zero ; suc) public
 open import Data.List public

@@ -4,7 +4,7 @@ open import Untyped.Base
 open import Data.Nat using (ℕ ; zero ; suc ; _≤_ ; z≤n ; s≤s ; _⊔_) public
 open import Data.Fin using (Fin ; zero ; suc ; inject≤) public
 
--- Safe cast.
+-- Safe ``cast''.
 -- Increase the the lower bound, retyping a term.
 -- Note that it is always possible to rewrite terms increasing
 -- the upper bound because a variable reference of Fin n can be 
