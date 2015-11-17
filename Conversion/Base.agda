@@ -23,8 +23,8 @@ open import Untyped.Semantics renaming (_⟼_ to _⟼ᵘ_)
 ⌞ Catch m h ⌟ = Catch ⌞ m ⌟ ⌞ h ⌟
 ⌞ Mac t ⌟ = Mac ⌞ t ⌟
 ⌞ Macₓ t ⌟ = Macₓ ⌞ t ⌟
-⌞ Res {{l}} t ⌟ = Res l ⌞ t ⌟
-⌞ Resₓ {{l}} t ⌟ = Resₓ l ⌞ t ⌟
+⌞ Res t ⌟ = Res ⌞ t ⌟
+⌞ Resₓ  t ⌟ = Resₓ ⌞ t ⌟
 ⌞ label x t ⌟ = label x ⌞ t ⌟
 ⌞ unlabel x t ⌟ = unlabel ⌞ t ⌟
 ⌞ join p t ⌟ = join p ⌞ t ⌟

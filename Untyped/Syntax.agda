@@ -4,7 +4,6 @@ open import Untyped.Base
 open import Data.Nat using (ℕ ; zero ; suc ; _≤_ ; z≤n ; s≤s ; _⊔_) public
 open import Data.Fin using (Fin ; zero ; suc ; inject≤) public
 
-
 -- Safe cast.
 -- Increase the the lower bound, retyping a term.
 -- Note that it is always possible to rewrite terms increasing
@@ -24,8 +23,8 @@ cast (Throw t) = Throw (cast t)
 cast (Catch m h) = Catch (cast m) (cast h)
 cast (Mac t) = Mac (cast t)
 cast (Macₓ t) = Macₓ (cast t)
-cast (Res x t) = Res x (cast t)
-cast (Resₓ x t) = Res x (cast t)
+cast (Res t) = Res (cast t)
+cast (Resₓ t) = Res (cast t)
 cast (label x t) = label x (cast t)
 cast (unlabel t) = unlabel (cast t)
 cast (join x t) = join x (cast t)

@@ -29,8 +29,8 @@ data Term (n : ℕ) : Set where
   -- Constructor that denotes failure due to an exception
   Macₓ : Term n -> Term n
 
-  Res : Label -> Term n -> Term n
-  Resₓ : Label -> Term n -> Term n
+  Res : {{l : Label}} -> Term n -> Term n
+  Resₓ : {{l : Label}} -> Term n -> Term n
 
   label : ∀ {l h} -> l ⊑ h -> Term n -> Term n
   unlabel : Term n -> Term n
@@ -99,11 +99,11 @@ data _⊢_∷_ (Δ : Context) : Term (length Δ) -> Ty -> Set where
 
   Res : ∀ {t τ} {{l}} ->
         Δ ⊢ t ∷ τ ->
-        Δ ⊢ Res l t ∷ Labeled l τ
+        Δ ⊢ Res t ∷ Labeled l τ
 
   Resₓ : ∀ {t} {{l τ}}  ->
         Δ ⊢ t ∷ Exception ->
-        Δ ⊢ Resₓ l t ∷ Labeled l τ
+        Δ ⊢ Resₓ t ∷ Labeled l τ
 
   ∙ : ∀ {τ} -> Δ ⊢ ∙ ∷ τ
 
@@ -162,8 +162,8 @@ IsValue (Γ , Macₓ j) = ⊤
 IsValue (Γ , label x t) = ⊥
 IsValue (Γ , unlabel t) = ⊥
 IsValue (Γ , join x t) = ⊥
-IsValue (Γ , Res l j) = ⊤
-IsValue (Γ , Resₓ l t) = ⊤
+IsValue (Γ , Res j) = ⊤
+IsValue (Γ , Resₓ t) = ⊤
 IsValue (Γ , ∙) = ⊥
 IsValue (c₁ $ c₂) = ⊥
 IsValue (If c Then t Else e) = ⊥

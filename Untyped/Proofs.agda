@@ -144,8 +144,8 @@ valueNotRedex (Γ , Macₓ t) isV (Step ())
 valueNotRedex (Γ , label x t) () nf
 valueNotRedex (Γ , unlabel t) () nf
 valueNotRedex (Γ , join x t) () nf
-valueNotRedex (Γ , Res p t) isV (Step ())
-valueNotRedex (Γ , Resₓ p t) isV (Step ())
+valueNotRedex (Γ , Res t) isV (Step ())
+valueNotRedex (Γ , Resₓ t) isV (Step ())
 valueNotRedex (Γ , ∙) () s
 valueNotRedex (f $ x) () nf
 valueNotRedex (If c Then t Else e) () nf
