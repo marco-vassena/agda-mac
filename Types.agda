@@ -25,7 +25,7 @@ open import Data.Nat using (ℕ ; zero ; suc) public
 open import Data.List public
 open import Data.Vec using (Vec ; [] ; _∷_ ; lookup) public
 open import Data.Fin using (Fin ; zero ; suc) public
-open import Data.Unit public
+open import Data.Unit hiding (_≤_) public
 open import Data.Empty public
 
 -- Types τ

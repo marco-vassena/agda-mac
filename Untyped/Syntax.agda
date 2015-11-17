@@ -25,8 +25,10 @@ cast (Catch m h) = Catch (cast m) (cast h)
 cast (Mac t) = Mac (cast t)
 cast (Macₓ t) = Macₓ (cast t)
 cast (Res x t) = Res x (cast t)
+cast (Resₓ x t) = Res x (cast t)
 cast (label x t) = label x (cast t)
 cast (unlabel t) = unlabel (cast t)
+cast (join x t) = join x (cast t)
 cast ∙ = ∙
 
 --------------------------------------------------------------------------------
