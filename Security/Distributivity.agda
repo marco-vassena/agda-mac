@@ -8,40 +8,6 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-dist : ∀ {τ} {c₁ c₂ : CTerm τ} -> (lₐ : Label) -> c₁ ⟼ c₂ -> εᶜ lₐ c₁ ⟼ εᶜ lₐ c₂
 
 --------------------------------------------------------------------------------
--- Auxliary distributivity lemmas for Labeled closed terms
---------------------------------------------------------------------------------
-
-εᶜ-Labeled-lookup : ∀ {lᵈ lₐ τ Δ} (p : Dec (lᵈ ⊑ lₐ)) (Γ : Env Δ) (x : Labeled lᵈ τ ∈ Δ) -> 
-                          εᶜ-Labeled lₐ p (x !! Γ) ≡ x !! εᶜ-env lₐ Γ
-εᶜ-Labeled-lookup {lᵈ} {lₐ} p (c ∷ Γ) Here rewrite εᶜ-Labeled-extensional p (lᵈ ⊑? lₐ) c = refl
-εᶜ-Labeled-lookup p (_ ∷ Γ) (There x) = εᶜ-Labeled-lookup p Γ x 
-
-εᶜ-Labeled-dist : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Labeled lᵈ τ)} -> (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) ->
-                       c₁ ⟼ c₂ -> (εᶜ-Labeled lₐ x c₁) ⟼ (εᶜ-Labeled lₐ x c₂)
-εᶜ-Labeled-dist lₐ x (AppL s) = AppL (εᶜ-dist lₐ s)
-εᶜ-Labeled-dist {lᵈ} lₐ x Beta with lᵈ ⊑? lₐ
-εᶜ-Labeled-dist lₐ x Beta | yes p = Beta
-εᶜ-Labeled-dist lₐ x Beta | no ¬p = Beta
-εᶜ-Labeled-dist {lᵈ} lₐ x Lookup with lᵈ ⊑? lₐ
-εᶜ-Labeled-dist lₐ d (Lookup {Γ = Γ} {p = x}) | yes p rewrite εᶜ-Labeled-lookup (yes p) Γ x = Lookup
-εᶜ-Labeled-dist lₐ d (Lookup {Γ = Γ} {p = x}) | no ¬p rewrite εᶜ-Labeled-lookup (no ¬p) Γ x = Lookup
-εᶜ-Labeled-dist lₐ d (Dist-$ {x = x}) rewrite εᶜ-Closure x lₐ = Dist-$
-εᶜ-Labeled-dist lₐ x Dist-If = Dist-If
-εᶜ-Labeled-dist lₐ x (IfCond s) = IfCond (εᶜ-dist lₐ s)
-εᶜ-Labeled-dist {lᵈ} lₐ x IfTrue with lᵈ ⊑? lₐ
-εᶜ-Labeled-dist lₐ (yes p₁) (IfTrue {t = t}) | yes p rewrite εᶜ-Labeled-extensional (yes p) (yes p₁) t = IfTrue
-εᶜ-Labeled-dist lₐ (no ¬p) IfTrue | yes p = ⊥-elim (¬p p)
-εᶜ-Labeled-dist lₐ (yes p) IfTrue | no ¬p = ⊥-elim (¬p p)
-εᶜ-Labeled-dist lₐ (no ¬p₁) (IfTrue {t = t}) | no ¬p rewrite εᶜ-Labeled-extensional (no ¬p) (no ¬p₁) t = IfTrue
-εᶜ-Labeled-dist {lᵈ} lₐ x IfFalse with lᵈ ⊑? lₐ
-εᶜ-Labeled-dist lₐ (yes p₁) (IfFalse {e = e}) | yes p rewrite εᶜ-Labeled-extensional (yes p) (yes p₁) e = IfFalse
-εᶜ-Labeled-dist lₐ (no ¬p) IfFalse | yes p = ⊥-elim (¬p p)
-εᶜ-Labeled-dist lₐ (yes p) IfFalse | no ¬p = ⊥-elim (¬p p)
-εᶜ-Labeled-dist lₐ (no ¬p₁) (IfFalse {e = e}) | no ¬p rewrite εᶜ-Labeled-extensional (no ¬p) (no ¬p₁) e = IfFalse
-εᶜ-Labeled-dist lₐ x Dist-∙ = Dist-∙
-εᶜ-Labeled-dist lₐ x Hole = Hole
-
---------------------------------------------------------------------------------
 -- Auxliary distributivity lemmas for Mac closed terms
 --------------------------------------------------------------------------------
 
@@ -158,8 +124,8 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac-dist lₐ h⊑a (unlabelEx d⊑h) | no ¬p | yes p = ⊥-elim (¬p (trans-⊑ d⊑h h⊑a))
 εᶜ-Mac-dist lₐ h⊑a (unlabelEx d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p h⊑a)
 εᶜ-Mac-dist lₐ h⊑a (unlabelCtx {l = lᵈ} {h = lʰ} d⊑h s) with lᵈ ⊑? lₐ
-εᶜ-Mac-dist lₐ h⊑a (unlabelCtx d⊑h s) | yes d⊑a = unlabelCtx d⊑h (εᶜ-Labeled-dist lₐ (yes d⊑a) s)
-εᶜ-Mac-dist lₐ h⊑a (unlabelCtx d⊑h s) | no ¬p = unlabelCtx d⊑h (εᶜ-Labeled-dist lₐ (no ¬p) s)
+εᶜ-Mac-dist lₐ h⊑a (unlabelCtx d⊑h s) | yes d⊑a = unlabelCtx d⊑h (εᶜ-dist lₐ s)
+εᶜ-Mac-dist lₐ h⊑a (unlabelCtx d⊑h s) | no ¬p = unlabelCtx d⊑h (εᶜ-dist lₐ s)
 εᶜ-Mac-dist lₐ d⊑a (Dist-join {l = lᵈ} {h = lʰ} d⊑h) with lʰ ⊑? lₐ
 εᶜ-Mac-dist lₐ d⊑a (Dist-join {l = lᵈ} {h = lʰ} d⊑h) | yes h⊑a = Dist-join d⊑h
 εᶜ-Mac-dist lₐ d⊑a (Dist-join d⊑h) | no ¬h⊑a = Dist-join d⊑h
@@ -249,7 +215,16 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-dist {τ => τ₁} lₐ IfFalse = IfFalse
 εᶜ-dist {τ => τ₁} lₐ Dist-∙ = Dist-∙
 εᶜ-dist {τ => τ₁} lₐ Hole = Hole
-εᶜ-dist {Labeled lᵈ τ} lₐ s = εᶜ-Labeled-dist lₐ (lᵈ ⊑? lₐ) s
+εᶜ-dist {Labeled lᵈ τ} lₐ (AppL s) = AppL (εᶜ-dist lₐ s)
+εᶜ-dist {Labeled lᵈ τ} lₐ Beta = Beta
+εᶜ-dist {Labeled lᵈ τ} {c₁ = Γ , Var x} lₐ Lookup rewrite εᶜ-lookup {{lₐ}} x Γ = Lookup
+εᶜ-dist {Labeled lᵈ τ} {c₁ = Γ , App f x} lₐ Dist-$ rewrite εᶜ-Closure x lₐ = Dist-$
+εᶜ-dist {Labeled lᵈ τ} lₐ Dist-If = Dist-If
+εᶜ-dist {Labeled lᵈ τ} lₐ (IfCond s) = IfCond (εᶜ-dist lₐ s)
+εᶜ-dist {Labeled lᵈ τ} lₐ IfTrue = IfTrue
+εᶜ-dist {Labeled lᵈ τ} lₐ IfFalse = IfFalse
+εᶜ-dist {Labeled lᵈ τ} lₐ Dist-∙ = Dist-∙
+εᶜ-dist {Labeled lᵈ τ} lₐ Hole = Hole
 εᶜ-dist {Exception} lₐ (AppL s) = AppL (εᶜ-dist lₐ s)
 εᶜ-dist {Exception} lₐ Beta = Beta
 εᶜ-dist {Exception} {c₁ = Γ , Var x} lₐ Lookup rewrite εᶜ-lookup {{lₐ}} x Γ = Lookup

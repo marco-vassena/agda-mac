@@ -114,12 +114,12 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac lₐ d⊑a (join {l = lᵈ} {h = lʰ} d⊑h c) | no ¬h⊑a = join d⊑h (εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a c) 
 εᶜ-Mac lₐ p ∙ = ∙
 
--- Erasure function for closed labeled terms that are visible to the attacker
-εᶜ-Labeled : ∀ {τ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> CTerm (Labeled lᵈ τ) -> CTerm (Labeled lᵈ τ)
-εᶜ-Labeled lₐ p (Γ , t) = εᶜ-env lₐ Γ , ε-Labeled lₐ p t
-εᶜ-Labeled lₐ p (f $ x) = εᶜ lₐ f $ εᶜ lₐ x
-εᶜ-Labeled lₐ p (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Labeled lₐ p t) Else (εᶜ-Labeled lₐ p e)
-εᶜ-Labeled lₐ p ∙ = ∙
+-- -- Erasure function for closed labeled terms that are visible to the attacker
+-- εᶜ-Labeled : ∀ {τ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> CTerm (Labeled lᵈ τ) -> CTerm (Labeled lᵈ τ)
+-- εᶜ-Labeled lₐ p (Γ , t) = εᶜ-env lₐ Γ , ε-Labeled lₐ p t
+-- εᶜ-Labeled lₐ p (f $ x) = εᶜ lₐ f $ εᶜ lₐ x
+-- εᶜ-Labeled lₐ p (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Labeled lₐ p t) Else (εᶜ-Labeled lₐ p e)
+-- εᶜ-Labeled lₐ p ∙ = ∙
 
 εᶜ-Mac-∙ lₐ ¬p (Γ , t) = εᶜ-env lₐ Γ , ∙
 εᶜ-Mac-∙ lₐ ¬p c = ∙
@@ -127,7 +127,6 @@ open import Relation.Binary.PropositionalEquality
 εᶜ {Mac lᵈ τ} lₐ c with lᵈ ⊑? lₐ
 εᶜ {Mac lᵈ τ} lₐ c | yes p = εᶜ-Mac lₐ p c
 εᶜ {Mac lᵈ τ} lₐ c | no ¬p = εᶜ-Mac-∙ lₐ ¬p c
-εᶜ {Labeled lᵈ τ} lₐ c = εᶜ-Labeled lₐ (lᵈ ⊑? lₐ) c
 εᶜ lₐ (Γ , t) = (εᶜ-env lₐ Γ) , (ε lₐ t)
 εᶜ lₐ (f $ x) = εᶜ lₐ f $ εᶜ lₐ x
 εᶜ lₐ (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ lₐ t) Else (εᶜ lₐ e)
@@ -154,31 +153,5 @@ open import Typed.Semantics
 εᶜ-Closure {Mac lᵈ τ} t lₐ with lᵈ ⊑? lₐ
 εᶜ-Closure {Mac lᵈ τ} t lₐ | yes p = refl
 εᶜ-Closure {Mac lᵈ τ} t lₐ | no ¬p = refl
-εᶜ-Closure {Labeled lᵈ τ} t lₐ with lᵈ ⊑? lₐ
-εᶜ-Closure {Labeled lᵈ τ} t lₐ | yes p = refl
-εᶜ-Closure {Labeled lᵈ τ} t lₐ | no ¬p = refl
+εᶜ-Closure {Labeled lᵈ τ} t lₐ = refl
 εᶜ-Closure {Exception} t lₐ = refl
-
-ε-Labeled-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Labeled lᵈ τ)) ->
-                           ε-Labeled lₐ x t ≡ ε-Labeled lₐ y t
-ε-Labeled-extensional _ _ (Var x) = refl
-ε-Labeled-extensional _ _ (App f x) = refl
-ε-Labeled-extensional x y (If c Then t Else e)
-  rewrite ε-Labeled-extensional x y t | ε-Labeled-extensional x y e = refl
-ε-Labeled-extensional (yes p) (yes p₁) (Res t) = refl
-ε-Labeled-extensional (yes p) (no ¬p) (Res t) = ⊥-elim (¬p p)
-ε-Labeled-extensional (no ¬p) (yes p) (Res t) = ⊥-elim (¬p p)
-ε-Labeled-extensional (no ¬p) (no ¬p₁) (Res t) = refl
-ε-Labeled-extensional (yes p) (yes p₁) (Resₓ t) = refl
-ε-Labeled-extensional (yes p) (no ¬p) (Resₓ t) = ⊥-elim (¬p p)
-ε-Labeled-extensional (no ¬p) (yes p) (Resₓ t) = ⊥-elim (¬p p)
-ε-Labeled-extensional (no ¬p) (no ¬p₁) (Resₓ t) = refl
-ε-Labeled-extensional _ _ ∙ = refl
-
-εᶜ-Labeled-extensional : ∀ {τ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (c : CTerm (Labeled lᵈ τ)) ->
-                           εᶜ-Labeled lₐ x c ≡ εᶜ-Labeled lₐ y c
-εᶜ-Labeled-extensional x y (Γ , t) rewrite ε-Labeled-extensional x y t = refl
-εᶜ-Labeled-extensional _ _ (f $ x) = refl
-εᶜ-Labeled-extensional x y (If c Then t Else e)
-  rewrite εᶜ-Labeled-extensional x y t | εᶜ-Labeled-extensional x y e = refl
-εᶜ-Labeled-extensional _ _ ∙ = refl
