@@ -10,36 +10,37 @@ open import Relation.Binary.PropositionalEquality
 
 -- Erasure function for open Mac terms that are visible to the attacker.
 -- It applies ε homomorphically.
-ε-Mac : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> Term Δ (Mac lᵈ τ) -> Term Δ (Mac lᵈ τ)
+ε-Mac : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Term Δ (Mac lᵈ τ) -> Term Δ (Mac lᵈ τ)
 
--- This erasure function is used to erase values produced by sensitive
--- computation. In particular this function does not always completely
--- collapse the computation to ∙, but for Mac and Macₓ it preserves
--- the constructors. This function is used to erase appropriately
--- a sensitive compution wrapped in a join.
-ε-Mac-Labeled-∙ : ∀ {lᵈ lʰ Δ τ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> ¬ (lʰ ⊑ lₐ) -> 
-                  Term Δ (Mac lʰ τ) -> Term Δ (Mac lʰ τ)
-ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Mac t) = Mac ∙
-ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Macₓ t) = Macₓ ∙
-ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a _ = ∙
+ε-Mac-Labeled : ∀ {lʰ lₐ Δ τ} -> Dec (lʰ ⊑ lₐ) -> Term Δ (Mac lʰ τ) -> Term Δ (Mac lʰ τ)
+ε-Mac-Labeled (yes p) t = ε-Mac _ (yes p) t
+ε-Mac-Labeled (no ¬p) (Mac t) = Mac ∙
+ε-Mac-Labeled (no ¬p) (Macₓ t) = Macₓ ∙
+ε-Mac-Labeled (no ¬p) t = ∙
 
-ε-Mac lₐ p (Var x) = Var x
-ε-Mac lₐ p (App f x) = App (ε lₐ f) (ε lₐ x)
-ε-Mac lₐ p (If c Then t Else e) = If (ε lₐ c) Then (ε-Mac lₐ p t) Else (ε-Mac lₐ p e)
-ε-Mac lₐ p (Return t) = Return (ε lₐ t)
-ε-Mac lₐ p (m >>= k) = (ε-Mac lₐ p m) >>= ε lₐ k
-ε-Mac lₐ p (Throw t) = Throw (ε lₐ t)
-ε-Mac lₐ p (Catch m k) = Catch (ε-Mac lₐ p m) (ε lₐ k)
-ε-Mac lₐ p (Mac t) = Mac (ε lₐ t)
-ε-Mac lₐ p (Macₓ t) = Macₓ (ε lₐ t)
-ε-Mac lₐ p (label {l = lᵈ} {h = lʰ} d⊑h t) with lʰ ⊑? lₐ
-ε-Mac lₐ p₁ (label d⊑h t) | yes p = label d⊑h (ε lₐ t)
-ε-Mac lₐ p (label d⊑h t) | no ¬p = label d⊑h ∙ 
-ε-Mac lₐ p (unlabel x t) = unlabel x (ε lₐ t)
-ε-Mac lₐ p (join {l = lᵈ} {h = lʰ} d⊑h t) with lʰ ⊑? lₐ
-ε-Mac lₐ p (join d⊑h t) | yes h⊑a = join d⊑h (ε-Mac lₐ h⊑a t)
-ε-Mac lₐ d⊑a (join d⊑h t) | no ¬h⊑a = join d⊑h (ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a t)
-ε-Mac lₐ p ∙ = ∙
+ε-Mac-Labeled∙ : ∀ {τ lʰ Δ} -> Term Δ (Mac lʰ τ) -> Term Δ (Mac lʰ τ)
+ε-Mac-Labeled∙ (Mac t) =  Mac ∙
+ε-Mac-Labeled∙ (Macₓ t) = Macₓ ∙
+ε-Mac-Labeled∙ t = ∙
+
+ε-Mac lₐ (yes p) (Var x) = Var x
+ε-Mac lₐ (yes p) (App f x) = App (ε lₐ f) (ε lₐ x)
+ε-Mac lₐ (yes p) (If c Then t Else e) = If (ε lₐ c) Then (ε-Mac lₐ (yes p) t) Else (ε-Mac lₐ (yes p) e)
+ε-Mac lₐ (yes p) (Return t) = Return (ε lₐ t)
+ε-Mac lₐ (yes p) (m >>= k) = (ε-Mac lₐ (yes p) m) >>= (ε lₐ k)
+ε-Mac lₐ (yes p) (Throw t) = Throw (ε lₐ t)
+ε-Mac lₐ (yes p) (Catch m h) = Catch (ε-Mac lₐ (yes p) m) (ε lₐ h)
+ε-Mac lₐ (yes p) (Mac t) = Mac (ε lₐ t)
+ε-Mac lₐ (yes p) (Macₓ t) = Macₓ (ε lₐ t)
+ε-Mac lₐ (yes p) (label {l = lᵈ} {h = lʰ} x t) with lʰ ⊑? lₐ
+ε-Mac lₐ (yes p₁) (label x t) | yes p = label x (ε lₐ t)
+ε-Mac lₐ (yes p) (label x t) | no ¬p = label x ∙
+ε-Mac lₐ (yes p) (unlabel x t) = unlabel x (ε lₐ t)
+ε-Mac lₐ (yes p) (join {l = lᵈ} {h = lʰ} x t) with lʰ ⊑? lₐ
+ε-Mac lₐ (yes p₁) (join x t) | yes p = join x (ε-Mac lₐ (yes p) t)
+ε-Mac lₐ (yes p) (join x t) | no ¬p = join x (ε-Mac-Labeled∙ t)
+ε-Mac lₐ (yes p) ∙ = ∙
+ε-Mac lₐ (no ¬p) t = ∙
 
 -- Erasure function for open Labeled terms that are visible to the attacker.
 ε-Labeled : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Term Δ (Labeled lᵈ τ) -> Term Δ (Labeled lᵈ τ)
@@ -52,9 +53,7 @@ open import Relation.Binary.PropositionalEquality
 ε-Labeled lₐ (no ¬p) (Resₓ t) = Resₓ ∙
 ε-Labeled lₐ p ∙ = ∙
 
-ε {Mac lᵈ τ} lₐ t with lᵈ ⊑? lₐ
-ε {Mac lᵈ τ} lₐ t | yes p = ε-Mac lₐ p t
-ε {Mac lᵈ τ} lₐ t | no ¬p = ∙
+ε {Mac lᵈ τ} lₐ t = ε-Mac lₐ (lᵈ ⊑? lₐ) t
 ε {Labeled lᵈ τ} lₐ t = ε-Labeled lₐ (lᵈ ⊑? lₐ) t
 ε lₐ True = True
 ε lₐ False = False
@@ -91,42 +90,30 @@ open import Relation.Binary.PropositionalEquality
 εᶜ : ∀ {τ} -> Label -> CTerm τ -> CTerm τ
 εᶜ-env : ∀ {Δ} -> Label -> Env Δ -> Env Δ
 
-εᶜ-Mac : ∀ {τ lᵈ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
-εᶜ-Mac-Labeled-∙ : ∀ {lᵈ lʰ τ} -> (lₐ : Label) -> lᵈ ⊑ lₐ -> ¬ (lʰ ⊑ lₐ) -> 
-                  CTerm (Mac lʰ τ) -> CTerm (Mac lʰ τ)
-εᶜ-Mac-∙ : ∀ {lᵈ τ} -> (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
+εᶜ-Mac : ∀ {τ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
 
--- Erasure function for closed term of type Mac L (Labeled H α), whose computation is visible
--- to the attacker, but not the labeled resource.
--- It maps closures calling ε-Mac-Labeled-∙, otherwise it completely
--- collapse to ∙ the computation.
-εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a (Γ , t) = (εᶜ-env lₐ Γ) , (ε-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a t)
-εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a _ = ∙
+εᶜ-Mac-Labeled : ∀ {lₐ lʰ τ} -> Dec (lʰ ⊑ lₐ) -> CTerm (Mac lʰ τ) -> CTerm (Mac lʰ τ)
+εᶜ-Mac-Labeled {lₐ} d (Γ , t) = εᶜ-env lₐ Γ , ε-Mac-Labeled d t
+εᶜ-Mac-Labeled {lₐ} (yes p) c = εᶜ-Mac lₐ (yes p) c 
+εᶜ-Mac-Labeled (no ¬p) c = ∙
 
-εᶜ-Mac lₐ p (Γ , t) = (εᶜ-env lₐ Γ) , (ε-Mac lₐ p t)
-εᶜ-Mac lₐ p (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
-εᶜ-Mac lₐ p (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Mac lₐ p t) Else εᶜ-Mac lₐ p e
-εᶜ-Mac lₐ p (m >>= k) = (εᶜ-Mac lₐ p m) >>= (εᶜ lₐ k)
-εᶜ-Mac lₐ p (Catch m h) = Catch (εᶜ-Mac lₐ p m) (εᶜ lₐ h)
-εᶜ-Mac lₐ p (unlabel x c) = unlabel x (εᶜ lₐ c) 
-εᶜ-Mac lₐ p (join {l = lᵈ} {h = lʰ} d⊑h c) with lʰ ⊑? lₐ
-εᶜ-Mac lₐ p₁ (join {l = lᵈ} {h = lʰ} d⊑h c) | yes h⊑a = join d⊑h (εᶜ-Mac lₐ h⊑a c)
-εᶜ-Mac lₐ d⊑a (join {l = lᵈ} {h = lʰ} d⊑h c) | no ¬h⊑a = join d⊑h (εᶜ-Mac-Labeled-∙ lₐ d⊑a ¬h⊑a c) 
-εᶜ-Mac lₐ p ∙ = ∙
+εᶜ-Mac-Labeled∙ : ∀ {τ lʰ} -> (lₐ : Label) -> CTerm (Mac lʰ τ) -> CTerm (Mac lʰ τ)
+εᶜ-Mac-Labeled∙ lₐ (Γ , t) = εᶜ-env lₐ Γ , ε-Mac-Labeled∙ t
+εᶜ-Mac-Labeled∙ lₐ t = ∙
 
--- -- Erasure function for closed labeled terms that are visible to the attacker
--- εᶜ-Labeled : ∀ {τ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> CTerm (Labeled lᵈ τ) -> CTerm (Labeled lᵈ τ)
--- εᶜ-Labeled lₐ p (Γ , t) = εᶜ-env lₐ Γ , ε-Labeled lₐ p t
--- εᶜ-Labeled lₐ p (f $ x) = εᶜ lₐ f $ εᶜ lₐ x
--- εᶜ-Labeled lₐ p (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Labeled lₐ p t) Else (εᶜ-Labeled lₐ p e)
--- εᶜ-Labeled lₐ p ∙ = ∙
+εᶜ-Mac lₐ p (Γ , t) = εᶜ-env lₐ Γ , ε-Mac lₐ p t
+εᶜ-Mac lₐ (yes p) (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
+εᶜ-Mac lₐ (yes p) (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Mac lₐ (yes p) t) Else εᶜ-Mac lₐ (yes p) e
+εᶜ-Mac lₐ (yes p) (m >>= k) = (εᶜ-Mac lₐ (yes p) m) >>= (εᶜ lₐ k)
+εᶜ-Mac lₐ (yes p) (Catch m h) = Catch (εᶜ-Mac lₐ (yes p) m) (εᶜ lₐ h)
+εᶜ-Mac lₐ (yes p) (unlabel x c) = unlabel x (εᶜ lₐ c)
+εᶜ-Mac lₐ (yes p) (join {l = lᵈ} {h = lʰ} x c) with lʰ ⊑? lₐ
+εᶜ-Mac lₐ (yes p₁) (join x c) | yes p = join x (εᶜ-Mac lₐ (yes p) c)
+εᶜ-Mac lₐ (yes p) (join x c) | no ¬p = join x (εᶜ-Mac-Labeled∙ lₐ c)
+εᶜ-Mac lₐ (yes p) ∙ = ∙
+εᶜ-Mac lₐ (no ¬p) c = ∙
 
-εᶜ-Mac-∙ lₐ ¬p (Γ , t) = εᶜ-env lₐ Γ , ∙
-εᶜ-Mac-∙ lₐ ¬p c = ∙
-
-εᶜ {Mac lᵈ τ} lₐ c with lᵈ ⊑? lₐ
-εᶜ {Mac lᵈ τ} lₐ c | yes p = εᶜ-Mac lₐ p c
-εᶜ {Mac lᵈ τ} lₐ c | no ¬p = εᶜ-Mac-∙ lₐ ¬p c
+εᶜ {Mac lᵈ τ} lₐ c = εᶜ-Mac lₐ (lᵈ ⊑? lₐ) c
 εᶜ lₐ (Γ , t) = (εᶜ-env lₐ Γ) , (ε lₐ t)
 εᶜ lₐ (f $ x) = εᶜ lₐ f $ εᶜ lₐ x
 εᶜ lₐ (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ lₐ t) Else (εᶜ lₐ e)
@@ -139,9 +126,9 @@ open import Typed.Semantics
 
 -- Applying the erausre function to an environment and looking up the value is the same
 -- as first looking up a variable and then erasing the result.
-εᶜ-lookup : ∀ {Δ τ} {{lₐ}} -> (p : τ ∈ Δ) (Γ : Env Δ) -> εᶜ lₐ (p !! Γ) ≡ p !! εᶜ-env lₐ Γ
-εᶜ-lookup Here (x ∷ Γ) = refl
-εᶜ-lookup (There p) (x ∷ Γ) rewrite εᶜ-lookup p Γ = refl
+εᶜ-lookup : ∀ {Δ τ} (lₐ : Label) -> (p : τ ∈ Δ) (Γ : Env Δ) -> εᶜ lₐ (p !! Γ) ≡ p !! εᶜ-env lₐ Γ
+εᶜ-lookup lₐ Here (x ∷ Γ) = refl
+εᶜ-lookup lₐ (There p) (x ∷ Γ) = εᶜ-lookup lₐ p Γ
 
 -- Auxiliary lemma.
 -- It is convenient especially when function application is analyzed.
@@ -155,3 +142,102 @@ open import Typed.Semantics
 εᶜ-Closure {Mac lᵈ τ} t lₐ | no ¬p = refl
 εᶜ-Closure {Labeled lᵈ τ} t lₐ = refl
 εᶜ-Closure {Exception} t lₐ = refl
+
+ε-Mac-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Mac lᵈ τ)) -> ε-Mac lₐ x t ≡ ε-Mac lₐ y t
+ε-Mac-extensional (yes p) (yes p₁) (Var x₁) = refl
+ε-Mac-extensional (yes p) (no ¬p) (Var x₁) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (Var x₁) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (Var x₁) = refl
+ε-Mac-extensional (yes p) (yes p₁) (App t t₁) = refl
+ε-Mac-extensional (yes p) (no ¬p) (App t t₁) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (App t t₁) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (App t t₁) = refl
+ε-Mac-extensional (yes p) (yes p₁) (If t Then t₁ Else t₂)
+  rewrite ε-Mac-extensional (yes p) (yes p₁) t₁ | ε-Mac-extensional (yes p) (yes p₁) t₂ = refl
+ε-Mac-extensional (yes p) (no ¬p) (If t Then t₁ Else t₂) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (If t Then t₁ Else t₂) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (If t Then t₁ Else t₂) = refl
+ε-Mac-extensional (yes p) (yes p₁) (Return t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (Return t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (Return t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (Return t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (t >>= t₁)
+  rewrite ε-Mac-extensional (yes p) (yes p₁) t = refl
+ε-Mac-extensional (yes p) (no ¬p) (t >>= t₁) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (t >>= t₁) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (t >>= t₁) = refl
+ε-Mac-extensional (yes p) (yes p₁) (Throw t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (Throw t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (Throw t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (Throw t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (Catch t t₁)
+  rewrite ε-Mac-extensional (yes p) (yes p₁) t = refl
+ε-Mac-extensional (yes p) (no ¬p) (Catch t t₁) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (Catch t t₁) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (Catch t t₁) = refl
+ε-Mac-extensional (yes p) (yes p₁) (Mac t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (Mac t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (Mac t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (Mac t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (Macₓ t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (Macₓ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (Macₓ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (Macₓ t) = refl
+ε-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (label {h = lʰ} x₁ t) with lʰ ⊑? lₐ
+ε-Mac-extensional (yes p₁) (yes p₂) (label x₁ t) | yes p = refl
+ε-Mac-extensional (yes p) (yes p₁) (label x₁ t) | no ¬p = refl
+ε-Mac-extensional (yes p) (no ¬p) (label x₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (label x₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (label x₁ t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (unlabel x₁ t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (unlabel x₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (unlabel x₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (unlabel x₁ t) = refl
+ε-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (join {h = lʰ} x₁ t) with lʰ ⊑? lₐ
+ε-Mac-extensional (yes p₁) (yes p₂) (join x₁ t) | yes p = refl
+ε-Mac-extensional (yes p) (yes p₁) (join x₁ t) | no ¬p = refl
+ε-Mac-extensional (yes p) (no ¬p) (join x₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (join x₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (join x₁ t) = refl
+ε-Mac-extensional (yes p) (yes p₁) ∙ = refl
+ε-Mac-extensional (yes p) (no ¬p) ∙ = refl
+ε-Mac-extensional (no ¬p) (yes p) ∙ = refl
+ε-Mac-extensional (no ¬p) (no ¬p₁) ∙ = refl
+
+εᶜ-Mac-extensional : ∀ {τ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (c : CTerm (Mac lᵈ τ)) -> εᶜ-Mac lₐ x c ≡ εᶜ-Mac lₐ y c
+εᶜ-Mac-extensional x y (Γ , t)
+  rewrite ε-Mac-extensional x y t = refl
+εᶜ-Mac-extensional (yes p) (yes p₁) (c $ c₁) = refl
+εᶜ-Mac-extensional (yes p) (no ¬p) (c $ c₁) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (yes p) (c $ c₁) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (no ¬p₁) (c $ c₁) = refl
+εᶜ-Mac-extensional (yes p) (yes p₁) (If c Then c₁ Else c₂)
+  rewrite εᶜ-Mac-extensional (yes p) (yes p₁) c₁ | εᶜ-Mac-extensional (yes p) (yes p₁) c₂ = refl
+εᶜ-Mac-extensional (yes p) (no ¬p) (If c Then c₁ Else c₂) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (yes p) (If c Then c₁ Else c₂) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (no ¬p₁) (If c Then c₁ Else c₂) = refl
+εᶜ-Mac-extensional (yes p) (yes p₁) (c >>= c₁)
+  rewrite εᶜ-Mac-extensional (yes p) (yes p₁) c = refl
+εᶜ-Mac-extensional (yes p) (no ¬p) (c >>= c₁) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (yes p) (c >>= c₁) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (no ¬p₁) (c >>= c₁) = refl
+εᶜ-Mac-extensional (yes p) (yes p₁) (Catch c c₁)
+  rewrite εᶜ-Mac-extensional (yes p) (yes p₁) c = refl
+εᶜ-Mac-extensional (yes p) (no ¬p) (Catch c c₁) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (yes p) (Catch c c₁) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (no ¬p₁) (Catch c c₁) = refl
+εᶜ-Mac-extensional (yes p) (yes p₁) (unlabel x₁ c) = refl
+εᶜ-Mac-extensional (yes p) (no ¬p) (unlabel x₁ c) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (yes p) (unlabel x₁ c) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (no ¬p₁) (unlabel x₁ c) = refl
+εᶜ-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (join {h = lʰ} x₁ c) with lʰ ⊑? lₐ
+εᶜ-Mac-extensional (yes p₁) (yes p₂) (join x₁ c) | yes p = refl
+εᶜ-Mac-extensional (yes p) (yes p₁) (join x₁ c) | no ¬p = refl
+εᶜ-Mac-extensional (yes p) (no ¬p) (join x₁ c) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (yes p) (join x₁ c) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (no ¬p₁) (join x₁ c) = refl
+εᶜ-Mac-extensional (yes p) (yes p₁) ∙ = refl
+εᶜ-Mac-extensional (yes p) (no ¬p) ∙ = refl
+εᶜ-Mac-extensional (no ¬p) (yes p) ∙ = refl
+εᶜ-Mac-extensional (no ¬p) (no ¬p₁) ∙ = refl
+

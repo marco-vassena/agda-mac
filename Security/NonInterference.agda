@@ -19,7 +19,7 @@ data _≈ᵗ_ {{l : Label}} {τ : Ty} (c₁ c₂ : CTermᵗ τ) : Set where
 -- Non-interference for typed terms.
 -- As expected we need only determinism of the small step semantics and distributivity of εᶜ.
 non-interferenceᵗ : ∀ {l τ} {c₁ c₂ c₁' c₂' : CTermᵗ τ} -> c₁ ≈ᵗ c₂ -> c₁ ⟼ᵗ c₁' -> c₂ ⟼ᵗ c₂' -> c₁' ≈ᵗ c₂'
-non-interferenceᵗ {l} (εᶜ-≡ eq) s₁ s₂ = εᶜ-≡ (aux eq (εᶜ-distributes l s₁) (εᶜ-distributes l s₂))
+non-interferenceᵗ {l} (εᶜ-≡ eq) s₁ s₂ = εᶜ-≡ (aux eq (εᶜ-dist l s₁) (εᶜ-dist l s₂))
   where aux : ∀ {τ} {c₁ c₂ c₃ c₄ : CTermᵗ τ} -> c₁ ≡ c₂ -> c₁ ⟼ᵗ c₃ -> c₂ ⟼ᵗ c₄ -> c₃ ≡ c₄
         aux refl s₁ s₂ = determinismᵗ s₁ s₂
 
