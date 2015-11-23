@@ -5,6 +5,7 @@ open import Relation.Binary.PropositionalEquality
 open import Data.Sum
 
 progress : ∀ {τ} -> (c : CTerm τ) -> (Redex c) ⊎ (IsValue c)
+progress (Γ , （）) = inj₂ tt
 progress (Γ , True) = inj₂ tt
 progress (Γ , False) = inj₂ tt
 progress (Γ , Var x) = inj₁ (Step Lookup)
@@ -125,6 +126,7 @@ progress (unlabel x ∙) | inj₂ ()
 progress ∙ = inj₁ (Step Hole)
 
 valueNotRedex : ∀ {τ} -> (c : CTerm τ) -> IsValue c -> NormalForm c
+valueNotRedex (Γ , （）) isV (Step ())
 valueNotRedex (Γ , True) isV (Step ())
 valueNotRedex (Γ , False) isV (Step ())
 valueNotRedex (Γ , App f x) () nf

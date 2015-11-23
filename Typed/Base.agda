@@ -3,6 +3,8 @@ module Typed.Base where
 open import Types public
 
 data Term (Δ : Context) : Ty -> Set where
+  （） : Term Δ （）
+
   True : Term Δ Bool 
   False : Term Δ Bool
 
@@ -62,6 +64,7 @@ infixr 6 _!!_
 
 -- Determines whether a closed term is a value or not
 IsValue : ∀ {τ} -> CTerm τ -> Set
+IsValue (Γ , （）) = ⊤
 IsValue (Γ , True) = ⊤
 IsValue (Γ , False) = ⊤
 IsValue (Γ , App f x) = ⊥

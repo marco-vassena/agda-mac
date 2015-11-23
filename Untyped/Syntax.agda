@@ -10,6 +10,7 @@ open import Data.Fin using (Fin ; zero ; suc ; inject≤) public
 -- the upper bound because a variable reference of Fin n can be 
 -- safely casted to Fin m if n ≤ m
 cast : ∀ {n m} {{p : n ≤ m}} -> Term n -> Term m
+cast （） = （）
 cast True = True
 cast False = False
 cast {{p}} (Var x) = Var (inject≤ x p)

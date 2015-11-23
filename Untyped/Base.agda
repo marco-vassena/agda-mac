@@ -8,6 +8,8 @@ open import Types public
 -- For convenience in compound terms like App the subterms have the same
 -- upper bound, see cast.
 data Term (n : ℕ) : Set where
+  （） : Term n
+
   True : Term n 
   False : Term n
 
@@ -42,6 +44,8 @@ data Term (n : ℕ) : Set where
 
 -- Typing judgments, which define well-typed terms.
 data _⊢_∷_ (Δ : Context) : Term (length Δ) -> Ty -> Set where
+  （） : Δ ⊢ （） ∷ （）
+
   True : Δ ⊢ True ∷ Bool
   False : Δ ⊢ False ∷ Bool
 
@@ -146,6 +150,7 @@ infixl 5 _>>=_
 
 -- Determines whether a closed term is a value or not
 IsValue : CTerm -> Set
+IsValue (Γ , （）) = ⊤
 IsValue (Γ , True) = ⊤
 IsValue (Γ , False) = ⊤
 IsValue (Γ , App f x) = ⊥

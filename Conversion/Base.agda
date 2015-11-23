@@ -10,6 +10,7 @@ open import Untyped.Semantics renaming (_⟼_ to _⟼ᵘ_)
 
 -- Untype function
 ⌞_⌟ : ∀ {τ Δ} -> Termᵗ Δ τ -> Termᵘ (length Δ)
+⌞ （） ⌟ = （）
 ⌞ True ⌟ = True
 ⌞ False ⌟ = False
 ⌞ Var x ⌟ = Var (fin x)
@@ -49,6 +50,7 @@ map⟦ x ∷ Γ ⟧ = ⟦ x ⟧ ∷ map⟦ Γ ⟧
 -- Untyped to Typed
 
 convertᵘᵗ : ∀ {Δ τ} {t : Termᵘ (length Δ)} -> Δ ⊢ t ∷ τ -> Termᵗ Δ τ
+convertᵘᵗ （） = （）
 convertᵘᵗ True = True
 convertᵘᵗ False = False
 convertᵘᵗ (App f x) = App (convertᵘᵗ f) (convertᵘᵗ x)

@@ -183,6 +183,16 @@ open import Relation.Binary.PropositionalEquality
 --------------------------------------------------------------------------------
 
 εᶜ-dist {Mac lᵈ τ} lₐ s = εᶜ-Mac-dist lₐ (lᵈ ⊑? lₐ) s
+εᶜ-dist {（）} lₐ (AppL s) = AppL (εᶜ-dist lₐ s)
+εᶜ-dist {（）} lₐ Beta = Beta
+εᶜ-dist {（）} lₐ (Lookup {Γ = Γ} {p = x}) rewrite εᶜ-lookup lₐ x Γ = Lookup
+εᶜ-dist {（）} lₐ (Dist-$ {Γ = Γ} {x = x}) rewrite εᶜ-Closure x lₐ = Dist-$
+εᶜ-dist {（）} lₐ Dist-If = Dist-If
+εᶜ-dist {（）} lₐ (IfCond s) = IfCond (εᶜ-dist lₐ s)
+εᶜ-dist {（）} lₐ IfTrue = IfTrue
+εᶜ-dist {（）} lₐ IfFalse = IfFalse
+εᶜ-dist {（）} lₐ Dist-∙ = Dist-∙
+εᶜ-dist {（）} lₐ Hole = Hole
 εᶜ-dist {Bool} lₐ (AppL s) = AppL (εᶜ-dist lₐ s)
 εᶜ-dist {Bool} lₐ Beta = Beta
 εᶜ-dist {Bool} {c₁ = Γ , Var x} lₐ Lookup rewrite εᶜ-lookup lₐ x Γ = Lookup

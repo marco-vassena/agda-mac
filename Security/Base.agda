@@ -55,6 +55,7 @@ open import Relation.Binary.PropositionalEquality
 
 ε {Mac lᵈ τ} lₐ t = ε-Mac lₐ (lᵈ ⊑? lₐ) t
 ε {Labeled lᵈ τ} lₐ t = ε-Labeled lₐ (lᵈ ⊑? lₐ) t
+ε lₐ （） = （）
 ε lₐ True = True
 ε lₐ False = False
 ε lₐ (Var x) = Var x
@@ -135,6 +136,7 @@ open import Typed.Semantics
 -- The argument has some arbitrary type α and without pattern matching on it
 -- Agda will not realize this fact.
 εᶜ-Closure : ∀ {τ Δ} {{Γ : Env Δ}} (t : Term Δ τ) (lₐ : Label) -> εᶜ lₐ (Γ , t) ≡ (εᶜ-env lₐ Γ , ε lₐ t)
+εᶜ-Closure {（）} _ lₐ = refl
 εᶜ-Closure {Bool} t lₐ = refl
 εᶜ-Closure {τ => τ₁} t lₐ = refl
 εᶜ-Closure {Mac lᵈ τ} t lₐ with lᵈ ⊑? lₐ

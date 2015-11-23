@@ -21,6 +21,7 @@ open import Data.Empty public
 
 -- Types τ
 data Ty : Set where
+  （） : Ty
   Bool : Ty
   _=>_ : (τ₁ t₂ : Ty) -> Ty
   Mac : Label -> Ty -> Ty

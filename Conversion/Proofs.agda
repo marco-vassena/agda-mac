@@ -18,6 +18,7 @@ open import Relation.Binary.HeterogeneousEquality
 
 -- A typed term preserves its type when converted.
 sound-⌞_⌟ : ∀ {τ Δ} -> (t : Termᵗ Δ τ) -> Δ ⊢ ⌞ t ⌟ ∷ τ
+sound-⌞ （） ⌟ = （）
 sound-⌞ True ⌟ = True
 sound-⌞ False ⌟ = False
 sound-⌞ Var x ⌟ = Var x
@@ -71,6 +72,7 @@ sound-map⟦ x ∷ Γ ⟧ = sound-⟦ x ⟧ ∷ sound-map⟦ Γ ⟧
 -- ⌜_⌝ ∘ ⌞_⌟ ≡ id
 complete-⌞_⌟ : ∀ {Δ τ} -> (t : Termᵗ Δ τ) ->
                let p = sound-⌞ t ⌟ in ⌜ ⌞ t ⌟ ⌝ ≡ t
+complete-⌞ （） ⌟ = refl
 complete-⌞ True ⌟ = refl
 complete-⌞ False ⌟ = refl
 complete-⌞ Var x ⌟ = refl
@@ -122,6 +124,7 @@ complete-map⟦ x ∷ Γ ⟧ rewrite complete-⟦ x ⟧ | complete-map⟦ Γ ⟧
 -- ⌞ ⌜ t ⌝ ⌟ ≡ t
 -- ⌞_⌟ ∘ ⌜_⌝ ≡ id
 complete-⌜_⌝ : ∀ {Δ τ} {t : Termᵘ (length Δ)} -> (p : Δ ⊢ t ∷ τ) -> ⌞ ⌜_⌝ t {{p}} ⌟ ≡ t
+complete-⌜ （） ⌝ = refl
 complete-⌜ True ⌝ = refl
 complete-⌜ False ⌝ = refl
 complete-⌜ App f x ⌝ rewrite complete-⌜ f ⌝ | complete-⌜ x ⌝ = refl

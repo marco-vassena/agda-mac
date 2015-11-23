@@ -6,6 +6,7 @@ open import Relation.Binary.PropositionalEquality
 
 -- Every well-typed closed term is either a value or can be reduced further
 progress : ∀ {c τ} -> c :: τ -> (Redex c) ⊎ (IsValue c)
+progress (Γ , （） ) = inj₂ tt
 progress (Γ , True) = inj₂ tt
 progress (Γ , False) = inj₂ tt
 progress (Γ , App f x) = inj₁ (Step Dist-$)
@@ -128,6 +129,7 @@ progress ∙ = inj₁ (Step Hole)
 -- Lemma.
 -- Values are not reducible.
 valueNotRedex : ∀ (c : CTerm) -> IsValue c -> NormalForm c
+valueNotRedex (Γ , （）) isV (Step ())
 valueNotRedex (Γ , True) isV (Step ())
 valueNotRedex (Γ , False) isV (Step ())
 valueNotRedex (Γ , App f x) () nf
