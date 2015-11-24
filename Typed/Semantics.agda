@@ -35,7 +35,8 @@ mutual
     -- Reduces to the Else branch if the condition is False
     IfFalse : ∀ {Δ τ} {t e : CTerm τ} {Γ : Env Δ} -> (If (Γ , False) Then t Else e) ⇝ (id {{Γ}} $ e)
 
-    Mac : ∀ {τ l} {c₁ c₂ : CTerm (Mac l τ)} -> c₁ ⟼ c₂ -> c₁ ⇝ c₂
+    Mac : ∀ {Δ Δ' τ l} {m : Memory Δ} {m' : Memory Δ'} {c₁ c₂ : CTerm (Mac l τ)} ->
+            ⟨ m ∥ c₁ ⟩ ⟼ ⟨ m' ∥ c₂ ⟩ -> c₁ ⇝ c₂
 
     -- Transforms a Term bullet (Γ , ∙) in a closed term bullet ∙
     Dist-∙ : ∀ {Δ} {α : Ty} {Γ : Env Δ} -> (Γ , (∙ {_} {α})) ⇝ ∙
@@ -106,7 +107,7 @@ mutual
       (εᶜ-env Γ , ∙)     ⟼    (εᶜ-env Γ , ∙)
 
   -}
-  data _⟼_ : ∀ {l τ} -> CTerm (Mac l τ) -> CTerm (Mac l τ) -> Set where
+  data ⟨_∥_⟩⟼⟨_∥_⟩ : ∀ {l τ Δ Δ'} -> Memory Δ -> CTerm (Mac l τ) -> Memory Δ' -> CTerm (Mac l τ) -> Set where
 
     Return : ∀ {l Δ τ} {Γ : Env Δ} {t : Term Δ τ} ->
                (Γ , Return t) ⟼ (id {{Γ}} $ (Γ , Mac t))
