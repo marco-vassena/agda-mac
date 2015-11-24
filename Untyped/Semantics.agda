@@ -54,7 +54,7 @@ mutual
     Dist->>= : ∀ {n c k} {Γ : Env n} ->
                 (Γ , c >>= k) ⟼ ((Γ , c) >>= (Γ , k))
 
-    BindCtx : ∀ {m m' k} -> m ⟼ m' ->
+    BindCtx : ∀ {m m' k} -> m ⇝ m' ->
               (m >>= k) ⟼ (m' >>= k)
 
     Bind : ∀ {n k} {Γ : Env n} {t : Term n} ->
@@ -67,7 +67,7 @@ mutual
 
     Dist-Catch : ∀ {n} {Γ : Env n} {m h : Term n} -> (Γ , Catch m h) ⟼ Catch (Γ , m) (Γ , h)
 
-    CatchCtx : ∀ {m m' h} -> m ⟼ m' -> Catch m h ⟼ Catch m' h
+    CatchCtx : ∀ {m m' h} -> m ⇝ m' -> Catch m h ⟼ Catch m' h
 
     Catch : ∀ {n h} {Γ : Env n} {t : Term n} -> Catch (Γ , Mac t) h ⟼ (id {{Γ}} $ (Γ , (Return t)))
 
@@ -83,14 +83,14 @@ mutual
     unlabelEx : ∀ {n e l} {Γ : Env n} ->
                 unlabel (Γ , Resₓ e) ⟼ (id {{Γ}} $ (Γ , Throw e))
 
-    unlabelCtx : ∀ {c c'} -> c ⟼ c' ->
+    unlabelCtx : ∀ {c c'} -> c ⇝ c' ->
                  unlabel c ⟼ unlabel c'
 
     Dist-join : ∀ {l h n} {Γ : Env n} {t : Term n} -> (p : l ⊑ h) ->
                   (Γ , join p t) ⟼ join p (Γ , t)
 
     joinCtx : ∀ {l h c c'} -> (p : l ⊑ h) ->
-                 c ⟼ c' -> join p c ⟼ join p c'
+                 c ⇝ c' -> join p c ⟼ join p c'
 
     join : ∀ {l h n} {Γ : Env n} {t : Term n} (p : l ⊑ h) -> 
                 join p (Γ , Mac t) ⟼ (id {{Γ = Γ}} $ (Γ , (Return (Res {{h}} t))))
@@ -100,7 +100,7 @@ mutual
 
 -- A closed term is a Redex if it can be reduced further
 data Redex (c : CTerm) : Set where
-  Step : ∀ {c' : CTerm} -> c ⟼ c' -> Redex c
+  Step : ∀ {c' : CTerm} -> c ⇝ c' -> Redex c
 
 -- Normal forms
 -- A closed term is in normal form if it cannot be reduced further
