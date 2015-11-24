@@ -1,14 +1,14 @@
 module Conversion.Proofs where
 
 open import Typed.Base renaming (Term to Termᵗ ; CTerm to CTermᵗ ; Env to Envᵗ)
-open import Typed.Semantics renaming (_⟼_ to _⟼ᵗ_)
+open import Typed.Semantics renaming (_⟼_ to _⟼ᵗ_ ; _⇝_ to _⇝ᵗ_)
 open import Untyped.Base renaming (Term to Termᵘ ; CTerm to CTermᵘ ; Env to Envᵘ)
-open import Untyped.Semantics renaming (_⟼_ to _⟼ᵘ_)
+open import Untyped.Semantics renaming (_⟼_ to _⟼ᵘ_ ;  _⇝_ to _⇝ᵘ_)
 open import Untyped.Proofs
 open import Conversion.Base public
 
 open import Relation.Binary.PropositionalEquality
-open import Relation.Binary.HeterogeneousEquality
+open import Relation.Binary.HeterogeneousEquality using (_≅_ ; refl) 
 
 --------------------------------------------------------------------------------
 -- Soundness results
@@ -174,8 +174,13 @@ lookup⟪ x ∷ Γᵗ , Here ⟫ = refl
 lookup⟪ x ∷ Γᵗ , There p ⟫ rewrite lookup⟪ Γᵗ , p ⟫ = refl
 
 -- If c₁ ⟼ᵘ c₂ and c₁ is well-typed then we can produce an equivalent typed small step between
-stepᵘᵗ : ∀ {τ} {c₁ c₂ : CTermᵘ} -> (p₁ : c₁ :: τ) -> (s : c₁ ⟼ᵘ c₂) ->
-         let p₂ = preservation p₁ s in ⟪ c₁ ⟫ ⟼ᵗ ⟪ c₂ ⟫
+stepᵘᵗ : ∀ {τ} {c₁ c₂ : CTermᵘ} -> (p₁ : c₁ :: τ) -> (s : c₁ ⇝ᵘ c₂) ->
+         let p₂ = preservation⇝ p₁ s in ⟪ c₁ ⟫ ⇝ᵗ ⟪ c₂ ⟫
+
+stepMacᵘᵗ : ∀ {τ} {c₁ c₂ : CTermᵘ} -> (p₁ : c₁ :: τ) -> (s : c₁ ⟼ᵘ c₂) ->
+         let p₂ = preservation⇝ p₁ (Mac s) in ⟪ c₁ ⟫ ⇝ᵗ ⟪ c₂ ⟫
+
+stepᵘᵗ c (Mac s) = stepMacᵘᵗ c s
 stepᵘᵗ (p $ p₁) (AppL s) = AppL (stepᵘᵗ p s)
 stepᵘᵗ (Γ , Abs t $ p₁) Beta = Beta
 stepᵘᵗ (Γ , Var p) Lookup rewrite lookup⟪ Γ , p ⟫ = Lookup
@@ -184,44 +189,68 @@ stepᵘᵗ (Γ , (If t₃ Then t₄ Else t₅)) Dist-If = Dist-If
 stepᵘᵗ (If p Then p₁ Else p₂) (IfCond s) = IfCond (stepᵘᵗ p s)
 stepᵘᵗ (If Γ , True Then p₁ Else p₂) IfTrue = IfTrue
 stepᵘᵗ (If Γ , False Then p₁ Else p₂) IfFalse = IfFalse
-stepᵘᵗ (Γ , Return t₁) Return = Return
-stepᵘᵗ (Γ , t >>= t₁) Dist->>= = Dist->>=
-stepᵘᵗ (p >>= p₁) (BindCtx s) = BindCtx (stepᵘᵗ p s)
-stepᵘᵗ ((Γ , Mac t₁) >>= p₁) Bind = Bind
-stepᵘᵗ ((Γ , Macₓ t₁) >>= p₁) BindEx = BindEx
-stepᵘᵗ (Γ , Throw t) Throw = Throw
-stepᵘᵗ (Γ , Catch t₁ t₂) Dist-Catch = Dist-Catch
-stepᵘᵗ (Catch p p₁) (CatchCtx s) = CatchCtx (stepᵘᵗ p s)
-stepᵘᵗ (Catch (Γ , Mac t₁) p₁) Catch = Catch
-stepᵘᵗ (Catch (Γ , Macₓ t₁) p₁) CatchEx = CatchEx
-stepᵘᵗ (Γ , label p t₁) (label .p) = label p
-stepᵘᵗ (Γ , unlabel x t₁) Dist-unlabel = Dist-unlabel x
-stepᵘᵗ (Γ , join x t) (Dist-join .x) = Dist-join x
-stepᵘᵗ (unlabel x (Γ , Res t)) unlabel = unlabel x
-stepᵘᵗ (unlabel x (Γ , Resₓ t)) unlabelEx = unlabelEx x
-stepᵘᵗ (unlabel x c) (unlabelCtx s) = unlabelCtx x (stepᵘᵗ c s)
-stepᵘᵗ (join x c) (joinCtx .x s) = joinCtx x (stepᵘᵗ c s)
-stepᵘᵗ (join x (Γ , Mac t)) (join .x) = join x
-stepᵘᵗ (join x (Γ , Macₓ t)) (joinEx .x) = joinEx x
 stepᵘᵗ (Γ , ∙) Dist-∙ = Dist-∙
 stepᵘᵗ ∙ Hole = Hole
 
+stepMacᵘᵗ (Γ , Return t₁) Return = Mac Return
+stepMacᵘᵗ (Γ , t >>= t₁) Dist->>= = Mac Dist->>=
+stepMacᵘᵗ (p >>= p₁) (BindCtx s) = Mac (BindCtx (stepᵘᵗ p s))
+stepMacᵘᵗ ((Γ , Mac t₁) >>= p₁) Bind = Mac Bind
+stepMacᵘᵗ ((Γ , Macₓ t₁) >>= p₁) BindEx = Mac BindEx
+stepMacᵘᵗ (Γ , Throw t) Throw = Mac Throw
+stepMacᵘᵗ (Γ , Catch t₁ t₂) Dist-Catch = Mac Dist-Catch
+stepMacᵘᵗ (Catch p p₁) (CatchCtx s) = Mac (CatchCtx (stepᵘᵗ p s))
+stepMacᵘᵗ (Catch (Γ , Mac t₁) p₁) Catch = Mac Catch
+stepMacᵘᵗ (Catch (Γ , Macₓ t₁) p₁) CatchEx = Mac CatchEx
+stepMacᵘᵗ (Γ , label p t₁) (label .p) = Mac (label p)
+stepMacᵘᵗ (Γ , unlabel x t₁) Dist-unlabel = Mac (Dist-unlabel x)
+stepMacᵘᵗ (Γ , join x t) (Dist-join .x) = Mac (Dist-join x)
+stepMacᵘᵗ (unlabel x (Γ , Res t)) unlabel = Mac (unlabel x)
+stepMacᵘᵗ (unlabel x (Γ , Resₓ t)) unlabelEx = Mac (unlabelEx x)
+stepMacᵘᵗ (unlabel x c) (unlabelCtx s) = Mac (unlabelCtx x (stepᵘᵗ c s))
+stepMacᵘᵗ (join x c) (joinCtx .x s) = Mac (joinCtx x (stepᵘᵗ c s))
+stepMacᵘᵗ (join x (Γ , Mac t)) (join .x) = Mac (join x)
+stepMacᵘᵗ (join x (Γ , Macₓ t)) (joinEx .x) = Mac (joinEx x)
+
 -- Just a better looking entry point for stepᵘᵗ, where the proof that c₁ is well-typed
 -- is passed as an instance argument
-
-step⟪_⟫ : ∀ {τ} {c₁ c₂ : CTermᵘ} {{p : c₁ :: τ}} -> (s : c₁ ⟼ᵘ c₂) ->
-                let arg = preservation p s in ⟪ c₁ ⟫ ⟼ᵗ ⟪ c₂ ⟫
+step⟪_⟫ : ∀ {τ} {c₁ c₂ : CTermᵘ} {{p : c₁ :: τ}} -> (s : c₁ ⇝ᵘ c₂) ->
+                let arg = preservation⇝ p s in ⟪ c₁ ⟫ ⇝ᵗ ⟪ c₂ ⟫
 step⟪_⟫ {{p}} s = stepᵘᵗ p s
-
--- It is possible instead to safely remove types from the typed small step semantics
--- and retrieve the untyped semantics
-step⟦_⟧ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> c₁ ⟼ᵗ c₂ -> ⟦ c₁ ⟧ ⟼ᵘ ⟦ c₂ ⟧
 
 lookup⟦_⟧ : ∀ {Δ τ} {{Γ : Envᵗ Δ}} -> (p : τ ∈ Δ) -> ⟦ p !! Γ ⟧ ≡ lookup (fin p) map⟦ Γ ⟧
 lookup⟦_⟧ {{Γ = []}} ()
 lookup⟦_⟧ {{Γ = x ∷ Γ}} Here = refl
 lookup⟦_⟧ {{Γ = x ∷ Γ}} (There p) rewrite lookup⟦ p ⟧ = refl
 
+--------------------------------------------------------------------------------
+
+-- It is possible instead to safely remove types from the typed small step semantics
+-- and retrieve the untyped semantics
+step⟦_⟧ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> c₁ ⇝ᵗ c₂ -> ⟦ c₁ ⟧ ⇝ᵘ ⟦ c₂ ⟧
+stepMac⟦_⟧ : ∀ {l τ} {c₁ c₂ : CTermᵗ (Mac l τ)} -> c₁ ⟼ᵗ c₂ -> ⟦ c₁ ⟧ ⟼ᵘ ⟦ c₂ ⟧
+
+stepMac⟦ Return ⟧ = Return
+stepMac⟦ Dist->>= ⟧ = Dist->>=
+stepMac⟦ BindCtx s ⟧ = BindCtx step⟦ s ⟧
+stepMac⟦ Bind ⟧ = Bind
+stepMac⟦ BindEx ⟧ = BindEx
+stepMac⟦ Throw ⟧ = Throw
+stepMac⟦ Dist-Catch ⟧ = Dist-Catch
+stepMac⟦ CatchCtx s ⟧ = CatchCtx step⟦ s ⟧
+stepMac⟦ Catch ⟧ = Catch
+stepMac⟦ CatchEx ⟧ = CatchEx
+stepMac⟦ label p ⟧ = label p
+stepMac⟦ Dist-unlabel p ⟧ = Dist-unlabel
+stepMac⟦ unlabel p ⟧ = unlabel
+stepMac⟦ unlabelEx p ⟧ = unlabelEx
+stepMac⟦ Dist-join p ⟧ = Dist-join p
+stepMac⟦ join x ⟧ = join x
+stepMac⟦ joinEx x ⟧ = joinEx x
+stepMac⟦ joinCtx x s ⟧ = joinCtx x step⟦ s ⟧
+stepMac⟦ unlabelCtx p s ⟧ = unlabelCtx step⟦ s ⟧
+
+step⟦ Mac s ⟧ = Mac (stepMac⟦ s ⟧)
 step⟦ AppL s ⟧ = AppL step⟦ s ⟧
 step⟦ Beta ⟧ = Beta
 step⟦_⟧ {c₁ = Γ , Var p} Lookup rewrite lookup⟦ p ⟧ = Lookup
@@ -230,25 +259,6 @@ step⟦ Dist-If ⟧ = Dist-If
 step⟦ IfCond s ⟧ = IfCond step⟦ s ⟧
 step⟦ IfTrue ⟧ = IfTrue
 step⟦ IfFalse ⟧ = IfFalse
-step⟦ Return ⟧ = Return
-step⟦ Dist->>= ⟧ = Dist->>=
-step⟦ BindCtx s ⟧ = BindCtx step⟦ s ⟧
-step⟦ Bind ⟧ = Bind
-step⟦ BindEx ⟧ = BindEx
-step⟦ Throw ⟧ = Throw
-step⟦ Dist-Catch ⟧ = Dist-Catch
-step⟦ CatchCtx s ⟧ = CatchCtx step⟦ s ⟧
-step⟦ Catch ⟧ = Catch
-step⟦ CatchEx ⟧ = CatchEx
-step⟦ label p ⟧ = label p
-step⟦ Dist-unlabel p ⟧ = Dist-unlabel
-step⟦ unlabel p ⟧ = unlabel
-step⟦ unlabelEx p ⟧ = unlabelEx
-step⟦ Dist-join p ⟧ = Dist-join p
-step⟦ join x ⟧ = join x
-step⟦ joinEx x ⟧ = joinEx x
-step⟦ joinCtx x s ⟧ = joinCtx x step⟦ s ⟧
-step⟦ unlabelCtx p s ⟧ = unlabelCtx step⟦ s ⟧
 step⟦ Dist-∙ ⟧ = Dist-∙
 step⟦ Hole ⟧ = Hole
 
@@ -258,7 +268,44 @@ step⟦ Hole ⟧ = Hole
 
 -- Lemma
 -- Each type of small step as at most one inhabitant.
-uniqueStepᵘ : ∀ {c₁ c₂} -> (p q : c₁ ⟼ᵘ c₂) -> p ≡ q
+uniqueStepᵘ : ∀ {c₁ c₂} -> (p q : c₁ ⇝ᵘ c₂) -> p ≡ q
+
+uniqueStepᵘ⟼ : ∀ {c₁ c₂} -> (s₁ s₂ : c₁ ⟼ᵘ c₂) -> s₁ ≡ s₂
+uniqueStepᵘ⟼ Return Return = refl
+uniqueStepᵘ⟼ Dist->>= Dist->>= = refl
+uniqueStepᵘ⟼ (BindCtx p) (BindCtx q) rewrite uniqueStepᵘ p q = refl
+uniqueStepᵘ⟼ Bind Bind = refl
+uniqueStepᵘ⟼ BindEx BindEx = refl
+uniqueStepᵘ⟼ Throw Throw = refl
+uniqueStepᵘ⟼ Dist-Catch Dist-Catch = refl
+uniqueStepᵘ⟼ (CatchCtx p) (CatchCtx q) rewrite uniqueStepᵘ p q = refl
+uniqueStepᵘ⟼ Catch Catch = refl
+uniqueStepᵘ⟼ CatchEx CatchEx = refl
+uniqueStepᵘ⟼ (label p) (label .p) = refl
+uniqueStepᵘ⟼ Dist-unlabel Dist-unlabel = refl
+uniqueStepᵘ⟼ unlabel unlabel = refl
+uniqueStepᵘ⟼ (unlabelCtx p) (unlabelCtx q) rewrite uniqueStepᵘ p q = refl
+uniqueStepᵘ⟼ unlabelEx unlabelEx = refl
+uniqueStepᵘ⟼ (Dist-join x) (Dist-join .x) = refl
+uniqueStepᵘ⟼ (joinCtx x s₁) (joinCtx .x s₂) rewrite uniqueStepᵘ s₁ s₂ = refl
+uniqueStepᵘ⟼ (join x) (join .x) = refl 
+uniqueStepᵘ⟼ (joinEx x) (joinEx .x) = refl
+
+uniqueStepMixedᵘ : ∀ {c₁ c₂} -> (s₁ : c₁ ⇝ᵘ c₂) (s₂ : c₁ ⟼ᵘ c₂) -> s₁ ≡ (Mac s₂)
+uniqueStepMixedᵘ (AppL s₁) ()
+uniqueStepMixedᵘ Beta ()
+uniqueStepMixedᵘ Lookup ()
+uniqueStepMixedᵘ Dist-$ ()
+uniqueStepMixedᵘ Dist-If ()
+uniqueStepMixedᵘ (IfCond s₁) ()
+uniqueStepMixedᵘ IfTrue ()
+uniqueStepMixedᵘ IfFalse ()
+uniqueStepMixedᵘ (Mac s₁) s₂ rewrite uniqueStepᵘ⟼ s₁ s₂ = refl
+uniqueStepMixedᵘ Dist-∙ ()
+uniqueStepMixedᵘ Hole ()
+
+uniqueStepᵘ (Mac s₁) s₂ = sym (uniqueStepMixedᵘ s₂ s₁)
+uniqueStepᵘ s₁ (Mac s₂) = uniqueStepMixedᵘ s₁ s₂
 uniqueStepᵘ (AppL p) (AppL q) rewrite uniqueStepᵘ p q = refl
 uniqueStepᵘ Beta Beta = refl
 uniqueStepᵘ Lookup Lookup = refl
@@ -267,35 +314,53 @@ uniqueStepᵘ Dist-If Dist-If = refl
 uniqueStepᵘ (IfCond p) (IfCond q) rewrite uniqueStepᵘ p q = refl
 uniqueStepᵘ IfTrue IfTrue = refl
 uniqueStepᵘ IfFalse IfFalse = refl
-uniqueStepᵘ Return Return = refl
-uniqueStepᵘ Dist->>= Dist->>= = refl
-uniqueStepᵘ (BindCtx p) (BindCtx q) rewrite uniqueStepᵘ p q = refl
-uniqueStepᵘ Bind Bind = refl
-uniqueStepᵘ BindEx BindEx = refl
-uniqueStepᵘ Throw Throw = refl
-uniqueStepᵘ Dist-Catch Dist-Catch = refl
-uniqueStepᵘ (CatchCtx p) (CatchCtx q) rewrite uniqueStepᵘ p q = refl
-uniqueStepᵘ Catch Catch = refl
-uniqueStepᵘ CatchEx CatchEx = refl
-uniqueStepᵘ (label p) (label .p) = refl
-uniqueStepᵘ Dist-unlabel Dist-unlabel = refl
-uniqueStepᵘ unlabel unlabel = refl
-uniqueStepᵘ (unlabelCtx p) (unlabelCtx q) rewrite uniqueStepᵘ p q = refl
-uniqueStepᵘ unlabelEx unlabelEx = refl
-uniqueStepᵘ (Dist-join x) (Dist-join .x) = refl
-uniqueStepᵘ (joinCtx x s₁) (joinCtx .x s₂) rewrite uniqueStepᵘ s₁ s₂ = refl
-uniqueStepᵘ (join x) (join .x) = refl 
-uniqueStepᵘ (joinEx x) (joinEx .x) = refl
 uniqueStepᵘ Dist-∙ Dist-∙ = refl
 uniqueStepᵘ Hole Hole = refl
 
 complete-step⟪_,_⟫ : ∀ {c₁ c₂ τ} {{p : c₁ :: τ}} {{q : c₂ :: τ}} ->
-                              (s₁ : c₁ ⟼ᵘ c₂) (s₂ : ⟦ ⟪_⟫ c₁ {{p}} ⟧ ⟼ᵘ ⟦ ⟪_⟫ c₂ {{q}} ⟧) -> s₁ ≅ s₂
+                              (s₁ : c₁ ⇝ᵘ c₂) (s₂ : ⟦ ⟪_⟫ c₁ {{p}} ⟧ ⇝ᵘ ⟦ ⟪_⟫ c₂ {{q}} ⟧) -> s₁ ≅ s₂
 complete-step⟪_,_⟫ {{p}} {{q}} s₁ s₂ rewrite complete-⟪ p ⟫ | complete-⟪ q ⟫ | uniqueStepᵘ s₁ s₂ = refl
 
 --------------------------------------------------------------------------------
 
-uniqueStepᵗ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (p q : c₁ ⟼ᵗ c₂) -> p ≡ q
+uniqueStepᵗ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (s₁ s₂ : c₁ ⇝ᵗ c₂) -> s₁ ≡ s₂
+uniqueStepᵗ⟼ : ∀ {l τ} {c₁ c₂ : CTermᵗ (Mac l τ)} -> (s₁ s₂ : c₁ ⟼ᵗ c₂) -> s₁ ≡ s₂
+uniqueStepMixedᵗ : ∀ {l τ} {c₁ c₂ : CTermᵗ (Mac l τ)} -> (s₁ : c₁ ⇝ᵗ c₂) (s₂ : c₁ ⟼ᵗ c₂) -> s₁ ≡ Mac s₂
+
+uniqueStepᵗ⟼ Return Return = refl
+uniqueStepᵗ⟼ Dist->>= Dist->>= = refl
+uniqueStepᵗ⟼ (BindCtx p) (BindCtx q) rewrite uniqueStepᵗ p q = refl
+uniqueStepᵗ⟼ Bind Bind = refl
+uniqueStepᵗ⟼ BindEx BindEx = refl
+uniqueStepᵗ⟼ Throw Throw = refl
+uniqueStepᵗ⟼ Dist-Catch Dist-Catch = refl
+uniqueStepᵗ⟼ (CatchCtx p) (CatchCtx q) rewrite uniqueStepᵗ p q = refl
+uniqueStepᵗ⟼ Catch Catch = refl
+uniqueStepᵗ⟼ CatchEx CatchEx = refl
+uniqueStepᵗ⟼ (label p) (label .p) = refl
+uniqueStepᵗ⟼ (Dist-unlabel p) (Dist-unlabel .p) = refl
+uniqueStepᵗ⟼ (unlabel p) (unlabel .p) = refl
+uniqueStepᵗ⟼ (unlabelCtx x p) (unlabelCtx .x q) rewrite uniqueStepᵗ p q = refl
+uniqueStepᵗ⟼ (unlabelEx .x) (unlabelEx x) = refl
+uniqueStepᵗ⟼ (Dist-join x) (Dist-join .x) = refl
+uniqueStepᵗ⟼ (joinCtx x s₁) (joinCtx .x s₂) rewrite uniqueStepᵗ s₁ s₂ = refl
+uniqueStepᵗ⟼ (join x) (join .x) = refl 
+uniqueStepᵗ⟼ (joinEx x) (joinEx .x) = refl
+
+uniqueStepMixedᵗ (AppL s₁) ()
+uniqueStepMixedᵗ Beta ()
+uniqueStepMixedᵗ Lookup ()
+uniqueStepMixedᵗ Dist-$ ()
+uniqueStepMixedᵗ Dist-If ()
+uniqueStepMixedᵗ (IfCond s₁) ()
+uniqueStepMixedᵗ IfTrue ()
+uniqueStepMixedᵗ IfFalse ()
+uniqueStepMixedᵗ (Mac s₁) s₂ rewrite uniqueStepᵗ⟼ s₁ s₂ = refl
+uniqueStepMixedᵗ Dist-∙ ()
+uniqueStepMixedᵗ Hole ()
+
+uniqueStepᵗ (Mac s₁) s₂ = sym (uniqueStepMixedᵗ s₂ s₁)
+uniqueStepᵗ s₁ (Mac s₂) = uniqueStepMixedᵗ s₁ s₂
 uniqueStepᵗ (AppL p) (AppL q) rewrite uniqueStepᵗ p q = refl
 uniqueStepᵗ Beta Beta = refl
 uniqueStepᵗ Lookup Lookup = refl
@@ -304,29 +369,10 @@ uniqueStepᵗ Dist-If Dist-If = refl
 uniqueStepᵗ (IfCond p) (IfCond q) rewrite uniqueStepᵗ p q = refl
 uniqueStepᵗ IfTrue IfTrue = refl
 uniqueStepᵗ IfFalse IfFalse = refl
-uniqueStepᵗ Return Return = refl
-uniqueStepᵗ Dist->>= Dist->>= = refl
-uniqueStepᵗ (BindCtx p) (BindCtx q) rewrite uniqueStepᵗ p q = refl
-uniqueStepᵗ Bind Bind = refl
-uniqueStepᵗ BindEx BindEx = refl
-uniqueStepᵗ Throw Throw = refl
-uniqueStepᵗ Dist-Catch Dist-Catch = refl
-uniqueStepᵗ (CatchCtx p) (CatchCtx q) rewrite uniqueStepᵗ p q = refl
-uniqueStepᵗ Catch Catch = refl
-uniqueStepᵗ CatchEx CatchEx = refl
-uniqueStepᵗ (label p) (label .p) = refl
-uniqueStepᵗ (Dist-unlabel p) (Dist-unlabel .p) = refl
-uniqueStepᵗ (unlabel p) (unlabel .p) = refl
-uniqueStepᵗ (unlabelCtx x p) (unlabelCtx .x q) rewrite uniqueStepᵗ p q = refl
-uniqueStepᵗ (unlabelEx .x) (unlabelEx x) = refl
-uniqueStepᵗ (Dist-join x) (Dist-join .x) = refl
-uniqueStepᵗ (joinCtx x s₁) (joinCtx .x s₂) rewrite uniqueStepᵗ s₁ s₂ = refl
-uniqueStepᵗ (join x) (join .x) = refl 
-uniqueStepᵗ (joinEx x) (joinEx .x) = refl
 uniqueStepᵗ Dist-∙ Dist-∙ = refl
 uniqueStepᵗ Hole Hole = refl
 
-complete-step⟦_,_⟧ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (s₁ : c₁ ⟼ᵗ c₂) ->
+complete-step⟦_,_⟧ : ∀ {τ} {c₁ c₂ : CTermᵗ τ} -> (s₁ : c₁ ⇝ᵗ c₂) ->
                      let p₁ = sound-⟦ c₁ ⟧
-                         p₂ = sound-⟦ c₂ ⟧ in (s₂ : ⟪ ⟦ c₁ ⟧ ⟫ ⟼ᵗ ⟪ ⟦ c₂ ⟧ ⟫) -> s₁ ≅ s₂
+                         p₂ = sound-⟦ c₂ ⟧ in (s₂ : ⟪ ⟦ c₁ ⟧ ⟫ ⇝ᵗ ⟪ ⟦ c₂ ⟧ ⟫) -> s₁ ≅ s₂
 complete-step⟦_,_⟧ {_} {c₁} {c₂} s₁ s₂ rewrite complete-⟦ c₁ ⟧ | complete-⟦ c₂ ⟧ | uniqueStepᵗ s₁ s₂ = refl
