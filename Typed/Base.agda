@@ -31,7 +31,16 @@ data Term (Δ : Context) : Ty -> Set where
   unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Mac h α)
 
   join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
+
+  -- Now I need to add references (in Res?), read/write/new
+  Ref : ∀ {α Δᵐ} {{l}} -> α ∈ Δᵐ -> Term Δ (Ref l α)
+
+  read : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref l α) -> Term Δ (Mac h α)
+
+  write : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref h α) -> Term Δ α -> Term Δ (Mac l （）)
   
+  new : ∀ {α l h} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Ref h α))
+
   -- Erased term ∙
   ∙ : ∀ {τ} -> Term Δ τ
 
@@ -48,7 +57,9 @@ mutual
     Catch : ∀ {l α} -> CTerm (Mac l α) -> CTerm (Exception => Mac l α) -> CTerm (Mac l α)
     unlabel : ∀ {l τ h} -> l ⊑ h -> CTerm (Labeled l τ) -> CTerm (Mac h τ)
     join : ∀ {l h α} -> l ⊑ h -> CTerm (Mac h α) -> CTerm (Mac l (Labeled h α))
-
+    new : ∀ {α l h} -> l ⊑ h -> CTerm α -> CTerm (Mac l (Ref h α))
+    write : ∀ {α l h} -> l ⊑ h -> CTerm (Ref h α) -> CTerm α -> CTerm (Mac l （）)
+    read : ∀ {α l h} -> l ⊑ h -> CTerm (Ref l α) -> CTerm (Mac h α)
     -- Erased closed term
     ∙ : ∀ {τ} -> CTerm τ
 
@@ -72,11 +83,19 @@ mutual
 Memory : Context -> Set
 Memory = Env
 
+-- Lookup
 _!!_ : ∀ {τ Δ} -> τ ∈ Δ -> Env Δ -> CTerm τ
 Here !! (x ∷ Γ) = x
 There p !! (x ∷ Γ) = p !! Γ
 
 infixr 6 _!!_
+
+-- Update
+_[_]≔_ : ∀ {τ Δ} -> Env Δ -> τ ∈ Δ -> CTerm τ -> Env Δ
+_ ∷ Γ [ Here ]≔ v = v ∷ Γ
+x ∷ Γ [ There i ]≔ v = x ∷ (Γ [ i ]≔ v)
+
+infixr 2 _[_]≔_
 
 -- The proof that a certain term is a value
 data IsTValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
@@ -89,6 +108,7 @@ data IsTValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Macₓ {α = α} e)
   Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsTValue (Res t)
   Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Resₓ {α = α} e)
+  Ref : ∀ {α Δᵐ} {l : Label} -> (p : α ∈ Δᵐ) -> IsTValue (Ref p)
 
 data IsValue {τ : Ty} : CTerm τ -> Set where
   _,_ : ∀ {Δ} {t : Term Δ τ} -> (Γ : Env Δ) -> IsTValue t -> IsValue (Γ , t)
