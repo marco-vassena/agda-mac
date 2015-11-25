@@ -78,32 +78,17 @@ There p !! (x ∷ Γ) = p !! Γ
 
 infixr 6 _!!_
 
--- Determines whether a closed term is a value or not
-IsValue : ∀ {τ} -> CTerm τ -> Set
-IsValue (Γ , （）) = ⊤
-IsValue (Γ , True) = ⊤
-IsValue (Γ , False) = ⊤
-IsValue (Γ , App f x) = ⊥
-IsValue (Γ , Abs x) = ⊤
-IsValue (Γ , Var n) = ⊥
-IsValue (Γ , If c Then t Else e) = ⊥
-IsValue (Γ , Return x) = ⊥
-IsValue (Γ , m >>= k) = ⊥
-IsValue (Γ , ξ) = ⊤
-IsValue (Γ , Throw e) = ⊥
-IsValue (Γ , Catch m h) = ⊥
-IsValue (Γ , Mac m) = ⊤
-IsValue (Γ , Macₓ j) = ⊤
-IsValue (Γ , label x t) = ⊥
-IsValue (Γ , unlabel x t) = ⊥
-IsValue (Γ , join p t) = ⊥
-IsValue (Γ , Res t) = ⊤
-IsValue (Γ , Resₓ e) = ⊤
-IsValue (Γ , ∙) = ⊥
-IsValue (c₁ $ c₂) = ⊥
-IsValue (If c Then t Else e) = ⊥
-IsValue (m >>= k) = ⊥
-IsValue (Catch m h) = ⊥
-IsValue (unlabel p t) = ⊥
-IsValue (join p m) = ⊥
-IsValue ∙ = ⊥
+-- The proof that a certain term is a value
+data IsTValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
+  （） : IsTValue （）
+  True : IsTValue True
+  False : IsTValue False
+  Abs : ∀ {α β} (t : Term (α ∷ Δ) β) -> IsTValue (Abs t)
+  ξ : IsTValue ξ
+  Mac : ∀ {α} {l : Label} (t : Term Δ α) -> IsTValue (Mac t)
+  Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Macₓ {α = α} e)
+  Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsTValue (Res t)
+  Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Resₓ {α = α} e)
+
+data IsValue {τ : Ty} : CTerm τ -> Set where
+  _,_ : ∀ {Δ} {t : Term Δ τ} -> (Γ : Env Δ) -> IsTValue t -> IsValue (Γ , t)

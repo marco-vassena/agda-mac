@@ -31,8 +31,8 @@ data Term (n : ℕ) : Set where
   -- Constructor that denotes failure due to an exception
   Macₓ : Term n -> Term n
 
-  Res : {{l : Label}} -> Term n -> Term n
-  Resₓ : {{l : Label}} -> Term n -> Term n
+  Res : Term n -> Term n
+  Resₓ : Term n -> Term n
 
   label : ∀ {l h} -> l ⊑ h -> Term n -> Term n
   unlabel : Term n -> Term n
@@ -148,36 +148,6 @@ infixr 3 _,_
 infixr 0 _$_
 infixl 5 _>>=_
 
--- Determines whether a closed term is a value or not
-IsValue : CTerm -> Set
-IsValue (Γ , （）) = ⊤
-IsValue (Γ , True) = ⊤
-IsValue (Γ , False) = ⊤
-IsValue (Γ , App f x) = ⊥
-IsValue (Γ , Abs x) = ⊤
-IsValue (Γ , Var n) = ⊥
-IsValue (Γ , If c Then t Else e) = ⊥
-IsValue (Γ , Return x) = ⊥
-IsValue (Γ , m >>= k) = ⊥
-IsValue (Γ , ξ) = ⊤
-IsValue (Γ , Throw e) = ⊥
-IsValue (Γ , Catch m h) = ⊥
-IsValue (Γ , Mac m) = ⊤
-IsValue (Γ , Macₓ j) = ⊤
-IsValue (Γ , label x t) = ⊥
-IsValue (Γ , unlabel t) = ⊥
-IsValue (Γ , join x t) = ⊥
-IsValue (Γ , Res j) = ⊤
-IsValue (Γ , Resₓ t) = ⊤
-IsValue (Γ , ∙) = ⊥
-IsValue (c₁ $ c₂) = ⊥
-IsValue (If c Then t Else e) = ⊥
-IsValue (m >>= k) = ⊥
-IsValue (Catch m h) = ⊥
-IsValue (unlabel t) = ⊥
-IsValue (join x t) = ⊥
-IsValue ∙ = ⊥
-
 mutual
   -- Well-typed closed term
   data _::_ : CTerm -> Ty -> Set where
@@ -195,3 +165,23 @@ mutual
   data TEnv : (Δ : Context) -> Env (length Δ) -> Set where 
     [] : TEnv [] []
     _∷_ : ∀ {c τ Δ} {Γ : Env (length Δ)} -> c :: τ -> TEnv Δ Γ -> TEnv (τ ∷ Δ) (c ∷ Γ)
+
+-- Probably we could improve furter the proof for progress
+-- if we used indexed IsTValue and IsValue by typed terms
+-- however I at the moment I don't see any other concrete
+-- advantage
+
+-- The proof that a certain term is a value
+data IsTValue {n : ℕ} : Term n -> Set where
+  （） : IsTValue （）
+  True : IsTValue True
+  False : IsTValue False
+  Abs : (t : Term  (suc n)) -> IsTValue (Abs t)
+  ξ : IsTValue ξ
+  Mac : (t : Term n) -> IsTValue (Mac t)
+  Macₓ : (e : Term n) -> IsTValue (Macₓ e)
+  Res : (t : Term n) -> IsTValue (Res t)
+  Resₓ : (e : Term n) -> IsTValue (Resₓ e)
+
+data IsValue : CTerm -> Set where
+  _,_ : ∀ {n} {t : Term n} -> (Γ : Env n) -> IsTValue t -> IsValue (Γ , t)
