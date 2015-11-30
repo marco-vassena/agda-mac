@@ -13,7 +13,7 @@ postulate _⊑?_ : (l h : Label) -> Dec (l ⊑ h)
 postulate trans-⊑ : ∀ {l₁ l₂ l₃} -> l₁ ⊑ l₂ -> l₂ ⊑ l₃ -> l₁ ⊑ l₃
 
 open import Data.Nat using (ℕ ; zero ; suc) public
-open import Data.List public
+open import Data.List hiding (drop) public
 open import Data.Vec using (Vec ; [] ; _∷_ ; lookup) public
 open import Data.Fin using (Fin ; zero ; suc) public
 open import Data.Unit hiding (_≤_) public
@@ -39,6 +39,40 @@ Context = List Ty
 data _∈_ : Ty -> Context -> Set where
  Here : ∀ {Δ τ} -> τ ∈ (τ ∷ Δ)
  There : ∀ {Δ α β} -> α ∈ Δ -> α ∈ (β ∷ Δ)
+
+-- Subset relation for lists (used for contexts in memory)
+data _⊆_ {A : Set} : List A -> List A -> Set where
+  base : [] ⊆ []
+  drop : ∀ {xs ys : List A} {x : A} -> xs ⊆ ys -> xs ⊆ (x ∷ ys)
+  cons : ∀ {xs ys : List A} {x : A} -> xs ⊆ ys -> (x ∷ xs) ⊆ (x ∷ ys)
+
+refl-⊆ : ∀ {A} -> (xs : List A) -> xs ⊆ xs
+refl-⊆ [] = base
+refl-⊆ (x ∷ xs) = cons (refl-⊆ xs)
+
+extend-∈ : ∀ {Δ₁ Δ₂ τ} -> τ ∈ Δ₁ -> Δ₁ ⊆ Δ₂ -> τ ∈ Δ₂
+extend-∈ () base
+extend-∈ p (drop x) = There (extend-∈ p x)
+extend-∈ Here (cons x) = Here
+extend-∈ (There p) (cons x) = There (extend-∈ p x)
+
+-- TODO remove
+-- open import Relation.Binary.HeterogeneousEquality
+
+-- data _⋍_ {τ} : ∀ {Δ₁ Δ₂} -> τ ∈ Δ₁ -> τ ∈ Δ₂ -> Set where 
+--   refl : ∀ {Δ} {p : τ ∈ Δ} -> p ⋍ p
+  
+-- extend-∈' : ∀ {Δ₁ Δ₂ τ} -> (p : τ ∈ Δ₁) (q : τ ∈ Δ₂) -> Δ₁ ⊆ Δ₂ -> p ⋍ q
+-- extend-∈' () q base
+-- extend-∈' {τ ∷ Δ₁} (Here .{Δ₁}) (Here {Δ₂}) (drop .{τ ∷ Δ₁} x) = {!refl {τ} {τ ∷ Δ₁} {Here}!}
+-- extend-∈' Here (There q) (drop x₁) = {!!}
+-- extend-∈' (There p) q (drop x₁) = {!!}
+-- extend-∈' p q (cons x) = {!!}
+-- () base
+-- extend-∈ p (drop x) = There (extend-∈ p x)
+-- extend-∈ Here (cons x) = Here
+-- extend-∈ (There p) (cons x) = There (extend-∈ p x)
+
 
 -- Transform τ ∈ᵗ Δ in Fin
 fin : ∀ {τ Δ} -> τ ∈ Δ -> Fin (length Δ)
