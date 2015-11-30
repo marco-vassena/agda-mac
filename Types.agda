@@ -56,24 +56,6 @@ extend-∈ p (drop x) = There (extend-∈ p x)
 extend-∈ Here (cons x) = Here
 extend-∈ (There p) (cons x) = There (extend-∈ p x)
 
--- TODO remove
--- open import Relation.Binary.HeterogeneousEquality
-
--- data _⋍_ {τ} : ∀ {Δ₁ Δ₂} -> τ ∈ Δ₁ -> τ ∈ Δ₂ -> Set where 
---   refl : ∀ {Δ} {p : τ ∈ Δ} -> p ⋍ p
-  
--- extend-∈' : ∀ {Δ₁ Δ₂ τ} -> (p : τ ∈ Δ₁) (q : τ ∈ Δ₂) -> Δ₁ ⊆ Δ₂ -> p ⋍ q
--- extend-∈' () q base
--- extend-∈' {τ ∷ Δ₁} (Here .{Δ₁}) (Here {Δ₂}) (drop .{τ ∷ Δ₁} x) = {!refl {τ} {τ ∷ Δ₁} {Here}!}
--- extend-∈' Here (There q) (drop x₁) = {!!}
--- extend-∈' (There p) q (drop x₁) = {!!}
--- extend-∈' p q (cons x) = {!!}
--- () base
--- extend-∈ p (drop x) = There (extend-∈ p x)
--- extend-∈ Here (cons x) = Here
--- extend-∈ (There p) (cons x) = There (extend-∈ p x)
-
-
 -- Transform τ ∈ᵗ Δ in Fin
 fin : ∀ {τ Δ} -> τ ∈ Δ -> Fin (length Δ)
 fin Here = zero

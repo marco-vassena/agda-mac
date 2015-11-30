@@ -32,7 +32,7 @@ data Term (Δ : Context) : Ty -> Set where
 
   join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
 
-  Ref : ∀ {α Δᵐ} {{l}} -> α ∈ Δᵐ -> Term Δ (Ref l α)
+  Ref : ∀ {{l}} -> (α : Ty) -> Term Δ (Ref l α)
 
   read : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref l α) -> Term Δ (Mac h α)
 
@@ -105,7 +105,7 @@ data IsTValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Macₓ {α = α} e)
   Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsTValue (Res t)
   Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Resₓ {α = α} e)
-  Ref : ∀ {α Δᵐ} {l : Label} -> (p : α ∈ Δᵐ) -> IsTValue (Ref p)
+  Ref : ∀ {l : Label} -> (α : Ty) -> IsTValue (Ref α)
 
 data IsValue {τ : Ty} : CTerm τ -> Set where
   _,_ : ∀ {Δ} {t : Term Δ τ} -> (Γ : Env Δ) -> IsTValue t -> IsValue (Γ , t)
@@ -137,7 +137,7 @@ data ValidT {Δ} : ∀ {Δᵐ τ} -> Memory Δᵐ -> Term Δ τ -> Set where
   Resₓ : ∀ {Δᵐ α} {l : Label} {m : Memory Δᵐ}{e : Term Δ Exception} ->
            ValidT m e -> ValidT m (Resₓ {α = α} e)
 
-  Ref : ∀ {Δᵐ α} {l : Label} {m : Memory Δᵐ} -> (r : α ∈ Δᵐ) -> ValidT m (Ref r)
+  Ref : ∀ {Δᵐ α} {l : Label} {m : Memory Δᵐ} -> (r : α ∈ Δᵐ) -> ValidT m (Ref α)
 
   If_Then_Else_ : ∀ {Δᵐ α} {m : Memory Δᵐ} {c : Term Δ Bool} {t e : Term Δ α} ->
                   ValidT m c -> ValidT m t -> ValidT m e -> ValidT m (If c Then t Else e)
@@ -153,7 +153,7 @@ data ValidT {Δ} : ∀ {Δᵐ τ} -> Memory Δᵐ -> Term Δ τ -> Set where
   Catch : ∀ {{l}} {Δᵐ α}  {m : Memory Δᵐ} -> {t : Term Δ (Mac l α)} {h : Term Δ (Exception => Mac l α)} ->
             ValidT m t -> ValidT m h -> ValidT m (Catch t h)
 
-  label : ∀ {Δᵐ l h α} {m : Memory Δᵐ} {t : Term Δ α} -> (p : l ⊑ h) -> ValidT m (label p t)
+  label : ∀ {Δᵐ l h α} {m : Memory Δᵐ} {t : Term Δ α} -> (p : l ⊑ h) -> ValidT m t -> ValidT m (label p t)
   unlabel : ∀ {Δᵐ l h α} {m : Memory Δᵐ} {t : Term Δ (Labeled l α)} ->
               (p : l ⊑ h) -> ValidT m t -> ValidT m (unlabel p t)
 

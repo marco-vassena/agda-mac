@@ -176,7 +176,7 @@ data ⟨_∥_⟩⟼_ {Δ₁ : Context} (m₁ : Memory Δ₁) : ∀ {Δ₂ τ} ->
               ⟨ m₁ ∥ join {α = α} p (Γ , Macₓ e) ⟩⟼ ⟨ m₁ ∥ (id {{Γ = Γ}} $ (Γ , Return (Resₓ e))) ⟩
 
   new : ∀ {l h α Δ} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
-          ⟨ m₁ ∥ (Γ , new p t) ⟩⟼ ⟨ (Γ , t) ∷ m₁ ∥ id {{Γ = Γ}} $ (Γ , Return (Ref (Here {α ∷ Δ₁} ))) ⟩
+          ⟨ m₁ ∥ (Γ , new p t) ⟩⟼ ⟨ (Γ , t) ∷ m₁ ∥ id {{Γ = Γ}} $ (Γ , Return (Ref α)) ⟩
 
   Dist-write : ∀ {l h α Δ} {Γ : Env Δ} {r : Term Δ (Ref h α)} {t : Term Δ α} -> (p : l ⊑ h) ->
           ⟨ m₁ ∥ Γ , write p r t ⟩⟼ ⟨ m₁ ∥ write p (Γ , r) (Γ , t) ⟩
@@ -190,7 +190,7 @@ data ⟨_∥_⟩⟼_ {Δ₁ : Context} (m₁ : Memory Δ₁) : ∀ {Δ₂ τ} ->
 
   write : ∀ {l h α Δ} {Γ : Env Δ} {c : CTerm α} ->
             (p : l ⊑ h) (r : α ∈ Δ₁) ->
-          ⟨ m₁ ∥ write p (Γ , (Ref r)) c ⟩⟼ ⟨ m₁ [ r ]≔ c ∥ id {{Γ = Γ}} $ (Γ , Return （）) ⟩
+          ⟨ m₁ ∥ write p (Γ , (Ref α)) c ⟩⟼ ⟨ m₁ [ r ]≔ c ∥ id {{Γ = Γ}} $ (Γ , Return （）) ⟩
 
   readCtx : ∀ {l h α Δ₂} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
             ⟨ m₁ ∥ c₁ ⟩⟼ ⟨ m₂ ∥ c₂ ⟩ ->
@@ -198,8 +198,7 @@ data ⟨_∥_⟩⟼_ {Δ₁ : Context} (m₁ : Memory Δ₁) : ∀ {Δ₂ τ} ->
 
   -- ⟨ m₁ ∥ read p r ⟩⟼ ⟨ m₁ ∥ return (r !! m₁) ⟩
   read : ∀ {l h α Δ} {Γ : Env Δ} -> (p : l ⊑ h) -> (r : α ∈ Δ₁) ->
-            ⟨ m₁ ∥ (read p (Γ , (Ref r))) ⟩⟼ ⟨ m₁ ∥ (Γ , Abs (Return (Var Here))) $ (r !! m₁) ⟩
-
+            ⟨ m₁ ∥ (read p (Γ , (Ref α))) ⟩⟼ ⟨ m₁ ∥ (Γ , Abs (Return (Var Here))) $ (r !! m₁) ⟩
 
 -- TODO maybe define Redex for Program instead of single term  
 
