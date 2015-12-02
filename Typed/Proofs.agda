@@ -1,9 +1,12 @@
 module Typed.Proofs where
 
+open import Data.Sum
+open import Data.Product
+open import Relation.Binary.PropositionalEquality as P
+open import Relation.Binary.HeterogeneousEquality as H
+
 open import Typed.Semantics
 open import Typed.Valid
-open import Relation.Binary.PropositionalEquality
-open import Data.Sum
 
 -- A closed term with valid references with respect to the given memory context
 -- either can be reduced further or it is a value.
@@ -16,7 +19,7 @@ progress (Γ , Abs t) v = inj₂ (Γ , Abs t)
 progress (Γ , App t t₁) v = inj₁ (Step (Pure Dist-$))
 progress (Γ , If t Then t₁ Else t₂) v = inj₁ (Step (Pure Dist-If))
 progress (Γ , Return t) v = inj₁ (Step Return)
-progress (Γ , t >>= t₁) v = inj₁ (Step Dist->>=)
+progress (Γ , (t >>= t₁)) v = inj₁ (Step Dist->>=)
 progress (Γ , ξ) v = inj₂ (Γ , ξ)
 progress (Γ , Throw t) v = inj₁ (Step Throw)
 progress (Γ , Catch m h) v = inj₁ (Step Dist-Catch)
@@ -93,73 +96,80 @@ determinism⇝ IfFalse IfFalse = refl
 determinism⇝ Dist-∙ Dist-∙ = refl 
 determinism⇝ Hole Hole = refl
 
-determinismMixed : ∀ {Δ τ} {m : Memory Δ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> ⟨ m ∥ c₁ ⟩⟼ ⟨ m ∥ c₃ ⟩ -> c₂ ≡ c₃
-determinismMixed s₁ s₂ = {!!}
--- determinismMixed s₁ (Pure s₂) = determinism⇝ s₁ s₂
--- determinismMixed () Return
--- determinismMixed () Dist->>=
--- determinismMixed () (BindCtx s₂)
--- determinismMixed () Bind
--- determinismMixed () BindEx
--- determinismMixed () Throw
--- determinismMixed () Dist-Catch
--- determinismMixed () (CatchCtx s₂)
--- determinismMixed () Catch
--- determinismMixed () CatchEx
--- determinismMixed () (label p)
--- determinismMixed () (Dist-unlabel p)
--- determinismMixed () (unlabel p)
--- determinismMixed () (unlabelEx p)
--- determinismMixed () (unlabelCtx p s₂)
--- determinismMixed () (Dist-join p)
--- determinismMixed () (joinCtx p s₂)
--- determinismMixed () (join p)
--- determinismMixed () (joinEx p)
--- determinismMixed s₁ (write p c) = ?
--- determinismMixed s₁ (read p c) = ?
--- determinismMixed s₁ (new p c) = ?
+determinismMixed : ∀ {Δ₁ Δ₂ τ} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₃ ⟩ -> m₁ ≅ m₂ × c₂ ≡ c₃
+determinismMixed (AppL s₁) (Pure s₂) = refl , determinism⇝ (AppL s₁) s₂
+determinismMixed Beta (Pure s₁) = refl , determinism⇝ Beta s₁
+determinismMixed Lookup (Pure s) = refl , determinism⇝ Lookup s
+determinismMixed Dist-$ (Pure s₁) = refl , determinism⇝ Dist-$ s₁
+determinismMixed Dist-If (Pure s) = refl , determinism⇝ Dist-If s
+determinismMixed (IfCond s₁) (Pure s) = refl , determinism⇝ (IfCond s₁) s
+determinismMixed IfTrue (Pure s) = refl , determinism⇝ IfTrue s
+determinismMixed IfFalse (Pure s) = refl , determinism⇝ IfFalse s
+determinismMixed Dist-∙ (Pure s) = refl , determinism⇝ Dist-∙ s
+determinismMixed Hole (Pure s) = refl , determinism⇝ Hole s
+
+determinism : ∀ {τ Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
+                 Valid Δ₁ c₁ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₃ ∥ c₃ ⟩ -> m₂ ≅ m₃ × c₂ ≡ c₃
+determinism v (Pure s₁) s₂ = determinismMixed s₁ s₂
+determinism v s₁ (Pure s₂) with determinismMixed s₂ s₁
+determinism v s₁ (Pure s₂) | eq₁ , eq₂ = H.sym eq₁ , P.sym eq₂
+determinism v Return Return = refl , refl
+determinism v Dist->>= Dist->>= = refl , refl
+determinism v (BindCtx s₁) (BindCtx s₂) with determinism {!!} s₁ s₂
+determinism v (BindCtx s₁) (BindCtx s₂) | eq₁ , refl = eq₁ , refl
+determinism v (BindCtx (Pure ())) Bind
+determinism v (BindCtx (Pure ())) BindEx
+determinism v Bind (BindCtx (Pure ()))
+determinism v Bind Bind = refl , refl
+determinism v BindEx (BindCtx (Pure ()))
+determinism v BindEx BindEx = refl , refl
+determinism v Throw Throw = refl , refl
+determinism v Dist-Catch Dist-Catch = refl , refl
+determinism v (CatchCtx s₁) (CatchCtx s₂) with determinism {!!} s₁ s₂
+determinism v (CatchCtx s₁) (CatchCtx s₂) | eq₁ , refl = eq₁ , refl
+determinism v (CatchCtx (Pure ())) Catch
+determinism v (CatchCtx (Pure ())) CatchEx
+determinism v Catch (CatchCtx (Pure ()))
+determinism v Catch Catch = refl , refl
+determinism v CatchEx (CatchCtx (Pure ()))
+determinism v CatchEx CatchEx = refl , refl
+determinism v (label p) (label .p) = refl , refl
+determinism v (Dist-unlabel p) (Dist-unlabel .p) = refl , refl
+determinism v (unlabel p) (unlabel .p) = refl , refl
+determinism v (unlabel p) (unlabelCtx .p (Pure ()))
+determinism v (unlabelCtx p (Pure ())) (unlabel .p)
+determinism v (unlabelCtx p (Pure ())) (unlabelEx .p)
+determinism v (unlabelCtx p s₁) (unlabelCtx .p s₂) with determinism {!!} s₁ s₂
+... | eq₁ , refl = eq₁ , refl 
+determinism v (unlabelEx p) (unlabelEx .p) = refl , refl
+determinism v (unlabelEx p) (unlabelCtx .p (Pure ()))
+determinism v (Dist-join p) (Dist-join .p) = refl , refl
+determinism v (joinCtx p s₁) (joinCtx .p s₂) with determinism {!!} s₁ s₂
+... | eq₁ , refl = eq₁ , refl
+determinism v (joinCtx p (Pure ())) (join .p)
+determinism v (joinCtx p (Pure ())) (joinEx .p)
+determinism v (join p) (joinCtx .p (Pure ()))
+determinism v (join p) (join .p) = refl , refl
+determinism v (joinEx p) (joinCtx .p (Pure ()))
+determinism v (joinEx p) (joinEx .p) = refl , refl
+determinism v (new p) (new .p) = refl , refl
+determinism v (Dist-write p) (Dist-write .p) = refl , refl
+determinism v (Dist-read p) (Dist-read .p) = refl , refl
+determinism v (writeCtx p s₁) (writeCtx .p s₂) with determinism {!!} s₁ s₂
+... | eq₁ , refl = eq₁ , refl
+determinism v (writeCtx p (Pure ())) (write .p r)
+determinism v (write p r) (writeCtx .p (Pure ()))
+determinism (write p (x , Ref r) v₁) (write .p r₁) (write .p r₂) = {!!}
+determinism v (readCtx p s₁) (readCtx .p s₂) = {!!}
+determinism v (readCtx p (Pure ())) (read .p r)
+determinism v (read p r) (readCtx .p (Pure ()))
+determinism v (read p r) (read .p r₁) = {!!}
 
 -- -- TODO
 -- -- @Ale I think I should prove this for some m₃ and show also that m₂ ≡ m₃
--- determinism : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ c₃ : CTerm τ} ->
+-- determinism v : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ c₃ : CTerm τ} ->
 --                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₃ ⟩ -> c₂ ≡ c₃
--- determinism (Pure s₁) s₂ = determinismMixed s₁ s₂
--- determinism s₁ (Pure s₂) = sym (determinismMixed s₂ s₁)
--- determinism Return Return = refl
--- determinism Dist->>= Dist->>= = refl
--- determinism (BindCtx s₁) (BindCtx s₂) rewrite determinism s₁ s₂ = refl
--- determinism (BindCtx (Pure ())) Bind
--- determinism (BindCtx (Pure ())) BindEx
--- determinism Bind (BindCtx (Pure ()))
--- determinism Bind Bind = refl
--- determinism BindEx (BindCtx (Pure ()))
--- determinism BindEx BindEx = refl
--- determinism Throw Throw = refl
--- determinism Dist-Catch Dist-Catch = refl
--- determinism (CatchCtx s₁) (CatchCtx s₂) rewrite determinism s₁ s₂ = refl
--- determinism (CatchCtx (Pure ())) Catch
--- determinism (CatchCtx (Pure ())) CatchEx
--- determinism Catch (CatchCtx (Pure ()))
--- determinism Catch Catch = refl
--- determinism CatchEx (CatchCtx (Pure ()))
--- determinism CatchEx CatchEx = refl
--- determinism (label p) (label .p) = refl
--- determinism (Dist-unlabel p) (Dist-unlabel .p) = refl
--- determinism (unlabel p) (unlabel .p) = refl
--- determinism (unlabel p) (unlabelCtx .p (Pure ()))
--- determinism (unlabelCtx p (Pure ())) (unlabel .p)
--- determinism (unlabelCtx p (Pure ())) (unlabelEx .p)
--- determinism (unlabelCtx p s₁) (unlabelCtx .p s₂) rewrite determinism s₁ s₂ = refl
--- determinism (unlabelEx p) (unlabelEx .p) = refl
--- determinism (unlabelEx p) (unlabelCtx .p (Pure ()))
--- determinism (Dist-join p) (Dist-join .p) = refl
--- determinism (joinCtx p s₁) (joinCtx .p s₂) rewrite determinism s₁ s₂ = refl
--- determinism (joinCtx p (Pure ())) (join .p)
--- determinism (joinCtx p (Pure ())) (joinEx .p)
--- determinism (join p) (joinCtx .p (Pure ()))
--- determinism (join p) (join .p) = refl
--- determinism (joinEx p) (joinCtx .p (Pure ()))
--- determinism (joinEx p) (joinEx .p) = refl
 
--- preservation : ∀ {Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {τ : Ty} {c₁ c₂ : CTerm τ} -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> τ ≡ τ
--- preservation s = refl
+preservation : ∀ {Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {τ : Ty} {c₁ c₂ : CTerm τ} ->
+               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Δ₁ ⊆ Δ₂ × τ ≡ τ
+preservation s = context⊆ s , refl

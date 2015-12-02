@@ -96,7 +96,7 @@ ValidMemory {Δᵐ} m = ValidEnv Δᵐ m
 -- grows, but never shrinks, i.e. the initial memory context is a subset
 -- of the final memory context.
 context⊆ : ∀ {Δ₁ Δ₂ τ} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
-                ⟨ m₁ ∥ c₁ ⟩⟼ ⟨ m₂ ∥ c₂ ⟩ -> Δ₁ ⊆ Δ₂
+                ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Δ₁ ⊆ Δ₂
 context⊆ {Δ₁ = Δ₁} (Pure x) = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} Return = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} Dist->>= = refl-⊆ Δ₁
@@ -198,7 +198,7 @@ validMemoryUpdate (x ∷ vᵐ) (There p) v = x ∷ validMemoryUpdate vᵐ p v
 -- If a closed term has valid references in the initial memory context and
 -- can be reduced further then the reduced term is also valid in the final memory context.
 stepValid : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
-              ⟨ m₁ ∥ c₁ ⟩⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> ValidMemory m₂ × Valid Δ₂ c₂
+              ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> ValidMemory m₂ × Valid Δ₂ c₂
 stepValid (Pure (AppL s)) (v₁ $ v₂) vᵐ with stepValid (Pure s) v₁ vᵐ
 stepValid (Pure (AppL s)) (v₁ $ v₂) vᵐ | _ , v₁' = vᵐ , (v₁' $ v₂)
 stepValid (Pure Beta) (Γ , Abs x $ v) vᵐ = vᵐ , (idValid $ ((v ∷ Γ) , x))
