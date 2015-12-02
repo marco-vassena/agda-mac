@@ -115,81 +115,83 @@ data IsValue {τ : Ty} : CTerm τ -> Set where
 -- Now that we have memory we have to ensure that memory references are all valid.
 -- The following data type is such a proof.
 
-data ValidT {Δ} : ∀ {Δᵐ τ} -> Memory Δᵐ -> Term Δ τ -> Set where
-  （） : ∀ {Δᵐ} {m : Memory Δᵐ} -> ValidT m （）
-  True : ∀ {Δᵐ} {m : Memory Δᵐ} -> ValidT m True
-  False : ∀ {Δᵐ} {m : Memory Δᵐ} -> ValidT m False
+data ValidT {Δ} (Δᵐ : Context) : ∀ {τ} -> Term Δ τ -> Set where
+  （） : ValidT Δᵐ （）
+  True : ValidT Δᵐ True
+  False : ValidT Δᵐ False
 
-  Var : ∀ {Δᵐ τ} {m : Memory Δᵐ} -> (p : τ ∈ Δ) -> ValidT m (Var p)
-  App : ∀ {Δᵐ α β} {m : Memory Δᵐ}{f : Term Δ (α => β)} {x : Term Δ α} ->
-          ValidT m f -> ValidT m x -> ValidT m (App f x)
-  Abs : ∀ {Δᵐ} {α β} {m : Memory Δᵐ} {t : Term (α ∷ Δ) β} -> ValidT m t -> ValidT m (Abs t)
+  Var : ∀ {τ} -> (p : τ ∈ Δ) -> ValidT Δᵐ (Var p)
+  App : ∀ {α β}{f : Term Δ (α => β)} {x : Term Δ α} ->
+          ValidT Δᵐ f -> ValidT Δᵐ x -> ValidT Δᵐ (App f x)
+  Abs : ∀ {α β} {t : Term (α ∷ Δ) β} -> ValidT Δᵐ t -> ValidT Δᵐ (Abs t)
 
-  ξ : ∀ {Δᵐ} {m : Memory Δᵐ} -> ValidT m ξ
+  ξ : ValidT Δᵐ ξ
 
-  Mac : ∀ {Δᵐ} {α} {l : Label} {m : Memory Δᵐ} {t : Term Δ α} ->
-          ValidT m t -> ValidT m (Mac t)
-  Macₓ : ∀ {Δᵐ α} {l : Label} {m : Memory Δᵐ} {e : Term Δ Exception} ->
-           ValidT m e -> ValidT m (Macₓ {α = α} e)
+  Mac : ∀ {α} {l : Label} {t : Term Δ α} ->
+          ValidT Δᵐ t -> ValidT Δᵐ (Mac t)
+  Macₓ : ∀ {α} {l : Label} {e : Term Δ Exception} ->
+           ValidT Δᵐ e -> ValidT Δᵐ (Macₓ {α = α} e)
 
-  Res : ∀ {Δᵐ α}  {l : Label} {m : Memory Δᵐ} {t : Term Δ α} ->
-           ValidT m t -> ValidT m (Res t)
-  Resₓ : ∀ {Δᵐ α} {l : Label} {m : Memory Δᵐ}{e : Term Δ Exception} ->
-           ValidT m e -> ValidT m (Resₓ {α = α} e)
+  Res : ∀ {α}  {l : Label} {t : Term Δ α} ->
+           ValidT Δᵐ t -> ValidT Δᵐ (Res t)
+  Resₓ : ∀ {α} {l : Label}{e : Term Δ Exception} ->
+           ValidT Δᵐ e -> ValidT Δᵐ (Resₓ {α = α} e)
 
-  Ref : ∀ {Δᵐ α} {l : Label} {m : Memory Δᵐ} -> (r : α ∈ Δᵐ) -> ValidT m (Ref α)
+  Ref : ∀ {α} {l : Label} -> (r : α ∈ Δᵐ) -> ValidT Δᵐ (Ref α)
 
-  If_Then_Else_ : ∀ {Δᵐ α} {m : Memory Δᵐ} {c : Term Δ Bool} {t e : Term Δ α} ->
-                  ValidT m c -> ValidT m t -> ValidT m e -> ValidT m (If c Then t Else e)
+  If_Then_Else_ : ∀ {α} {c : Term Δ Bool} {t e : Term Δ α} ->
+                  ValidT Δᵐ c -> ValidT Δᵐ t -> ValidT Δᵐ e -> ValidT Δᵐ (If c Then t Else e)
 
-  Return : ∀ {{l}} {α Δᵐ} {m : Memory Δᵐ} {t : Term Δ α} -> ValidT m t -> ValidT m (Return t)
+  Return : ∀ {{l}} {α} {t : Term Δ α} -> ValidT Δᵐ t -> ValidT Δᵐ (Return t)
   
-  _>>=_ : ∀ {{l}} {Δᵐ} {m : Memory Δᵐ} {α β} {t₁ : Term Δ (Mac l α)} {t₂ : Term Δ (α => Mac l β)} ->
-            ValidT m t₁ -> ValidT m t₂ -> ValidT m (t₁ >>= t₂)
+  _>>=_ : ∀ {{l}} {α β} {t₁ : Term Δ (Mac l α)} {t₂ : Term Δ (α => Mac l β)} ->
+            ValidT Δᵐ t₁ -> ValidT Δᵐ t₂ -> ValidT Δᵐ (t₁ >>= t₂)
 
-  Throw : ∀ {{l α}} {Δᵐ} {m : Memory Δᵐ} {t : Term Δ Exception} ->
-            ValidT m t -> ValidT m (Throw {{l = l}} t)
+  Throw : ∀ {{l α}} {t : Term Δ Exception} ->
+            ValidT Δᵐ t -> ValidT Δᵐ (Throw {{l = l}} t)
 
-  Catch : ∀ {{l}} {Δᵐ α}  {m : Memory Δᵐ} -> {t : Term Δ (Mac l α)} {h : Term Δ (Exception => Mac l α)} ->
-            ValidT m t -> ValidT m h -> ValidT m (Catch t h)
+  Catch : ∀ {{l}} {α}  -> {t : Term Δ (Mac l α)} {h : Term Δ (Exception => Mac l α)} ->
+            ValidT Δᵐ t -> ValidT Δᵐ h -> ValidT Δᵐ (Catch t h)
 
-  label : ∀ {Δᵐ l h α} {m : Memory Δᵐ} {t : Term Δ α} -> (p : l ⊑ h) -> ValidT m t -> ValidT m (label p t)
-  unlabel : ∀ {Δᵐ l h α} {m : Memory Δᵐ} {t : Term Δ (Labeled l α)} ->
-              (p : l ⊑ h) -> ValidT m t -> ValidT m (unlabel p t)
+  label : ∀ {l h α} {t : Term Δ α} -> (p : l ⊑ h) -> ValidT Δᵐ t -> ValidT Δᵐ (label p t)
+  unlabel : ∀ {l h α} {t : Term Δ (Labeled l α)} ->
+              (p : l ⊑ h) -> ValidT Δᵐ t -> ValidT Δᵐ (unlabel p t)
 
-  join : ∀ {Δᵐ} {m : Memory Δᵐ}{l h α} {t : Term Δ (Mac h α)} ->
-           (p : l ⊑ h) -> ValidT m t -> ValidT m (join p t)
+  join : ∀ {l h α} {t : Term Δ (Mac h α)} ->
+           (p : l ⊑ h) -> ValidT Δᵐ t -> ValidT Δᵐ (join p t)
 
-  read : ∀ {Δᵐ α l h} {m : Memory Δᵐ} {t : Term Δ (Ref l α)} ->
-           (p : l ⊑ h) -> ValidT m t -> ValidT m (read p t)
+  read : ∀ {α l h} {t : Term Δ (Ref l α)} ->
+           (p : l ⊑ h) -> ValidT Δᵐ t -> ValidT Δᵐ (read p t)
 
-  write : ∀ {Δᵐ α l h} {m : Memory Δᵐ} {t₁ : Term Δ (Ref h α)} -> {t₂ : Term Δ α} ->
-            (p : l ⊑ h) -> ValidT m t₁ -> ValidT m t₂ -> ValidT m (write p t₁ t₂)
+  write : ∀ {α l h} {t₁ : Term Δ (Ref h α)} -> {t₂ : Term Δ α} ->
+            (p : l ⊑ h) -> ValidT Δᵐ t₁ -> ValidT Δᵐ t₂ -> ValidT Δᵐ (write p t₁ t₂)
   
-  new : ∀ {Δᵐ α l h} {m : Memory Δᵐ} {t : Term Δ α} -> (p : l ⊑ h) -> ValidT m t ->
-          ValidT m (new p t)
+  new : ∀ {α l h} {t : Term Δ α} -> (p : l ⊑ h) -> ValidT Δᵐ t ->
+          ValidT Δᵐ (new p t)
           
-  ∙ : ∀ {Δᵐ τ} {m : Memory Δᵐ} -> ValidT m (∙ {Δ} {τ})
+  ∙ : ∀ {τ} -> ValidT Δᵐ (∙ {Δ} {τ})
 
 mutual
 
- data ValidEnv {Δᵐ} (m : Memory Δᵐ) : ∀ {Δ} -> Env Δ -> Set where
-   [] : ValidEnv m []
-   _∷_ : ∀ {τ Δ} {Γ : Env Δ} {c : CTerm τ} -> Valid m c -> ValidEnv m Γ -> ValidEnv m (c ∷ Γ)
+ data ValidEnv (Δᵐ : Context) : ∀ {Δ} -> Env Δ -> Set where
+   [] : ValidEnv Δᵐ []
+   _∷_ : ∀ {τ Δ} {Γ : Env Δ} {c : CTerm τ} -> Valid Δᵐ c -> ValidEnv Δᵐ Γ -> ValidEnv Δᵐ (c ∷ Γ)
    
- data Valid {Δᵐ} (m : Memory Δᵐ) : ∀ {τ} -> CTerm τ -> Set where
-   -- TODO should Γ also be valid?
-   _,_ : ∀ {Δ τ} -> {Γ : Env Δ} {t : Term Δ τ} -> ValidEnv m Γ -> ValidT m t -> Valid m (Γ , t)
-   _$_ : ∀ {α β} {c₁ : CTerm (α => β)} {c₂ : CTerm α} -> Valid m c₁ -> Valid m c₂ -> Valid m (c₁ $ c₂)
+ data Valid (Δᵐ : Context) : ∀ {τ} -> CTerm τ -> Set where
+   _,_ : ∀ {Δ τ} -> {Γ : Env Δ} {t : Term Δ τ} -> ValidEnv Δᵐ Γ -> ValidT Δᵐ t -> Valid Δᵐ (Γ , t)
+   _$_ : ∀ {α β} {c₁ : CTerm (α => β)} {c₂ : CTerm α} -> Valid Δᵐ c₁ -> Valid Δᵐ c₂ -> Valid Δᵐ (c₁ $ c₂)
    If_Then_Else_ :  ∀ {τ} {c₁ : CTerm Bool} {c₂ c₃ : CTerm τ} ->
-                   Valid m c₁ -> Valid m c₂ -> Valid m c₃ -> Valid m (If c₁ Then c₂ Else c₃)
+                   Valid Δᵐ c₁ -> Valid Δᵐ c₂ -> Valid Δᵐ c₃ -> Valid Δᵐ (If c₁ Then c₂ Else c₃)
    _>>=_ : ∀ {l α β} {c₁ : CTerm (Mac l α)} {c₂ : CTerm (α => Mac l β)} ->
-             Valid m c₁ -> Valid m c₂ -> Valid m (c₁ >>= c₂)
+             Valid Δᵐ c₁ -> Valid Δᵐ c₂ -> Valid Δᵐ (c₁ >>= c₂)
    Catch : ∀ {l α} -> {c₁ : CTerm (Mac l α)} {c₂ : CTerm (Exception => Mac l α)} ->
-             Valid m c₁ -> Valid m c₂ -> Valid m (Catch c₁ c₂)
-   unlabel : ∀ {l τ h} {c : CTerm (Labeled l τ)} -> (p : l ⊑ h) -> Valid m c -> Valid m (unlabel p c)
-   join : ∀ {l h α} {c : CTerm (Mac h α)} -> (p : l ⊑ h) -> Valid m c -> Valid m (join p c)
-   read : ∀ {α l h} {c : CTerm (Ref l α)} (p : l ⊑ h) -> Valid m c -> Valid m (read p c)
+             Valid Δᵐ c₁ -> Valid Δᵐ c₂ -> Valid Δᵐ (Catch c₁ c₂)
+   unlabel : ∀ {l τ h} {c : CTerm (Labeled l τ)} -> (p : l ⊑ h) -> Valid Δᵐ c -> Valid Δᵐ (unlabel p c)
+   join : ∀ {l h α} {c : CTerm (Mac h α)} -> (p : l ⊑ h) -> Valid Δᵐ c -> Valid Δᵐ (join p c)
+   read : ∀ {α l h} {c : CTerm (Ref l α)} (p : l ⊑ h) -> Valid Δᵐ c -> Valid Δᵐ (read p c)
    write : ∀ {α l h} {c₁ : CTerm (Ref h α)} {c₂ : CTerm α} ->
-             (p : l ⊑ h) -> Valid m c₁ -> Valid m c₂ -> Valid m (write p c₁ c₂)
-   ∙ : ∀ {τ} -> Valid m (∙ {τ})
+             (p : l ⊑ h) -> Valid Δᵐ c₁ -> Valid Δᵐ c₂ -> Valid Δᵐ (write p c₁ c₂)
+   ∙ : ∀ {τ} -> Valid Δᵐ (∙ {τ})
+
+ValidMemory : ∀ {Δᵐ} -> (m : Memory Δᵐ) -> Set
+ValidMemory {Δᵐ} m = ValidEnv Δᵐ m
