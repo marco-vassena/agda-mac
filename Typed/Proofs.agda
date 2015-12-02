@@ -63,36 +63,38 @@ progress (read p r) (read .p v) | inj₁ (Step x) = inj₁ (Step (readCtx p x))
 progress (read p (Γ , Ref α)) (read .p (Γ' , Ref r)) | inj₂ (.Γ , Ref .α) = inj₁ (Step (read p r))
 progress ∙ v = inj₁ (Step (Pure Hole))
 
--- valueNotRedex : ∀ {τ Δ} {m : Memory Δ} -> (c : CTerm τ) -> IsValue c -> NormalForm m c
--- valueNotRedex .(Γ , （）) (Γ , （）) (Step (Pure ()))
--- valueNotRedex .(Γ , True) (Γ , True) (Step (Pure ()))
--- valueNotRedex .(Γ , False) (Γ , False) (Step (Pure ()))
--- valueNotRedex .(Γ , Abs t) (Γ , Abs t) (Step (Pure ()))
--- valueNotRedex .(Γ , ξ) (Γ , ξ) (Step (Pure ()))
--- valueNotRedex .(Γ , Mac t) (Γ , Mac t) (Step (Pure ()))
--- valueNotRedex .(Γ , Macₓ e) (Γ , Macₓ e) (Step (Pure ()))
--- valueNotRedex .(Γ , Res t) (Γ , Res t) (Step (Pure ()))
--- valueNotRedex .(Γ , Resₓ e) (Γ , Resₓ e) (Step (Pure ()))
+valueNotRedex : ∀ {τ Δ} {m : Memory Δ} -> (c : CTerm τ) -> IsValue c -> NormalForm m c
+valueNotRedex .(Γ , （）) (Γ , （）) (Step (Pure ()))
+valueNotRedex .(Γ , True) (Γ , True) (Step (Pure ()))
+valueNotRedex .(Γ , False) (Γ , False) (Step (Pure ()))
+valueNotRedex .(Γ , Abs t) (Γ , Abs t) (Step (Pure ()))
+valueNotRedex .(Γ , ξ) (Γ , ξ) (Step (Pure ()))
+valueNotRedex .(Γ , Mac t) (Γ , Mac t) (Step (Pure ()))
+valueNotRedex .(Γ , Macₓ e) (Γ , Macₓ e) (Step (Pure ()))
+valueNotRedex .(Γ , Res t) (Γ , Res t) (Step (Pure ()))
+valueNotRedex .(Γ , Resₓ e) (Γ , Resₓ e) (Step (Pure ()))
+valueNotRedex .(Γ , Ref α) (Γ , Ref α) (Step (Pure ()))
 
--- determinism⇝ : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> c₁ ⇝ c₃ -> c₂ ≡ c₃
--- determinism⇝ (AppL s₁) (AppL s₂) rewrite determinism⇝ s₁ s₂ = refl
--- determinism⇝ (AppL ()) Beta
--- determinism⇝ Beta (AppL ())
--- determinism⇝ Beta Beta = refl
--- determinism⇝ Lookup Lookup = refl
--- determinism⇝ Dist-$ Dist-$ = refl
--- determinism⇝ Dist-If Dist-If = refl
--- determinism⇝ (IfCond s₁) (IfCond s₂) rewrite determinism⇝ s₁ s₂ = refl
--- determinism⇝ (IfCond ()) IfTrue
--- determinism⇝ (IfCond ()) IfFalse
--- determinism⇝ IfTrue (IfCond ())
--- determinism⇝ IfTrue IfTrue = refl
--- determinism⇝ IfFalse (IfCond ())
--- determinism⇝ IfFalse IfFalse = refl
--- determinism⇝ Dist-∙ Dist-∙ = refl 
--- determinism⇝ Hole Hole = refl
+determinism⇝ : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> c₁ ⇝ c₃ -> c₂ ≡ c₃
+determinism⇝ (AppL s₁) (AppL s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (AppL ()) Beta
+determinism⇝ Beta (AppL ())
+determinism⇝ Beta Beta = refl
+determinism⇝ Lookup Lookup = refl
+determinism⇝ Dist-$ Dist-$ = refl
+determinism⇝ Dist-If Dist-If = refl
+determinism⇝ (IfCond s₁) (IfCond s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (IfCond ()) IfTrue
+determinism⇝ (IfCond ()) IfFalse
+determinism⇝ IfTrue (IfCond ())
+determinism⇝ IfTrue IfTrue = refl
+determinism⇝ IfFalse (IfCond ())
+determinism⇝ IfFalse IfFalse = refl
+determinism⇝ Dist-∙ Dist-∙ = refl 
+determinism⇝ Hole Hole = refl
 
--- determinismMixed : ∀ {Δ τ} {m : Memory Δ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> ⟨ m ∥ c₁ ⟩ ⟼ ⟨ m ∥ c₃ ⟩ -> c₂ ≡ c₃
+determinismMixed : ∀ {Δ τ} {m : Memory Δ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> ⟨ m ∥ c₁ ⟩⟼ ⟨ m ∥ c₃ ⟩ -> c₂ ≡ c₃
+determinismMixed s₁ s₂ = {!!}
 -- determinismMixed s₁ (Pure s₂) = determinism⇝ s₁ s₂
 -- determinismMixed () Return
 -- determinismMixed () Dist->>=
@@ -113,6 +115,9 @@ progress ∙ v = inj₁ (Step (Pure Hole))
 -- determinismMixed () (joinCtx p s₂)
 -- determinismMixed () (join p)
 -- determinismMixed () (joinEx p)
+-- determinismMixed s₁ (write p c) = ?
+-- determinismMixed s₁ (read p c) = ?
+-- determinismMixed s₁ (new p c) = ?
 
 -- -- TODO
 -- -- @Ale I think I should prove this for some m₃ and show also that m₂ ≡ m₃
