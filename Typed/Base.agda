@@ -1,6 +1,7 @@
 module Typed.Base where
 
 open import Types public
+import Data.List as L
 
 data Term (Δ : Context) : Ty -> Set where
   （） : Term Δ （）
@@ -32,7 +33,7 @@ data Term (Δ : Context) : Ty -> Set where
 
   join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
 
-  Ref : ∀ {{l}} -> (α : Ty) -> Term Δ (Ref l α)
+  Ref : ∀ {{l}} {α Δᵐ} -> α ∈ Δᵐ -> Term Δ (Ref l α)
 
   read : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref l α) -> Term Δ (Mac h α)
 
@@ -94,6 +95,15 @@ x ∷ Γ [ There i ]≔ v = x ∷ (Γ [ i ]≔ v)
 
 infixr 2 _[_]≔_
 
+-- Snoc
+_∷ʳ_ : ∀ {τ Δ} -> Env Δ -> CTerm τ ->  Env (Δ L.∷ʳ τ) 
+[] ∷ʳ c = c ∷ []
+(x ∷ Γ) ∷ʳ c = x ∷ (Γ ∷ʳ c)
+
+snoc=∈ : (τ : Ty) (Δ : Context) -> τ ∈ (Δ L.∷ʳ τ)
+snoc=∈ τ [] = Here
+snoc=∈ τ (x ∷ Δ) = There (snoc=∈ τ Δ)
+
 -- The proof that a certain term is a value
 data IsTValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   （） : IsTValue （）
@@ -105,7 +115,7 @@ data IsTValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Macₓ {α = α} e)
   Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsTValue (Res t)
   Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Resₓ {α = α} e)
-  Ref : ∀ {l : Label} -> (α : Ty) -> IsTValue (Ref α)
+  Ref : ∀ {l α Δᵐ} -> (r : α ∈ Δᵐ) -> IsTValue (Ref r)
 
 data IsValue {τ : Ty} : CTerm τ -> Set where
   _,_ : ∀ {Δ} {t : Term Δ τ} -> (Γ : Env Δ) -> IsTValue t -> IsValue (Γ , t)

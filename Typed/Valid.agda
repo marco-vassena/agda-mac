@@ -12,7 +12,7 @@ data ValidT {Δ} (Δᵐ : Context) : ∀ {τ} -> Term Δ τ -> Set where
   True : ValidT Δᵐ True
   False : ValidT Δᵐ False
 
-  Var : ∀ {τ} -> (p : τ ∈ Δ) -> ValidT Δᵐ (Var p)
+  Var : ∀ {τ } -> (p : τ ∈ Δ) -> ValidT Δᵐ (Var p)
   App : ∀ {α β}{f : Term Δ (α => β)} {x : Term Δ α} ->
           ValidT Δᵐ f -> ValidT Δᵐ x -> ValidT Δᵐ (App f x)
   Abs : ∀ {α β} {t : Term (α ∷ Δ) β} -> ValidT Δᵐ t -> ValidT Δᵐ (Abs t)
@@ -29,7 +29,7 @@ data ValidT {Δ} (Δᵐ : Context) : ∀ {τ} -> Term Δ τ -> Set where
   Resₓ : ∀ {α} {l : Label}{e : Term Δ Exception} ->
            ValidT Δᵐ e -> ValidT Δᵐ (Resₓ {α = α} e)
 
-  Ref : ∀ {α} {l : Label} -> (r : α ∈ Δᵐ) -> ValidT Δᵐ (Ref α)
+  Ref : ∀ {α Δ₁} {l : Label} -> (r : α ∈ Δ₁) -> Δ₁ ⊆ Δᵐ -> ValidT Δᵐ (Ref r)
 
   If_Then_Else_ : ∀ {α} {c : Term Δ Bool} {t e : Term Δ α} ->
                   ValidT Δᵐ c -> ValidT Δᵐ t -> ValidT Δᵐ e -> ValidT Δᵐ (If c Then t Else e)
@@ -117,13 +117,15 @@ context⊆ {Δ₁ = Δ₁} (Dist-join p) = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} (joinCtx p s) = context⊆ s
 context⊆ {Δ₁ = Δ₁} (join p) = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} (joinEx p) = refl-⊆ Δ₁
-context⊆ {Δ₁ = Δ₁} (new p) = drop (refl-⊆ Δ₁)
+context⊆ {Δ₁ = Δ₁} (new p) = snoc-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} (Dist-write p) = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} (Dist-read p) = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} (writeCtx p s) = context⊆ s
 context⊆ {Δ₁ = Δ₁} (write p r) = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} (readCtx p s) = context⊆ s
 context⊆ {Δ₁ = Δ₁} (read p r) = refl-⊆ Δ₁
+
+--------------------------------------------------------------------------------
 
 
 -- If a term has valid references with respect to a certain memory context Δ₁
@@ -141,7 +143,7 @@ extendValidT (Mac v) p = Mac (extendValidT v p)
 extendValidT (Macₓ v) p = Macₓ (extendValidT v p)
 extendValidT (Res v) p = Res (extendValidT v p)
 extendValidT (Resₓ v) p = Resₓ (extendValidT v p)
-extendValidT (Ref τ) p = Ref (extend-∈ τ p)
+extendValidT (Ref r x) p = Ref r (trans-⊆ x p)
 extendValidT (If v Then v₁ Else v₂) p
   = If extendValidT v p Then extendValidT v₁ p Else extendValidT v₂ p
 extendValidT (Return v) p = Return (extendValidT v p)
@@ -196,6 +198,41 @@ validMemoryUpdate (x ∷ vᵐ) (There p) v = x ∷ validMemoryUpdate vᵐ p v
 
 -- TODO separate the proof in two stepValidCTerm from stepValidMemory
 -- TODO adapt proof for new semantics
+
+-- A term with a memory context
+data TermMC (Δᵐ : Context) {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
+  Ref : ∀ {τ} {l : Label} -> (x : τ ∈ Δᵐ) -> TermMC Δᵐ (Ref x)
+
+extendTerm : ∀ {Δ τ} -> Term Δ τ -> Term Δ τ
+extendTerm （） = {!!}
+extendTerm True = {!!}
+extendTerm False = {!!}
+extendTerm (Var x) = {!!}
+extendTerm (Abs t) = {!!}
+extendTerm (App t t₁) = {!!}
+extendTerm (If t Then t₁ Else t₂) = {!!}
+extendTerm (Return t) = {!!}
+extendTerm (t >>= t₁) = {!!}
+extendTerm ξ = {!!}
+extendTerm (Throw t) = {!!}
+extendTerm (Catch t t₁) = {!!}
+extendTerm (Mac t) = {!!}
+extendTerm (Macₓ t) = {!!}
+extendTerm (Res t) = {!!}
+extendTerm (Resₓ t) = {!!}
+extendTerm (label x t) = {!!}
+extendTerm (unlabel x t) = {!!}
+extendTerm (join x t) = {!!}
+extendTerm (Ref x) = {!!}
+extendTerm (read x t) = {!!}
+extendTerm (write x t t₁) = {!!}
+extendTerm (new x t) = {!!}
+extendTerm ∙ = {!!}
+
+-- extendCTerm : ∀{τ} -> CTerm τ -> CTerm τ
+
+-- stepValid : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
+--               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> Valid Δ₂ c₂
 
 -- Our small step semantics preserves validity of terms and closed terms.
 -- If a closed term has valid references in the initial memory context and

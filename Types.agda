@@ -13,7 +13,8 @@ postulate _⊑?_ : (l h : Label) -> Dec (l ⊑ h)
 postulate trans-⊑ : ∀ {l₁ l₂ l₃} -> l₁ ⊑ l₂ -> l₂ ⊑ l₃ -> l₁ ⊑ l₃
 
 open import Data.Nat using (ℕ ; zero ; suc) public
-open import Data.List hiding (drop) public
+open import Data.List hiding (drop ; _∷ʳ_) public
+import Data.List as L
 open import Data.Vec using (Vec ; [] ; _∷_ ; lookup) public
 open import Data.Fin using (Fin ; zero ; suc) public
 open import Data.Unit hiding (_≤_) public
@@ -50,11 +51,27 @@ refl-⊆ : ∀ {A} -> (xs : List A) -> xs ⊆ xs
 refl-⊆ [] = base
 refl-⊆ (x ∷ xs) = cons (refl-⊆ xs)
 
+trans-⊆ : ∀ {A} {xs ys zs : List A} -> xs ⊆ ys -> ys ⊆ zs -> xs ⊆ zs
+trans-⊆ base q = q
+trans-⊆ (drop p) (drop q) = drop (trans-⊆ (drop p) q)
+trans-⊆ (drop p) (cons q) = drop (trans-⊆ p q)
+trans-⊆ (cons p) (drop q) = drop (trans-⊆ (cons p) q)
+trans-⊆ (cons p) (cons q) = cons (trans-⊆ p q)
+
+snoc-⊆ : ∀ {A} {x : A} -> (xs : List A) -> xs ⊆ (xs L.∷ʳ x)
+snoc-⊆ [] = drop base
+snoc-⊆ (x₁ ∷ xs) = cons (snoc-⊆ xs)
+
 extend-∈ : ∀ {Δ₁ Δ₂ τ} -> τ ∈ Δ₁ -> Δ₁ ⊆ Δ₂ -> τ ∈ Δ₂
 extend-∈ () base
 extend-∈ p (drop x) = There (extend-∈ p x)
 extend-∈ Here (cons x) = Here
 extend-∈ (There p) (cons x) = There (extend-∈ p x)
+
+-- A list is a prefix of another
+data _⊆'_ {A : Set} : List A -> List A -> Set where
+  base : ∀ {xs : List A} -> [] ⊆' xs
+  cons : ∀ {xs ys x} -> xs ⊆' ys -> (x ∷ xs) ⊆' (x ∷ ys)
 
 -- Transform τ ∈ᵗ Δ in Fin
 fin : ∀ {τ Δ} -> τ ∈ Δ -> Fin (length Δ)
