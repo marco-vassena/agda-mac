@@ -41,37 +41,22 @@ data _∈_ : Ty -> Context -> Set where
  Here : ∀ {Δ τ} -> τ ∈ (τ ∷ Δ)
  There : ∀ {Δ α β} -> α ∈ Δ -> α ∈ (β ∷ Δ)
 
--- Subset relation for lists (used for contexts in memory)
+-- A list is a prefix of another
 data _⊆_ {A : Set} : List A -> List A -> Set where
-  base : [] ⊆ []
-  drop : ∀ {xs ys : List A} {x : A} -> xs ⊆ ys -> xs ⊆ (x ∷ ys)
-  cons : ∀ {xs ys : List A} {x : A} -> xs ⊆ ys -> (x ∷ xs) ⊆ (x ∷ ys)
+  base : ∀ {xs : List A} -> [] ⊆ xs
+  cons : ∀ {xs ys x} -> xs ⊆ ys -> (x ∷ xs) ⊆ (x ∷ ys)
 
 refl-⊆ : ∀ {A} -> (xs : List A) -> xs ⊆ xs
 refl-⊆ [] = base
 refl-⊆ (x ∷ xs) = cons (refl-⊆ xs)
 
 trans-⊆ : ∀ {A} {xs ys zs : List A} -> xs ⊆ ys -> ys ⊆ zs -> xs ⊆ zs
-trans-⊆ base q = q
-trans-⊆ (drop p) (drop q) = drop (trans-⊆ (drop p) q)
-trans-⊆ (drop p) (cons q) = drop (trans-⊆ p q)
-trans-⊆ (cons p) (drop q) = drop (trans-⊆ (cons p) q)
+trans-⊆ base q = base
 trans-⊆ (cons p) (cons q) = cons (trans-⊆ p q)
 
 snoc-⊆ : ∀ {A} {x : A} -> (xs : List A) -> xs ⊆ (xs L.∷ʳ x)
-snoc-⊆ [] = drop base
+snoc-⊆ [] = base
 snoc-⊆ (x₁ ∷ xs) = cons (snoc-⊆ xs)
-
-extend-∈ : ∀ {Δ₁ Δ₂ τ} -> τ ∈ Δ₁ -> Δ₁ ⊆ Δ₂ -> τ ∈ Δ₂
-extend-∈ () base
-extend-∈ p (drop x) = There (extend-∈ p x)
-extend-∈ Here (cons x) = Here
-extend-∈ (There p) (cons x) = There (extend-∈ p x)
-
--- A list is a prefix of another
-data _⊆'_ {A : Set} : List A -> List A -> Set where
-  base : ∀ {xs : List A} -> [] ⊆' xs
-  cons : ∀ {xs ys x} -> xs ⊆' ys -> (x ∷ xs) ⊆' (x ∷ ys)
 
 -- Transform τ ∈ᵗ Δ in Fin
 fin : ∀ {τ Δ} -> τ ∈ Δ -> Fin (length Δ)

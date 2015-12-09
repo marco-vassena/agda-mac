@@ -33,7 +33,7 @@ data Term (Δ : Context) : Ty -> Set where
 
   join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
 
-  Ref : ∀ {{l}} {α Δᵐ} -> α ∈ Δᵐ -> Term Δ (Ref l α)
+  Ref : ∀ {{α}} {{l}} -> ℕ -> Term Δ (Ref l α)
 
   read : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref l α) -> Term Δ (Mac h α)
 
@@ -88,6 +88,22 @@ There p !! (x ∷ Γ) = p !! Γ
 
 infixr 6 _!!_
 
+data TypedIx (τ : Ty) : ℕ -> Context -> Set where
+  Here : ∀ {Δ} -> TypedIx τ zero (τ ∷ Δ)
+  There : ∀ {Δ n τ'} -> TypedIx τ n Δ -> TypedIx τ (suc n) (τ' ∷ Δ)
+
+castIx : ∀ {Δ₁ Δ₂ τ n} -> TypedIx τ n Δ₁ -> Δ₁ ⊆ Δ₂ -> TypedIx τ n Δ₂
+castIx Here (cons q) = Here
+castIx (There p) (cons q) = There (castIx p q) 
+
+newTypeIx : ∀ {τ} -> (Δ : Context) -> TypedIx τ (length Δ) (Δ L.∷ʳ τ)
+newTypeIx [] = Here
+newTypeIx (x ∷ Δ) = There (newTypeIx Δ)
+
+# : ∀ {τ n Δ} -> TypedIx τ n Δ -> τ ∈ Δ
+# Here = Here
+# (There p) = There (# p)
+
 -- Update
 _[_]≔_ : ∀ {τ Δ} -> Env Δ -> τ ∈ Δ -> CTerm τ -> Env Δ
 _ ∷ Γ [ Here ]≔ v = v ∷ Γ
@@ -115,7 +131,7 @@ data IsTValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Macₓ {α = α} e)
   Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsTValue (Res t)
   Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Resₓ {α = α} e)
-  Ref : ∀ {l α Δᵐ} -> (r : α ∈ Δᵐ) -> IsTValue (Ref r)
+  Ref : ∀ {l} {α : Ty} -> (n : ℕ) -> IsTValue (Ref {{α}} n)
 
 data IsValue {τ : Ty} : CTerm τ -> Set where
   _,_ : ∀ {Δ} {t : Term Δ τ} -> (Γ : Env Δ) -> IsTValue t -> IsValue (Γ , t)

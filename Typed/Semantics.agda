@@ -1,6 +1,7 @@
 module Typed.Semantics where
 
 open import Typed.Base public
+import Data.List as L
 
 -- Id as a CTerm
 id : ∀ {α} {Δ} {{Γ : Env Δ}} -> CTerm (α => α)
@@ -176,7 +177,7 @@ data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set
               ⟨ m₁ ∥ join {α = α} p (Γ , Macₓ e) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ = Γ}} $ (Γ , Return (Resₓ e))) ⟩
 
   new : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
-          ⟨ m₁ ∥ (Γ , new p t) ⟩ ⟼ ⟨ m₁ ∷ʳ (Γ , t) ∥ id {{Γ = Γ}} $ (Γ , Return (Ref (snoc=∈ α Δ₁))) ⟩
+          ⟨ m₁ ∥ (Γ , new p t) ⟩ ⟼ ⟨ m₁ ∷ʳ (Γ , t) ∥ id {{Γ = Γ}} $ (Γ , Return (Ref (length Δ₁))) ⟩
 
   Dist-write : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {r : Term Δ (Ref h α)} {t : Term Δ α} -> (p : l ⊑ h) ->
           ⟨ m₁ ∥ Γ , write p r t ⟩ ⟼ ⟨ m₁ ∥ write p (Γ , r) (Γ , t) ⟩
@@ -191,17 +192,17 @@ data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set
   -- TODO to make the semantics deterministic we need to put references in the variables
   -- otherwise the reference used in each step is existentially quantified and hence
   -- different in general.
-  write : ∀ {l h α Δ₁ Δ} {m₁ : Memory Δ₁} {Γ : Env Δ} {c : CTerm α} ->
-            (p : l ⊑ h) (r : α ∈ Δ₁) ->
-          ⟨ m₁ ∥ write p (Γ , (Ref r)) c ⟩ ⟼ ⟨ m₁ [ r ]≔ c ∥ id {{Γ = Γ}} $ (Γ , Return （）) ⟩
+  write : ∀ {l h n α Δ₁ Δ} {m₁ : Memory Δ₁} {Γ : Env Δ} {c : CTerm α} ->
+            (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
+          ⟨ m₁ ∥ write p (Γ , (Ref n)) c ⟩ ⟼ ⟨ m₁ [ # i ]≔ c ∥ id {{Γ = Γ}} $ (Γ , Return （）) ⟩
 
   readCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
             ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
             ⟨ m₁ ∥ (read p c₁) ⟩ ⟼ ⟨ m₂ ∥ (read p c₂) ⟩
 
   -- ⟨ m₁ ∥ read p r ⟩ ⟼ ⟨ m₁ ∥ return (r !! m₁) ⟩
-  read : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} -> (p : l ⊑ h) -> (r : α ∈ Δ₁) ->
-            ⟨ m₁ ∥ (read p (Γ , (Ref r))) ⟩ ⟼ ⟨ m₁ ∥ (Γ , Abs (Return (Var Here))) $ (r !! m₁) ⟩
+  read : ∀ {l h n α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} -> (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
+            ⟨ m₁ ∥ (read p (Γ , (Ref n))) ⟩ ⟼ ⟨ m₁ ∥ (Γ , Abs (Return (Var Here))) $ (# i !! m₁) ⟩
 
 -- TODO maybe define Redex for Program instead of single term  
 

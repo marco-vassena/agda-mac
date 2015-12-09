@@ -3,6 +3,7 @@ module Typed.Valid where
 open import Data.Product
 open import Typed.Base
 open import Typed.Semantics
+import Data.List as L
 
 -- Now that we have memory we have to ensure that memory references are all valid.
 -- The following data type is such a proof.
@@ -29,7 +30,7 @@ data ValidT {Δ} (Δᵐ : Context) : ∀ {τ} -> Term Δ τ -> Set where
   Resₓ : ∀ {α} {l : Label}{e : Term Δ Exception} ->
            ValidT Δᵐ e -> ValidT Δᵐ (Resₓ {α = α} e)
 
-  Ref : ∀ {α Δ₁} {l : Label} -> (r : α ∈ Δ₁) -> Δ₁ ⊆ Δᵐ -> ValidT Δᵐ (Ref r)
+  Ref : ∀ {α n} {l : Label} -> TypedIx α n Δᵐ -> ValidT Δᵐ (Ref {{α}} n)
 
   If_Then_Else_ : ∀ {α} {c : Term Δ Bool} {t e : Term Δ α} ->
                   ValidT Δᵐ c -> ValidT Δᵐ t -> ValidT Δᵐ e -> ValidT Δᵐ (If c Then t Else e)
@@ -143,7 +144,7 @@ extendValidT (Mac v) p = Mac (extendValidT v p)
 extendValidT (Macₓ v) p = Macₓ (extendValidT v p)
 extendValidT (Res v) p = Res (extendValidT v p)
 extendValidT (Resₓ v) p = Resₓ (extendValidT v p)
-extendValidT (Ref r x) p = Ref r (trans-⊆ x p)
+extendValidT (Ref r) p = Ref (castIx r p)
 extendValidT (If v Then v₁ Else v₂) p
   = If extendValidT v p Then extendValidT v₁ p Else extendValidT v₂ p
 extendValidT (Return v) p = Return (extendValidT v p)
@@ -196,94 +197,87 @@ validMemoryUpdate [] () v
 validMemoryUpdate (x ∷ vᵐ) Here v = v ∷ vᵐ
 validMemoryUpdate (x ∷ vᵐ) (There p) v = x ∷ validMemoryUpdate vᵐ p v
 
--- TODO separate the proof in two stepValidCTerm from stepValidMemory
--- TODO adapt proof for new semantics
+validMemoryNew : ∀ {Δ Δᵐ τ} {m : Memory Δᵐ} {c : CTerm τ} ->
+                   ValidEnv Δ m -> Valid Δ c -> ValidEnv Δ (m ∷ʳ c)
+validMemoryNew [] v = v ∷ []
+validMemoryNew (x ∷ Γ₁) v = x ∷ validMemoryNew Γ₁ v
 
--- A term with a memory context
-data TermMC (Δᵐ : Context) {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
-  Ref : ∀ {τ} {l : Label} -> (x : τ ∈ Δᵐ) -> TermMC Δᵐ (Ref x)
+stepValidCTerm : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
+                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> Valid Δ₂ c₂
+stepValidCTerm (Pure (AppL x₁)) (v $ v₁) m = stepValidCTerm (Pure x₁) v m $ v₁
+stepValidCTerm (Pure Beta) ((x₁ , Abs x₂) $ v₁) m = idValid $ ((v₁ ∷ x₁) , x₂)
+stepValidCTerm (Pure Lookup) (x , Var p) m = idValid $ (lookupValid p x)
+stepValidCTerm (Pure Dist-$) (x₁ , App x₂ x₃) m = (x₁ , x₂) $ (x₁ , x₃)
+stepValidCTerm (Pure Dist-If) (x , (If x₁ Then x₂ Else x₃)) m = If (x , x₁) Then (x , x₂) Else (x , x₃)
+stepValidCTerm (Pure (IfCond x)) (If v Then v₁ Else v₂) m = If stepValidCTerm (Pure x) v m Then v₁ Else v₂
+stepValidCTerm (Pure IfTrue) (If x , True Then v₁ Else v₂) m = idValid $ v₁
+stepValidCTerm (Pure IfFalse) (If x , False Then v₁ Else v₂) m = idValid $ v₂
+stepValidCTerm (Pure Dist-∙) (x , ∙) m = ∙
+stepValidCTerm (Pure Hole) ∙ m = ∙
+stepValidCTerm Return (x , Return x₁) m = idValid $ (x , (Mac x₁))
+stepValidCTerm Dist->>= (x , (x₁ >>= x₂)) m = (x , x₁) >>= (x , x₂)
+stepValidCTerm (BindCtx s) (v >>= v₁) m = (stepValidCTerm s v m) >>= (extendValid v₁ (context⊆ s))
+stepValidCTerm Bind ((x , Mac x₁) >>= v₁) m = v₁ $ (x , x₁)
+stepValidCTerm BindEx ((x , Macₓ x₁) >>= v₁) m = idValid $ (x , (Throw x₁))
+stepValidCTerm Throw (x , Throw x₁) m = idValid $ (x , (Macₓ x₁))
+stepValidCTerm Dist-Catch (x , Catch x₁ x₂) m = Catch (x , x₁) (x , x₂)
+stepValidCTerm (CatchCtx s) (Catch v v₁) m = Catch (stepValidCTerm s v m) (extendValid v₁ (context⊆ s))
+stepValidCTerm Catch (Catch (x , Mac x₁) v₁) m = idValid $ (x , (Return x₁))
+stepValidCTerm CatchEx (Catch (x , Macₓ x₁) v₁) m = v₁ $ (x , x₁)
+stepValidCTerm (label p) (x , label .p x₁) m = idValid $ (x , (Return (Res x₁)))
+stepValidCTerm (Dist-unlabel p) (x , unlabel .p x₁) m = unlabel p (x , x₁)
+stepValidCTerm (unlabel p) (unlabel .p (x , Res x₁)) m = idValid $ (x , (Return x₁))
+stepValidCTerm (unlabelEx p) (unlabel .p (x , Resₓ x₁)) m = idValid $ (x , (Throw x₁))
+stepValidCTerm (unlabelCtx p s) (unlabel .p v) m = unlabel p (stepValidCTerm s v m)
+stepValidCTerm (Dist-join p) (x , join .p x₁) m = join p (x , x₁)
+stepValidCTerm (joinCtx p s) (join .p v) m = join p (stepValidCTerm s v m)
+stepValidCTerm (join p) (join .p (x , Mac x₁)) m = idValid $ (x , (Return (Res x₁)))
+stepValidCTerm (joinEx p) (join .p (x , Macₓ x₁)) m = idValid $ (x , (Return (Resₓ x₁)))
+stepValidCTerm {Mac l (Ref h τ)} {Δ₁} (new p) (x , new .p x₁) m 
+  = idValid {{x'}} $ (x' , (Return (Ref (newTypeIx Δ₁))))
+  where x' = extendValidEnv x (snoc-⊆ {_} {τ} Δ₁)
+stepValidCTerm (Dist-write p) (x , write .p x₁ x₂) m = write p (x , x₁) (x , x₂)
+stepValidCTerm (Dist-read p) (x , read .p x₁) m = read p (x , x₁)
+stepValidCTerm (writeCtx p s) (write .p v v₁) m 
+  = write p (stepValidCTerm s v m) (extendValid v₁ (context⊆ s))
+stepValidCTerm (write p i) (write .p (x , Ref x₁) v₁) m = idValid $ (x , (Return （）))
+stepValidCTerm (readCtx p s) (read .p v) m = read p (stepValidCTerm s v m)
+stepValidCTerm (read p i) (read .p (x , Ref x₁)) m = (x , (Abs (Return (Var Here)))) $ (lookupValid (# i) m)
 
-extendTerm : ∀ {Δ τ} -> Term Δ τ -> Term Δ τ
-extendTerm （） = {!!}
-extendTerm True = {!!}
-extendTerm False = {!!}
-extendTerm (Var x) = {!!}
-extendTerm (Abs t) = {!!}
-extendTerm (App t t₁) = {!!}
-extendTerm (If t Then t₁ Else t₂) = {!!}
-extendTerm (Return t) = {!!}
-extendTerm (t >>= t₁) = {!!}
-extendTerm ξ = {!!}
-extendTerm (Throw t) = {!!}
-extendTerm (Catch t t₁) = {!!}
-extendTerm (Mac t) = {!!}
-extendTerm (Macₓ t) = {!!}
-extendTerm (Res t) = {!!}
-extendTerm (Resₓ t) = {!!}
-extendTerm (label x t) = {!!}
-extendTerm (unlabel x t) = {!!}
-extendTerm (join x t) = {!!}
-extendTerm (Ref x) = {!!}
-extendTerm (read x t) = {!!}
-extendTerm (write x t t₁) = {!!}
-extendTerm (new x t) = {!!}
-extendTerm ∙ = {!!}
-
--- extendCTerm : ∀{τ} -> CTerm τ -> CTerm τ
-
--- stepValid : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
---               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> Valid Δ₂ c₂
+stepValidMemory : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
+                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> ValidMemory m₂
+stepValidMemory (Pure x) v m = m
+stepValidMemory Return v m = m
+stepValidMemory Dist->>= v m = m
+stepValidMemory (BindCtx s) (v >>= v₁) m = stepValidMemory s v m
+stepValidMemory Bind v m = m
+stepValidMemory BindEx v m = m
+stepValidMemory Throw v m = m
+stepValidMemory Dist-Catch v m = m
+stepValidMemory (CatchCtx s) (Catch v v₁) m = stepValidMemory s v m
+stepValidMemory Catch v m = m
+stepValidMemory CatchEx v m = m
+stepValidMemory (label p) v m = m
+stepValidMemory (Dist-unlabel p) v m = m
+stepValidMemory (unlabel p) v m = m
+stepValidMemory (unlabelEx p) v m = m
+stepValidMemory (unlabelCtx p s) (unlabel .p v) m = stepValidMemory s v m
+stepValidMemory (Dist-join p) v m = m
+stepValidMemory (joinCtx p s) (join .p v) m = stepValidMemory s v m
+stepValidMemory (join p) v m = m
+stepValidMemory (joinEx p) v m = m
+stepValidMemory (new p) (x , new .p x₁) m = extendValidEnv (validMemoryNew m (x , x₁)) (snoc-⊆ _)
+stepValidMemory (Dist-write p) v m = m
+stepValidMemory (Dist-read p) v m = m
+stepValidMemory (writeCtx p s) (write .p v v₁) m = stepValidMemory s v m
+stepValidMemory (write p i) (write .p (x , Ref x₁) v₁) m = validMemoryUpdate m (# i) v₁
+stepValidMemory (readCtx p s) (read .p v) m = stepValidMemory s v m
+stepValidMemory (read p i) v m = m
 
 -- Our small step semantics preserves validity of terms and closed terms.
 -- If a closed term has valid references in the initial memory context and
 -- can be reduced further then the reduced term is also valid in the final memory context.
--- stepValid : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
---               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> ValidMemory m₂ × Valid Δ₂ c₂
--- stepValid (Pure (AppL s)) (v₁ $ v₂) vᵐ with stepValid (Pure s) v₁ vᵐ
--- stepValid (Pure (AppL s)) (v₁ $ v₂) vᵐ | _ , v₁' = vᵐ , (v₁' $ v₂)
--- stepValid (Pure Beta) (Γ , Abs x $ v) vᵐ = vᵐ , (idValid $ ((v ∷ Γ) , x))
--- stepValid (Pure Lookup) (Γ , (Var p)) vᵐ = vᵐ , (idValid $ lookupValid p Γ)
--- stepValid (Pure Dist-$) (Γ , App f x) vᵐ = vᵐ , (Γ , f $ Γ , x)
--- stepValid (Pure Dist-If) (Γ , If c Then t Else e) vᵐ = vᵐ , If (Γ , c) Then (Γ , t) Else (Γ , e)
--- stepValid (Pure (IfCond x)) (If v Then v₁ Else v₂) vᵐ with stepValid (Pure x) v vᵐ
--- stepValid (Pure (IfCond x)) (If v Then v₁ Else v₂) vᵐ | _ , v' = vᵐ , (If v' Then v₁ Else v₂) 
--- stepValid (Pure IfTrue) (If Γ , True Then v₁ Else v₂) vᵐ = vᵐ , (Γ , Abs (Var Here) $ v₁)
--- stepValid (Pure IfFalse) (If Γ , False Then v₁ Else v₂) vᵐ = vᵐ , (Γ , Abs (Var Here) $ v₂)
--- stepValid (Pure Dist-∙) (Γ , ∙) vᵐ = vᵐ , ∙
--- stepValid (Pure Hole) ∙ vᵐ = vᵐ , ∙
--- stepValid Return (Γ , Return v) vᵐ = vᵐ , ((Γ , Abs (Var Here)) $ (Γ , (Mac v)))
--- stepValid Dist->>= (Γ , (v₁ >>= v₂)) vᵐ = vᵐ , ((Γ , v₁) >>= (Γ , v₂))
--- stepValid (BindCtx s) (v >>= v₁) vᵐ with stepValid s v vᵐ
--- stepValid (BindCtx s) (v >>= v₁) vᵐ | vᵐ' , v' = vᵐ' , (v' >>= (extendValid v₁ (context⊆ s)))  
--- stepValid Bind ((Γ , Mac v) >>= v₁) vᵐ = vᵐ , (v₁ $ Γ , v)
--- stepValid BindEx ((Γ , Macₓ v) >>= v₁) vᵐ = vᵐ , (idValid $ (Γ , (Throw v)))
--- stepValid Throw (Γ , Throw v) vᵐ = vᵐ , (idValid $ (Γ , (Macₓ v)))
--- stepValid Dist-Catch (Γ , Catch v₁ v₂) vᵐ = vᵐ , Catch (Γ , v₁) (Γ , v₂)
--- stepValid (CatchCtx s) (Catch v v₁) vᵐ with stepValid s v vᵐ
--- stepValid (CatchCtx s) (Catch v v₁) vᵐ | vᵐ' , v' = vᵐ' , (Catch v' (extendValid v₁ (context⊆ s))) 
--- stepValid Catch (Catch (Γ , Mac v₁) v₂) vᵐ = vᵐ , (idValid $ (Γ , (Return v₁)))
--- stepValid CatchEx (Catch (Γ , Macₓ v₁) v₂) vᵐ = vᵐ , (v₂ $ Γ , v₁)
--- stepValid (label p) (Γ , label .p v) vᵐ = vᵐ , (idValid $ (Γ , (Return (Res v)))) 
--- stepValid (Dist-unlabel p) (Γ , unlabel .p v) vᵐ = vᵐ , unlabel p (Γ , v)
--- stepValid (unlabel p) (unlabel .p (Γ , Res v)) vᵐ = vᵐ , (idValid $ (Γ , (Return v)))
--- stepValid (unlabelEx p) (unlabel .p (Γ , Resₓ v)) vᵐ = vᵐ , (idValid $ (Γ , (Throw v))) 
--- stepValid (unlabelCtx p s) (unlabel .p v) vᵐ with stepValid s v vᵐ
--- ... | vᵐ' , v'  = vᵐ' , unlabel p v'
--- stepValid (Dist-join p) (Γ , join .p v) vᵐ = vᵐ , join p (Γ , v)
--- stepValid (joinCtx p s) (join .p v) vᵐ with stepValid s v vᵐ
--- ... | vᵐ' , v' = vᵐ' , (join p v')
--- stepValid (join p) (join .p (Γ , Mac v)) vᵐ = vᵐ , (idValid $ (Γ , (Return (Res v)))) 
--- stepValid (joinEx p) (join .p (Γ , Macₓ v)) vᵐ = vᵐ , (idValid $ Γ , (Return (Resₓ v))) 
--- stepValid {Δ₁ = Δ₁} (new p) (Γ , new .p v) vᵐ = (vᵐ' , (idValid' $ Γ' , ( Return (Ref Here))))
---   where q = drop (refl-⊆ Δ₁)
---         Γ' = extendValidEnv Γ q
---         idValid' = Γ' , Abs (Var Here)
---         vᵐ' = extendValidEnv ((Γ , v) ∷ vᵐ) q
--- stepValid (Dist-write p) (Γ , write .p v₁ v₂) vᵐ = vᵐ , write p (Γ , v₁) (Γ , v₂)
--- stepValid (Dist-read p) (Γ , read .p v₁) vᵐ = vᵐ , read p (Γ , v₁)
--- stepValid (writeCtx p s) (write .p v v₁) vᵐ with stepValid s v vᵐ
--- ... | vᵐ' , v' = vᵐ' , (write p v' (extendValid v₁ (context⊆ s))) 
--- stepValid (write p r) (write .p (Γ , Ref r') v₁) vᵐ = validMemoryUpdate vᵐ r v₁ , (idValid $ (Γ , (Return （）))) 
--- stepValid (readCtx p s) (read .p v) vᵐ with stepValid s v vᵐ
--- stepValid (readCtx p s) (read .p v) vᵐ | vᵐ' , v' = vᵐ' , (read p v')
--- stepValid (read p r) (read .p (Γ , Ref r')) vᵐ = vᵐ , (Γ , (Abs (Return (Var Here))) $ lookupValid r vᵐ)
+-- The final memory is also valid.
+stepValid : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
+              ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> ValidMemory m₂ × Valid Δ₂ c₂
+stepValid s v m = (stepValidMemory s v m) , (stepValidCTerm s v m)
