@@ -39,8 +39,8 @@ data ValidT {Δ} (Δᵐ : Context) : ∀ {τ} -> Term Δ τ -> Set where
   _>>=_ : ∀ {{l}} {α β} {t₁ : Term Δ (Mac l α)} {t₂ : Term Δ (α => Mac l β)} ->
             ValidT Δᵐ t₁ -> ValidT Δᵐ t₂ -> ValidT Δᵐ (t₁ >>= t₂)
 
-  Throw : ∀ {{l α}} {t : Term Δ Exception} ->
-            ValidT Δᵐ t -> ValidT Δᵐ (Throw {{l = l}} t)
+  Throw : ∀ {{l : Label}} {{α : Ty}} {t : Term Δ Exception} ->
+            ValidT Δᵐ t -> ValidT Δᵐ (Throw {{l = l}} {{α}} t)
 
   Catch : ∀ {{l}} {α}  -> {t : Term Δ (Mac l α)} {h : Term Δ (Exception => Mac l α)} ->
             ValidT Δᵐ t -> ValidT Δᵐ h -> ValidT Δᵐ (Catch t h)
@@ -194,56 +194,59 @@ validMemoryUpdate [] () v
 validMemoryUpdate (x ∷ vᵐ) Here v = v ∷ vᵐ
 validMemoryUpdate (x ∷ vᵐ) (There p) v = x ∷ validMemoryUpdate vᵐ p v
 
+-- TODO separate the proof in two stepValidCTerm from stepValidMemory
+-- TODO adapt proof for new semantics
+
 -- Our small step semantics preserves validity of terms and closed terms.
 -- If a closed term has valid references in the initial memory context and
 -- can be reduced further then the reduced term is also valid in the final memory context.
-stepValid : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
-              ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> ValidMemory m₂ × Valid Δ₂ c₂
-stepValid (Pure (AppL s)) (v₁ $ v₂) vᵐ with stepValid (Pure s) v₁ vᵐ
-stepValid (Pure (AppL s)) (v₁ $ v₂) vᵐ | _ , v₁' = vᵐ , (v₁' $ v₂)
-stepValid (Pure Beta) (Γ , Abs x $ v) vᵐ = vᵐ , (idValid $ ((v ∷ Γ) , x))
-stepValid (Pure Lookup) (Γ , (Var p)) vᵐ = vᵐ , (idValid $ lookupValid p Γ)
-stepValid (Pure Dist-$) (Γ , App f x) vᵐ = vᵐ , (Γ , f $ Γ , x)
-stepValid (Pure Dist-If) (Γ , If c Then t Else e) vᵐ = vᵐ , If (Γ , c) Then (Γ , t) Else (Γ , e)
-stepValid (Pure (IfCond x)) (If v Then v₁ Else v₂) vᵐ with stepValid (Pure x) v vᵐ
-stepValid (Pure (IfCond x)) (If v Then v₁ Else v₂) vᵐ | _ , v' = vᵐ , (If v' Then v₁ Else v₂) 
-stepValid (Pure IfTrue) (If Γ , True Then v₁ Else v₂) vᵐ = vᵐ , (Γ , Abs (Var Here) $ v₁)
-stepValid (Pure IfFalse) (If Γ , False Then v₁ Else v₂) vᵐ = vᵐ , (Γ , Abs (Var Here) $ v₂)
-stepValid (Pure Dist-∙) (Γ , ∙) vᵐ = vᵐ , ∙
-stepValid (Pure Hole) ∙ vᵐ = vᵐ , ∙
-stepValid Return (Γ , Return v) vᵐ = vᵐ , ((Γ , Abs (Var Here)) $ (Γ , (Mac v)))
-stepValid Dist->>= (Γ , (v₁ >>= v₂)) vᵐ = vᵐ , ((Γ , v₁) >>= (Γ , v₂))
-stepValid (BindCtx s) (v >>= v₁) vᵐ with stepValid s v vᵐ
-stepValid (BindCtx s) (v >>= v₁) vᵐ | vᵐ' , v' = vᵐ' , (v' >>= (extendValid v₁ (context⊆ s)))  
-stepValid Bind ((Γ , Mac v) >>= v₁) vᵐ = vᵐ , (v₁ $ Γ , v)
-stepValid BindEx ((Γ , Macₓ v) >>= v₁) vᵐ = vᵐ , (idValid $ (Γ , (Throw v)))
-stepValid Throw (Γ , Throw v) vᵐ = vᵐ , (idValid $ (Γ , (Macₓ v)))
-stepValid Dist-Catch (Γ , Catch v₁ v₂) vᵐ = vᵐ , Catch (Γ , v₁) (Γ , v₂)
-stepValid (CatchCtx s) (Catch v v₁) vᵐ with stepValid s v vᵐ
-stepValid (CatchCtx s) (Catch v v₁) vᵐ | vᵐ' , v' = vᵐ' , (Catch v' (extendValid v₁ (context⊆ s))) 
-stepValid Catch (Catch (Γ , Mac v₁) v₂) vᵐ = vᵐ , (idValid $ (Γ , (Return v₁)))
-stepValid CatchEx (Catch (Γ , Macₓ v₁) v₂) vᵐ = vᵐ , (v₂ $ Γ , v₁)
-stepValid (label p) (Γ , label .p v) vᵐ = vᵐ , (idValid $ (Γ , (Return (Res v)))) 
-stepValid (Dist-unlabel p) (Γ , unlabel .p v) vᵐ = vᵐ , unlabel p (Γ , v)
-stepValid (unlabel p) (unlabel .p (Γ , Res v)) vᵐ = vᵐ , (idValid $ (Γ , (Return v)))
-stepValid (unlabelEx p) (unlabel .p (Γ , Resₓ v)) vᵐ = vᵐ , (idValid $ (Γ , (Throw v))) 
-stepValid (unlabelCtx p s) (unlabel .p v) vᵐ with stepValid s v vᵐ
-... | vᵐ' , v'  = vᵐ' , unlabel p v'
-stepValid (Dist-join p) (Γ , join .p v) vᵐ = vᵐ , join p (Γ , v)
-stepValid (joinCtx p s) (join .p v) vᵐ with stepValid s v vᵐ
-... | vᵐ' , v' = vᵐ' , (join p v')
-stepValid (join p) (join .p (Γ , Mac v)) vᵐ = vᵐ , (idValid $ (Γ , (Return (Res v)))) 
-stepValid (joinEx p) (join .p (Γ , Macₓ v)) vᵐ = vᵐ , (idValid $ Γ , (Return (Resₓ v))) 
-stepValid {Δ₁ = Δ₁} (new p) (Γ , new .p v) vᵐ = (vᵐ' , (idValid' $ Γ' , ( Return (Ref Here))))
-  where q = drop (refl-⊆ Δ₁)
-        Γ' = extendValidEnv Γ q
-        idValid' = Γ' , Abs (Var Here)
-        vᵐ' = extendValidEnv ((Γ , v) ∷ vᵐ) q
-stepValid (Dist-write p) (Γ , write .p v₁ v₂) vᵐ = vᵐ , write p (Γ , v₁) (Γ , v₂)
-stepValid (Dist-read p) (Γ , read .p v₁) vᵐ = vᵐ , read p (Γ , v₁)
-stepValid (writeCtx p s) (write .p v v₁) vᵐ with stepValid s v vᵐ
-... | vᵐ' , v' = vᵐ' , (write p v' (extendValid v₁ (context⊆ s))) 
-stepValid (write p r) (write .p (Γ , Ref r') v₁) vᵐ = validMemoryUpdate vᵐ r v₁ , (idValid $ (Γ , (Return （）))) 
-stepValid (readCtx p s) (read .p v) vᵐ with stepValid s v vᵐ
-stepValid (readCtx p s) (read .p v) vᵐ | vᵐ' , v' = vᵐ' , (read p v')
-stepValid (read p r) (read .p (Γ , Ref r')) vᵐ = vᵐ , (Γ , (Abs (Return (Var Here))) $ lookupValid r vᵐ)
+-- stepValid : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
+--               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> ValidMemory m₂ × Valid Δ₂ c₂
+-- stepValid (Pure (AppL s)) (v₁ $ v₂) vᵐ with stepValid (Pure s) v₁ vᵐ
+-- stepValid (Pure (AppL s)) (v₁ $ v₂) vᵐ | _ , v₁' = vᵐ , (v₁' $ v₂)
+-- stepValid (Pure Beta) (Γ , Abs x $ v) vᵐ = vᵐ , (idValid $ ((v ∷ Γ) , x))
+-- stepValid (Pure Lookup) (Γ , (Var p)) vᵐ = vᵐ , (idValid $ lookupValid p Γ)
+-- stepValid (Pure Dist-$) (Γ , App f x) vᵐ = vᵐ , (Γ , f $ Γ , x)
+-- stepValid (Pure Dist-If) (Γ , If c Then t Else e) vᵐ = vᵐ , If (Γ , c) Then (Γ , t) Else (Γ , e)
+-- stepValid (Pure (IfCond x)) (If v Then v₁ Else v₂) vᵐ with stepValid (Pure x) v vᵐ
+-- stepValid (Pure (IfCond x)) (If v Then v₁ Else v₂) vᵐ | _ , v' = vᵐ , (If v' Then v₁ Else v₂) 
+-- stepValid (Pure IfTrue) (If Γ , True Then v₁ Else v₂) vᵐ = vᵐ , (Γ , Abs (Var Here) $ v₁)
+-- stepValid (Pure IfFalse) (If Γ , False Then v₁ Else v₂) vᵐ = vᵐ , (Γ , Abs (Var Here) $ v₂)
+-- stepValid (Pure Dist-∙) (Γ , ∙) vᵐ = vᵐ , ∙
+-- stepValid (Pure Hole) ∙ vᵐ = vᵐ , ∙
+-- stepValid Return (Γ , Return v) vᵐ = vᵐ , ((Γ , Abs (Var Here)) $ (Γ , (Mac v)))
+-- stepValid Dist->>= (Γ , (v₁ >>= v₂)) vᵐ = vᵐ , ((Γ , v₁) >>= (Γ , v₂))
+-- stepValid (BindCtx s) (v >>= v₁) vᵐ with stepValid s v vᵐ
+-- stepValid (BindCtx s) (v >>= v₁) vᵐ | vᵐ' , v' = vᵐ' , (v' >>= (extendValid v₁ (context⊆ s)))  
+-- stepValid Bind ((Γ , Mac v) >>= v₁) vᵐ = vᵐ , (v₁ $ Γ , v)
+-- stepValid BindEx ((Γ , Macₓ v) >>= v₁) vᵐ = vᵐ , (idValid $ (Γ , (Throw v)))
+-- stepValid Throw (Γ , Throw v) vᵐ = vᵐ , (idValid $ (Γ , (Macₓ v)))
+-- stepValid Dist-Catch (Γ , Catch v₁ v₂) vᵐ = vᵐ , Catch (Γ , v₁) (Γ , v₂)
+-- stepValid (CatchCtx s) (Catch v v₁) vᵐ with stepValid s v vᵐ
+-- stepValid (CatchCtx s) (Catch v v₁) vᵐ | vᵐ' , v' = vᵐ' , (Catch v' (extendValid v₁ (context⊆ s))) 
+-- stepValid Catch (Catch (Γ , Mac v₁) v₂) vᵐ = vᵐ , (idValid $ (Γ , (Return v₁)))
+-- stepValid CatchEx (Catch (Γ , Macₓ v₁) v₂) vᵐ = vᵐ , (v₂ $ Γ , v₁)
+-- stepValid (label p) (Γ , label .p v) vᵐ = vᵐ , (idValid $ (Γ , (Return (Res v)))) 
+-- stepValid (Dist-unlabel p) (Γ , unlabel .p v) vᵐ = vᵐ , unlabel p (Γ , v)
+-- stepValid (unlabel p) (unlabel .p (Γ , Res v)) vᵐ = vᵐ , (idValid $ (Γ , (Return v)))
+-- stepValid (unlabelEx p) (unlabel .p (Γ , Resₓ v)) vᵐ = vᵐ , (idValid $ (Γ , (Throw v))) 
+-- stepValid (unlabelCtx p s) (unlabel .p v) vᵐ with stepValid s v vᵐ
+-- ... | vᵐ' , v'  = vᵐ' , unlabel p v'
+-- stepValid (Dist-join p) (Γ , join .p v) vᵐ = vᵐ , join p (Γ , v)
+-- stepValid (joinCtx p s) (join .p v) vᵐ with stepValid s v vᵐ
+-- ... | vᵐ' , v' = vᵐ' , (join p v')
+-- stepValid (join p) (join .p (Γ , Mac v)) vᵐ = vᵐ , (idValid $ (Γ , (Return (Res v)))) 
+-- stepValid (joinEx p) (join .p (Γ , Macₓ v)) vᵐ = vᵐ , (idValid $ Γ , (Return (Resₓ v))) 
+-- stepValid {Δ₁ = Δ₁} (new p) (Γ , new .p v) vᵐ = (vᵐ' , (idValid' $ Γ' , ( Return (Ref Here))))
+--   where q = drop (refl-⊆ Δ₁)
+--         Γ' = extendValidEnv Γ q
+--         idValid' = Γ' , Abs (Var Here)
+--         vᵐ' = extendValidEnv ((Γ , v) ∷ vᵐ) q
+-- stepValid (Dist-write p) (Γ , write .p v₁ v₂) vᵐ = vᵐ , write p (Γ , v₁) (Γ , v₂)
+-- stepValid (Dist-read p) (Γ , read .p v₁) vᵐ = vᵐ , read p (Γ , v₁)
+-- stepValid (writeCtx p s) (write .p v v₁) vᵐ with stepValid s v vᵐ
+-- ... | vᵐ' , v' = vᵐ' , (write p v' (extendValid v₁ (context⊆ s))) 
+-- stepValid (write p r) (write .p (Γ , Ref r') v₁) vᵐ = validMemoryUpdate vᵐ r v₁ , (idValid $ (Γ , (Return （）))) 
+-- stepValid (readCtx p s) (read .p v) vᵐ with stepValid s v vᵐ
+-- stepValid (readCtx p s) (read .p v) vᵐ | vᵐ' , v' = vᵐ' , (read p v')
+-- stepValid (read p r) (read .p (Γ , Ref r')) vᵐ = vᵐ , (Γ , (Abs (Return (Var Here))) $ lookupValid r vᵐ)

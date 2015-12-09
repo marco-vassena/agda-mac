@@ -175,6 +175,9 @@ data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set
   joinEx : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {e : Term Δ Exception} (p : l ⊑ h) ->
               ⟨ m₁ ∥ join {α = α} p (Γ , Macₓ e) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ = Γ}} $ (Γ , Return (Resₓ e))) ⟩
 
+  -- In order to prove stepValid we need to append new references in memory rather than
+  -- consing them, otherwise all the old references would need to be shifted whenever
+  -- a new reference is created.
   new : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
           ⟨ m₁ ∥ (Γ , new p t) ⟩ ⟼ ⟨ (Γ , t) ∷ m₁ ∥ id {{Γ = Γ}} $ (Γ , Return (Ref α)) ⟩
 
@@ -188,6 +191,9 @@ data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set
                 (p : l ⊑ h) -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
                 ⟨ m₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ m₂ ∥ write p c₂ c₃  ⟩
 
+  -- TODO to make the semantics deterministic we need to put references in the variables
+  -- otherwise the reference used in each step is existentially quantified and hence
+  -- different in general.
   write : ∀ {l h α Δ₁ Δ} {m₁ : Memory Δ₁} {Γ : Env Δ} {c : CTerm α} ->
             (p : l ⊑ h) (r : α ∈ Δ₁) ->
           ⟨ m₁ ∥ write p (Γ , (Ref α)) c ⟩ ⟼ ⟨ m₁ [ r ]≔ c ∥ id {{Γ = Γ}} $ (Γ , Return （）) ⟩

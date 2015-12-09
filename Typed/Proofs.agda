@@ -108,6 +108,7 @@ determinismMixed IfFalse (Pure s) = refl , determinism⇝ IfFalse s
 determinismMixed Dist-∙ (Pure s) = refl , determinism⇝ Dist-∙ s
 determinismMixed Hole (Pure s) = refl , determinism⇝ Hole s
 
+-- TODO split in two separate proofs determinismCTerm determinismMemory and combine them
 determinism : ∀ {τ Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
                  Valid Δ₁ c₁ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₃ ∥ c₃ ⟩ -> m₂ ≅ m₃ × c₂ ≡ c₃
 determinism v (Pure s₁) s₂ = determinismMixed s₁ s₂
