@@ -2,6 +2,7 @@ module Typed.Base where
 
 open import Types public
 import Data.List as L
+open import Relation.Binary.PropositionalEquality
 
 data Term (Δ : Context) : Ty -> Set where
   （） : Term Δ （）
@@ -88,6 +89,25 @@ There p !! (x ∷ Γ) = p !! Γ
 
 infixr 6 _!!_
 
+-- Update
+_[_]≔_ : ∀ {τ Δ} -> Env Δ -> τ ∈ Δ -> CTerm τ -> Env Δ
+_ ∷ Γ [ Here ]≔ v = v ∷ Γ
+x ∷ Γ [ There i ]≔ v = x ∷ (Γ [ i ]≔ v)
+
+infixr 2 _[_]≔_
+
+-- Snoc
+_∷ʳ_ : ∀ {τ Δ} -> Env Δ -> CTerm τ ->  Env (Δ L.∷ʳ τ) 
+[] ∷ʳ c = c ∷ []
+(x ∷ Γ) ∷ʳ c = x ∷ (Γ ∷ʳ c)
+
+snoc=∈ : (τ : Ty) (Δ : Context) -> τ ∈ (Δ L.∷ʳ τ)
+snoc=∈ τ [] = Here
+snoc=∈ τ (x ∷ Δ) = There (snoc=∈ τ Δ)
+
+--------------------------------------------------------------------------------
+-- Typed 0-based indexes
+
 data TypedIx (τ : Ty) : ℕ -> Context -> Set where
   Here : ∀ {Δ} -> TypedIx τ zero (τ ∷ Δ)
   There : ∀ {Δ n τ'} -> TypedIx τ n Δ -> TypedIx τ (suc n) (τ' ∷ Δ)
@@ -104,21 +124,11 @@ newTypeIx (x ∷ Δ) = There (newTypeIx Δ)
 # Here = Here
 # (There p) = There (# p)
 
--- Update
-_[_]≔_ : ∀ {τ Δ} -> Env Δ -> τ ∈ Δ -> CTerm τ -> Env Δ
-_ ∷ Γ [ Here ]≔ v = v ∷ Γ
-x ∷ Γ [ There i ]≔ v = x ∷ (Γ [ i ]≔ v)
+uniqueIx : ∀ {τ n Δ} -> (ix jx : TypedIx τ n Δ) -> ix ≡ jx
+uniqueIx Here Here = refl
+uniqueIx (There ix) (There jx) rewrite uniqueIx ix jx = refl
 
-infixr 2 _[_]≔_
-
--- Snoc
-_∷ʳ_ : ∀ {τ Δ} -> Env Δ -> CTerm τ ->  Env (Δ L.∷ʳ τ) 
-[] ∷ʳ c = c ∷ []
-(x ∷ Γ) ∷ʳ c = x ∷ (Γ ∷ʳ c)
-
-snoc=∈ : (τ : Ty) (Δ : Context) -> τ ∈ (Δ L.∷ʳ τ)
-snoc=∈ τ [] = Here
-snoc=∈ τ (x ∷ Δ) = There (snoc=∈ τ Δ)
+--------------------------------------------------------------------------------
 
 -- The proof that a certain term is a value
 data IsTValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
