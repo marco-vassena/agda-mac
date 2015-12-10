@@ -39,6 +39,9 @@ open import Relation.Binary.PropositionalEquality
 ε-Mac lₐ (yes p) (join {l = lᵈ} {h = lʰ} x t) with lʰ ⊑? lₐ
 ε-Mac lₐ (yes p₁) (join x t) | yes p = join x (ε-Mac lₐ (yes p) t)
 ε-Mac lₐ (yes p) (join x t) | no ¬p = join x (ε-Mac-Labeled∙ t)
+ε-Mac lₐ (yes _) (read p r) = read p (ε lₐ r)
+ε-Mac lₐ (yes _) (write p r t) = write p (ε lₐ r) (ε lₐ t)
+ε-Mac lₐ (yes _) (new p t) = new p (ε lₐ t)
 ε-Mac lₐ (yes p) ∙ = ∙
 ε-Mac lₐ (no ¬p) t = ∙
 
@@ -63,6 +66,7 @@ open import Relation.Binary.PropositionalEquality
 ε lₐ (App f x) = App (ε lₐ f) (ε lₐ x)
 ε lₐ (If t Then t₁ Else t₂) = If (ε lₐ t) Then (ε lₐ t₁) Else (ε lₐ t₂)
 ε lₐ ξ = ξ
+ε lₐ (Ref n) = Ref n
 ε lₐ ∙ = ∙
 
 {- 
@@ -111,6 +115,8 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac lₐ (yes p) (join {l = lᵈ} {h = lʰ} x c) with lʰ ⊑? lₐ
 εᶜ-Mac lₐ (yes p₁) (join x c) | yes p = join x (εᶜ-Mac lₐ (yes p) c)
 εᶜ-Mac lₐ (yes p) (join x c) | no ¬p = join x (εᶜ-Mac-Labeled∙ lₐ c)
+εᶜ-Mac lₐ (yes _) (write {l = lᵈ} {h = lʰ} p r c) = write p (εᶜ lₐ r) (εᶜ lₐ c)
+εᶜ-Mac lₐ (yes p) (read {l = l} {h = h} l⊑h r) = read l⊑h (εᶜ lₐ r)
 εᶜ-Mac lₐ (yes p) ∙ = ∙
 εᶜ-Mac lₐ (no ¬p) c = ∙
 
@@ -143,6 +149,7 @@ open import Typed.Semantics
 εᶜ-Closure {Mac lᵈ τ} t lₐ | yes p = refl
 εᶜ-Closure {Mac lᵈ τ} t lₐ | no ¬p = refl
 εᶜ-Closure {Labeled lᵈ τ} t lₐ = refl
+εᶜ-Closure {Ref lᵈ τ} t lₐ = refl
 εᶜ-Closure {Exception} t lₐ = refl
 
 ε-Mac-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Mac lᵈ τ)) -> ε-Mac lₐ x t ≡ ε-Mac lₐ y t
@@ -201,6 +208,18 @@ open import Typed.Semantics
 ε-Mac-extensional (yes p) (no ¬p) (join x₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (join x₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (no ¬p₁) (join x₁ t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (read p₂ r) = refl
+ε-Mac-extensional (yes p) (no ¬p) (read p₁ r) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (read p₁ r) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (read p r) = refl
+ε-Mac-extensional (yes p) (yes p₁) (write p₂ r t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (write p₁ r t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (write p₁ r t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (write p r t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (new p₂ t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (new p₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (new p₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (new p t) = refl
 ε-Mac-extensional (yes p) (yes p₁) ∙ = refl
 ε-Mac-extensional (yes p) (no ¬p) ∙ = refl
 ε-Mac-extensional (no ¬p) (yes p) ∙ = refl
@@ -238,6 +257,14 @@ open import Typed.Semantics
 εᶜ-Mac-extensional (yes p) (no ¬p) (join x₁ c) = ⊥-elim (¬p p)
 εᶜ-Mac-extensional (no ¬p) (yes p) (join x₁ c) = ⊥-elim (¬p p)
 εᶜ-Mac-extensional (no ¬p) (no ¬p₁) (join x₁ c) = refl
+εᶜ-Mac-extensional (yes p) (yes p₁) (read p₂ r) = refl
+εᶜ-Mac-extensional (yes p) (no ¬p) (read p₁ r) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (yes p) (read p₁ r) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (no ¬p₁) (read p r) = refl
+εᶜ-Mac-extensional (yes p) (yes p₁) (write p₂ r t) = refl
+εᶜ-Mac-extensional (yes p) (no ¬p) (write p₁ r t) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (yes p) (write p₁ r t) = ⊥-elim (¬p p)
+εᶜ-Mac-extensional (no ¬p) (no ¬p₁) (write p r t) = refl
 εᶜ-Mac-extensional (yes p) (yes p₁) ∙ = refl
 εᶜ-Mac-extensional (yes p) (no ¬p) ∙ = refl
 εᶜ-Mac-extensional (no ¬p) (yes p) ∙ = refl
