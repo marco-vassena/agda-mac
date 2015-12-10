@@ -131,6 +131,10 @@ open import Relation.Binary.PropositionalEquality
 
 open import Typed.Semantics
 
+-- Erasure for programs, i.e. closed term with memory
+εᵖ : ∀ {Δᵐ τ} -> Label -> Program Δᵐ τ -> Program Δᵐ τ
+εᵖ lₐ ⟨ m ∥ c ⟩ = ⟨ (εᶜ-env lₐ m) ∥ εᶜ lₐ c ⟩
+
 -- Applying the erausre function to an environment and looking up the value is the same
 -- as first looking up a variable and then erasing the result.
 εᶜ-lookup : ∀ {Δ τ} (lₐ : Label) -> (p : τ ∈ Δ) (Γ : Env Δ) -> εᶜ lₐ (p !! Γ) ≡ p !! εᶜ-env lₐ Γ

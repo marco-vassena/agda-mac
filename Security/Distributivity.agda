@@ -4,8 +4,11 @@ open import Security.Base public
 open import Typed.Semantics
 open import Relation.Binary.PropositionalEquality 
 
+-- TODO rename εᶜ-dist with εᵖ-dist ?
+
 -- The closed term erasure function distributes over the small step semantics.
-εᶜ-dist : ∀ {τ} {c₁ c₂ : CTerm τ} -> (lₐ : Label) -> c₁ ⟼ c₂ -> εᶜ lₐ c₁ ⟼ εᶜ lₐ c₂
+εᶜ-dist : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} -> (lₐ : Label) -> 
+            ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ (εᶜ-env lₐ m₁) ∥ εᶜ lₐ c₁ ⟩ ⟼ ⟨ (εᶜ-env lₐ m₂) ∥ εᶜ lₐ c₂ ⟩
 
 εᶜ-dist⇝ : ∀ {τ} {c₁ c₂ : CTerm τ} -> (lₐ : Label) -> c₁ ⇝ c₂ -> εᶜ lₐ c₁ ⇝ εᶜ lₐ c₂
 
@@ -31,28 +34,38 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac-Labeled∙-dist⇝ Dist-∙ = Dist-∙
 εᶜ-Mac-Labeled∙-dist⇝ Hole = Hole
 
-εᶜ-Mac-Labeled∙-dist : ∀ {lₐ lʰ τ} {c₁ c₂ : CTerm (Mac lʰ τ)} ->
-                      c₁ ⟼ c₂ -> εᶜ-Mac-Labeled∙ lₐ c₁ ⟼ εᶜ-Mac-Labeled∙ lₐ c₂
+εᶜ-Mac-Labeled∙-dist : ∀ {lₐ lʰ τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac lʰ τ)} ->
+                      ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩  -> 
+                      ⟨ εᶜ-env lₐ m₁ ∥ εᶜ-Mac-Labeled∙ lₐ c₁ ⟩ ⟼ ⟨ εᶜ-env lₐ m₂ ∥ εᶜ-Mac-Labeled∙ lₐ c₂ ⟩
 εᶜ-Mac-Labeled∙-dist (Pure s) = Pure (εᶜ-Mac-Labeled∙-dist⇝ s)
 εᶜ-Mac-Labeled∙-dist Return = Pure Dist-∙
 εᶜ-Mac-Labeled∙-dist Dist->>= = Pure Dist-∙
-εᶜ-Mac-Labeled∙-dist (BindCtx s) = Pure Hole
+-- In the recursive cases Δ₁ and Δ₂ are different, but pure need
+-- them to be equal.
+εᶜ-Mac-Labeled∙-dist (BindCtx s) = {!!} -- Pure Hole 
 εᶜ-Mac-Labeled∙-dist Bind = Pure Hole
 εᶜ-Mac-Labeled∙-dist BindEx = Pure Hole
 εᶜ-Mac-Labeled∙-dist Throw = Pure Dist-∙
 εᶜ-Mac-Labeled∙-dist Dist-Catch = Pure Dist-∙
-εᶜ-Mac-Labeled∙-dist (CatchCtx s) = Pure Hole
+εᶜ-Mac-Labeled∙-dist (CatchCtx s) = {!!} -- Pure Hole
 εᶜ-Mac-Labeled∙-dist Catch = Pure Hole
 εᶜ-Mac-Labeled∙-dist CatchEx = Pure Hole
 εᶜ-Mac-Labeled∙-dist (label p) = Pure Dist-∙
 εᶜ-Mac-Labeled∙-dist (Dist-unlabel p) = Pure Dist-∙
 εᶜ-Mac-Labeled∙-dist (unlabel p) = Pure Hole
 εᶜ-Mac-Labeled∙-dist (unlabelEx p) = Pure Hole
-εᶜ-Mac-Labeled∙-dist (unlabelCtx p s) = Pure Hole
+εᶜ-Mac-Labeled∙-dist (unlabelCtx p s) = {!!} -- Pure Hole
 εᶜ-Mac-Labeled∙-dist (Dist-join p) = Pure Dist-∙
-εᶜ-Mac-Labeled∙-dist (joinCtx p s) = Pure Hole
+εᶜ-Mac-Labeled∙-dist (joinCtx p s) = {!!} -- Pure Hole
 εᶜ-Mac-Labeled∙-dist (join p) = Pure Hole
 εᶜ-Mac-Labeled∙-dist (joinEx p) = Pure Hole
+εᶜ-Mac-Labeled∙-dist (new p ) = {!!}
+εᶜ-Mac-Labeled∙-dist (Dist-write p) = Pure Dist-∙
+εᶜ-Mac-Labeled∙-dist (Dist-read p) = Pure Dist-∙
+εᶜ-Mac-Labeled∙-dist (writeCtx p s) = {!!}
+εᶜ-Mac-Labeled∙-dist (write p x) = {!!}
+εᶜ-Mac-Labeled∙-dist (readCtx p s) = {!!}
+εᶜ-Mac-Labeled∙-dist (read p x) = Pure Hole
 
 -- Unfortuantely this is not useful because Agda refuses to rewrite the goal accordingly
 -- claiming that the type signature of the auxiliary function is ill-typed.
@@ -91,8 +104,10 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac-dist⇝ lₐ (no ¬p) Dist-∙ = Dist-∙
 εᶜ-Mac-dist⇝ lₐ (no ¬p) Hole = Hole
 
-εᶜ-Mac-dist : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Mac lᵈ τ)} -> (lₐ : Label) (p : Dec (lᵈ ⊑ lₐ)) -> 
-                       c₁ ⟼ c₂ -> (εᶜ-Mac lₐ p c₁) ⟼ (εᶜ-Mac lₐ p c₂)
+εᶜ-Mac-dist : ∀ {lᵈ τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac lᵈ τ)} -> 
+                (lₐ : Label) (p : Dec (lᵈ ⊑ lₐ)) -> 
+                ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> 
+                ⟨ εᶜ-env lₐ m₁ ∥ (εᶜ-Mac lₐ p c₁) ⟩ ⟼ ⟨ εᶜ-env lₐ m₂ ∥ (εᶜ-Mac lₐ p c₂) ⟩
 εᶜ-Mac-dist lₐ p (Pure s) = Pure (εᶜ-Mac-dist⇝ lₐ p s)
 εᶜ-Mac-dist {lᵈ} lₐ (yes p) Return with lᵈ ⊑? lₐ
 εᶜ-Mac-dist lₐ (yes p₁) Return | yes p = Return
@@ -167,25 +182,49 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac-dist lₐ (yes p₂) (joinEx d⊑h) | no ¬p | yes p₁ | yes p = ⊥-elim (¬p p)
 εᶜ-Mac-dist lₐ (yes p₁) (joinEx d⊑h) | no ¬p₁ | yes p | no ¬p = joinEx d⊑h
 εᶜ-Mac-dist lₐ (yes p) (joinEx d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
+εᶜ-Mac-dist lₐ (yes p') (new p) = {!new p!} -- Auxiliary lemma
+εᶜ-Mac-dist {c₁  = Γ , write .p r t} lₐ (yes p') (Dist-write p) 
+  rewrite εᶜ-Closure t lₐ = Dist-write p
+εᶜ-Mac-dist lₐ (yes p') (Dist-read p) = Dist-read p
+εᶜ-Mac-dist lₐ (yes p') (readCtx p s) = readCtx p (εᶜ-dist lₐ s)
+εᶜ-Mac-dist {lᵈ} lₐ (yes p') (read p x) with lᵈ ⊑? lₐ
+-- Lemma simil closure ?
+εᶜ-Mac-dist {lᵈ} {（）} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x!} -- lemma about reading in memory
+εᶜ-Mac-dist {lᵈ} {Bool} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x!}
+εᶜ-Mac-dist {lᵈ} {τ => τ₁} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x!}
+εᶜ-Mac-dist {lᵈ} {Mac x τ} lₐ (yes p') (read p₁ x₁) | yes p = {!read p₁ x₁!}
+εᶜ-Mac-dist {lᵈ} {Labeled x τ} lₐ (yes p') (read p₁ x₁) | yes p = {!read p₁ x₁!}
+εᶜ-Mac-dist {lᵈ} {Exception} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x !}
+εᶜ-Mac-dist {lᵈ} {Ref x τ} lₐ (yes p') (read p₁ x₁) | yes p = {!read p₁ x₁ !}
+εᶜ-Mac-dist lₐ (yes p') (read p x) | no ¬p = ⊥-elim (¬p p')
+εᶜ-Mac-dist lₐ (yes p') (writeCtx p s) = writeCtx p (εᶜ-dist lₐ s)
+εᶜ-Mac-dist lₐ (yes p') (write p x) = {!!} -- Lemma
 εᶜ-Mac-dist lₐ (no ¬p) Return = Pure Dist-∙
 εᶜ-Mac-dist lₐ (no ¬p) Dist->>= = Pure Dist-∙
-εᶜ-Mac-dist lₐ (no ¬p) (BindCtx s) = Pure Hole
+εᶜ-Mac-dist lₐ (no ¬p) (BindCtx s) = {!!} -- Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) Bind = Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) BindEx = Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) Throw = Pure Dist-∙
 εᶜ-Mac-dist lₐ (no ¬p) Dist-Catch = Pure Dist-∙
-εᶜ-Mac-dist lₐ (no ¬p) (CatchCtx s) = Pure Hole
+εᶜ-Mac-dist lₐ (no ¬p) (CatchCtx s) = {!!} -- Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) Catch = Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) CatchEx = Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) (label p) = Pure Dist-∙
 εᶜ-Mac-dist lₐ (no ¬p) (Dist-unlabel p) = Pure Dist-∙
 εᶜ-Mac-dist lₐ (no ¬p) (unlabel p) = Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) (unlabelEx p) = Pure Hole
-εᶜ-Mac-dist lₐ (no ¬p) (unlabelCtx p s) = Pure Hole
+εᶜ-Mac-dist lₐ (no ¬p) (unlabelCtx p s) = {!!} -- Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) (Dist-join p) = Pure Dist-∙
-εᶜ-Mac-dist lₐ (no ¬p) (joinCtx p s) = Pure Hole
+εᶜ-Mac-dist lₐ (no ¬p) (joinCtx p s) = {!!} -- Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) (join p) = Pure Hole
 εᶜ-Mac-dist lₐ (no ¬p) (joinEx p) = Pure Hole
+εᶜ-Mac-dist lₐ (no ¬p) (new p) = {!Pure Hole!}
+εᶜ-Mac-dist lₐ (no ¬p) (Dist-write p) = Pure Dist-∙
+εᶜ-Mac-dist lₐ (no ¬p) (Dist-read p) = Pure Dist-∙
+εᶜ-Mac-dist lₐ (no ¬p) (readCtx p s) = {!!}
+εᶜ-Mac-dist lₐ (no ¬p) (read p x) = Pure Hole
+εᶜ-Mac-dist lₐ (no ¬p) (writeCtx p s) = {!!}
+εᶜ-Mac-dist lₐ (no ¬p) (write p x) = {!!}
 
 --------------------------------------------------------------------------------
 -- The main distributivity theorem: 
@@ -246,6 +285,16 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-dist⇝ {Exception} lₐ IfFalse = IfFalse
 εᶜ-dist⇝ {Exception} lₐ Dist-∙ = Dist-∙
 εᶜ-dist⇝ {Exception} lₐ Hole = Hole
+εᶜ-dist⇝ {Ref lᵈ τ} lₐ (AppL s) = AppL (εᶜ-dist⇝ lₐ s)
+εᶜ-dist⇝ {Ref lᵈ τ} lₐ Beta = Beta
+εᶜ-dist⇝ {Ref lᵈ τ} {c₁ = Γ , Var x} lₐ Lookup rewrite εᶜ-lookup lₐ x Γ = Lookup
+εᶜ-dist⇝ {Ref lᵈ τ} {c₁ = Γ , App f x} lₐ Dist-$ rewrite εᶜ-Closure x lₐ = Dist-$
+εᶜ-dist⇝ {Ref lᵈ τ} lₐ Dist-If = Dist-If
+εᶜ-dist⇝ {Ref lᵈ τ} lₐ (IfCond s) = IfCond (εᶜ-dist⇝ lₐ s)
+εᶜ-dist⇝ {Ref lᵈ τ} lₐ IfTrue = IfTrue
+εᶜ-dist⇝ {Ref lᵈ τ} lₐ IfFalse = IfFalse
+εᶜ-dist⇝ {Ref lᵈ τ} lₐ Dist-∙ = Dist-∙
+εᶜ-dist⇝ {Ref lᵈ τ} lₐ Hole = Hole
 
 εᶜ-dist {（）} lₐ (Pure s) = Pure (εᶜ-dist⇝ lₐ s)
 εᶜ-dist {Bool} lₐ (Pure s) = Pure (εᶜ-dist⇝ lₐ s)
@@ -253,3 +302,8 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-dist {Mac l τ} lₐ s = εᶜ-Mac-dist lₐ (l ⊑? lₐ) s
 εᶜ-dist {Labeled l τ} lₐ (Pure s) = Pure (εᶜ-dist⇝ lₐ s)
 εᶜ-dist {Exception} lₐ (Pure s) = Pure (εᶜ-dist⇝ lₐ s) 
+εᶜ-dist {Ref lᵈ τ} lₐ (Pure s) = Pure (εᶜ-dist⇝ lₐ s)
+
+εᵖ-dist : ∀ {τ Δ₁ Δ₂} {p₁ : Program Δ₁ τ} {p₂ : Program Δ₂ τ} -> 
+            (lₐ : Label) -> p₁ ⟼ p₂ -> εᵖ lₐ p₁ ⟼ εᵖ lₐ p₂
+εᵖ-dist {p₁ = ⟨ x ∥ x₁ ⟩} {⟨ x₂ ∥ x₃ ⟩} lₐ s = εᶜ-dist lₐ s
