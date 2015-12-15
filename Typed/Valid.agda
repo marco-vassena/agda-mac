@@ -62,7 +62,7 @@ data ValidT {Δ} (Δᵐ : Context) : ∀ {τ} -> Term Δ τ -> Set where
   new : ∀ {α l h} {t : Term Δ α} -> (p : l ⊑ h) -> ValidT Δᵐ t ->
           ValidT Δᵐ (new p t)
           
-  ∙ : ∀ {τ} -> ValidT Δᵐ (∙ {Δ} {τ})
+  ∙ : ∀ {τ} -> ValidT Δᵐ (∙ {{τ}})
 
 mutual
 
@@ -84,11 +84,13 @@ mutual
    read : ∀ {α l h} {c : CTerm (Ref l α)} (p : l ⊑ h) -> Valid Δᵐ c -> Valid Δᵐ (read p c)
    write : ∀ {α l h} {c₁ : CTerm (Ref h α)} {c₂ : CTerm α} ->
              (p : l ⊑ h) -> Valid Δᵐ c₁ -> Valid Δᵐ c₂ -> Valid Δᵐ (write p c₁ c₂)
-   ∙ : ∀ {τ} -> Valid Δᵐ (∙ {τ})
+   ∙ : ∀ {τ} -> Valid Δᵐ (∙ {{τ}})
 
-ValidMemory : ∀ {Δᵐ} -> (m : Memory Δᵐ) -> Set
-ValidMemory {Δᵐ} m = ValidEnv Δᵐ m
-
+data ValidMemory (Δ : Context) : ∀ {Δᵐ} -> (m : Memory Δᵐ) -> Set where
+  [] : ValidMemory Δ []
+  _∷_ : ∀ {τ Δᵐ} {c : CTerm τ} {m : Memory Δᵐ} -> Valid Δ c -> ValidMemory Δ m -> ValidMemory Δ (c ∷ m)
+  ∙ : ∀ {Δᵐ} -> ValidMemory Δ {Δᵐ} ∙ 
+ 
 --------------------------------------------------------------------------------
 -- Lemmas and proofs
 --------------------------------------------------------------------------------
@@ -98,6 +100,7 @@ ValidMemory {Δᵐ} m = ValidEnv Δᵐ m
 -- of the final memory context.
 context⊆ : ∀ {Δ₁ Δ₂ τ} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Δ₁ ⊆ Δ₂
+context⊆ {Δ₁ = Δ₁} Hole = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} (Pure x) = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} Return = refl-⊆ Δ₁
 context⊆ {Δ₁ = Δ₁} Dist->>= = refl-⊆ Δ₁
@@ -181,29 +184,42 @@ extendValid (read x v) p = read x (extendValid v p)
 extendValid (write x v v₁) p = write x (extendValid v p) (extendValid v₁ p)
 extendValid ∙ p = ∙
 
+extendValidMemory : ∀ {Δ₁ Δ₂ Δᵐ} {m : Memory Δᵐ} -> ValidMemory Δ₁ m -> Δ₁ ⊆ Δ₂ -> ValidMemory Δ₂ m
+extendValidMemory [] p = []
+extendValidMemory (x ∷ m) p = (extendValid x p) ∷ extendValidMemory m p
+extendValidMemory ∙ p = ∙
+
 -- If we lookup in an enviroment with valid references with respect to a certain memory
 -- context then the closed term retrieved is also valid. 
 lookupValid : ∀ {Δᵐ Δ τ} {Γ : Env Δ} -> (p : τ ∈ Δ) -> ValidEnv Δᵐ Γ -> Valid Δᵐ (p !! Γ)
 lookupValid Here (x ∷ Γ₁) = x
 lookupValid (There p) (x ∷ Γ₁) = lookupValid p Γ₁
 
+lookupValidMemory : ∀ {Δᵐ Δ τ} {m : Memory Δᵐ} -> (p : τ ∈ Δᵐ) -> ValidMemory Δ m -> Valid Δ (m [ p ])
+lookupValidMemory Here (x ∷ m) = x
+lookupValidMemory (There p) (x ∷ m) = lookupValidMemory p m
+lookupValidMemory r ∙ = ∙
+
 -- id is a valid function
 idValid : ∀ {Δ Δᵐ τ} {Γ : Env Δ} -> {{Γᵛ : ValidEnv Δᵐ Γ}} -> Valid Δᵐ (id {τ} {{Γ}})
 idValid {{Γᵛ = Γᵛ}} = Γᵛ , (Abs (Var Here))
 
 validMemoryUpdate : ∀ {Δ Δᵐ τ} {m : Memory Δᵐ} {c : CTerm τ} ->
-                    ValidEnv Δ m -> (p : τ ∈ Δᵐ) -> Valid Δ c  -> ValidEnv Δ (m [ p ]≔ c)
+                    ValidMemory Δ m -> (p : τ ∈ Δᵐ) -> Valid Δ c  -> ValidMemory Δ (m [ p ]≔ c)
 validMemoryUpdate [] () v
 validMemoryUpdate (x ∷ vᵐ) Here v = v ∷ vᵐ
 validMemoryUpdate (x ∷ vᵐ) (There p) v = x ∷ validMemoryUpdate vᵐ p v
+validMemoryUpdate ∙ Here v = ∙
+validMemoryUpdate ∙ (There m) v = ∙
 
 validMemoryNew : ∀ {Δ Δᵐ τ} {m : Memory Δᵐ} {c : CTerm τ} ->
-                   ValidEnv Δ m -> Valid Δ c -> ValidEnv Δ (m ∷ʳ c)
+                   ValidMemory Δ m -> Valid Δ c -> ValidMemory Δ (m ∷ʳ c)
 validMemoryNew [] v = v ∷ []
 validMemoryNew (x ∷ Γ₁) v = x ∷ validMemoryNew Γ₁ v
+validMemoryNew ∙ _ = ∙
 
 stepValidCTerm : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
-                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> Valid Δ₂ c₂
+                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory Δ₁ m₁ -> Valid Δ₂ c₂
 stepValidCTerm (Pure (AppL x₁)) (v $ v₁) m = stepValidCTerm (Pure x₁) v m $ v₁
 stepValidCTerm (Pure Beta) ((x₁ , Abs x₂) $ v₁) m = idValid $ ((v₁ ∷ x₁) , x₂)
 stepValidCTerm (Pure Lookup) (x , Var p) m = idValid $ (lookupValid p x)
@@ -242,10 +258,12 @@ stepValidCTerm (writeCtx p s) (write .p v v₁) m
   = write p (stepValidCTerm s v m) (extendValid v₁ (context⊆ s))
 stepValidCTerm (write p i) (write .p (x , Ref x₁) v₁) m = idValid $ (x , (Return （）))
 stepValidCTerm (readCtx p s) (read .p v) m = read p (stepValidCTerm s v m)
-stepValidCTerm (read p i) (read .p (x , Ref x₁)) m = (x , (Abs (Return (Var Here)))) $ (lookupValid (# i) m)
+stepValidCTerm (read p i) (read .p (x , Ref x₁)) m 
+  = (x , (Abs (Return (Var Here)))) $ (lookupValidMemory (# i) m)
+stepValidCTerm Hole v m = v
 
 stepValidMemory : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
-                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> ValidMemory m₂
+                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory Δ₁ m₁ -> ValidMemory Δ₂ m₂
 stepValidMemory (Pure x) v m = m
 stepValidMemory Return v m = m
 stepValidMemory Dist->>= v m = m
@@ -266,18 +284,20 @@ stepValidMemory (Dist-join p) v m = m
 stepValidMemory (joinCtx p s) (join .p v) m = stepValidMemory s v m
 stepValidMemory (join p) v m = m
 stepValidMemory (joinEx p) v m = m
-stepValidMemory (new p) (x , new .p x₁) m = extendValidEnv (validMemoryNew m (x , x₁)) (snoc-⊆ _)
+stepValidMemory (new p) (x , new .p x₁) m = extendValidMemory (validMemoryNew m (x , x₁)) (snoc-⊆ _)
 stepValidMemory (Dist-write p) v m = m
 stepValidMemory (Dist-read p) v m = m
 stepValidMemory (writeCtx p s) (write .p v v₁) m = stepValidMemory s v m
 stepValidMemory (write p i) (write .p (x , Ref x₁) v₁) m = validMemoryUpdate m (# i) v₁
 stepValidMemory (readCtx p s) (read .p v) m = stepValidMemory s v m
 stepValidMemory (read p i) v m = m
+stepValidMemory Hole v m = m
 
 -- Our small step semantics preserves validity of terms and closed terms.
 -- If a closed term has valid references in the initial memory context and
 -- can be reduced further then the reduced term is also valid in the final memory context.
 -- The final memory is also valid.
 stepValid : ∀ {τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm τ} ->
-              ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory m₁ -> ValidMemory m₂ × Valid Δ₂ c₂
+              ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Valid Δ₁ c₁ -> ValidMemory Δ₁ m₁ -> 
+              ValidMemory Δ₂ m₂ × Valid Δ₂ c₂
 stepValid s v m = (stepValidMemory s v m) , (stepValidCTerm s v m)

@@ -36,10 +36,10 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   IfFalse : ∀ {Δ τ} {t e : CTerm τ} {Γ : Env Δ} -> (If (Γ , False) Then t Else e) ⇝ (id {{Γ}} $ e)
 
   -- Transforms a Term bullet (Γ , ∙) in a closed term bullet ∙
-  Dist-∙ : ∀ {Δ} {α : Ty} {Γ : Env Δ} -> (Γ , (∙ {_} {α})) ⇝ ∙
+  Dist-∙ : ∀ {Δ} {α : Ty} {Γ : Env Δ} -> (Γ , ∙ {{α}}) ⇝ ∙
 
   -- Bullet reduces to itself
-  Hole : ∀ {τ} -> (∙ {τ}) ⇝ ∙
+  Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
 
   {-
     TODO I have not introduced the erasure function.
@@ -176,6 +176,8 @@ data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set
   joinEx : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {e : Term Δ Exception} (p : l ⊑ h) ->
               ⟨ m₁ ∥ join {α = α} p (Γ , Macₓ e) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ = Γ}} $ (Γ , Return (Resₓ e))) ⟩
 
+  -- In LIO values stored in memory are labeled
+
   new : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
           ⟨ m₁ ∥ (Γ , new p t) ⟩ ⟼ ⟨ m₁ ∷ʳ (Γ , t) ∥ id {{Γ = Γ}} $ (Γ , Return (Ref (length Δ₁))) ⟩
 
@@ -202,7 +204,9 @@ data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set
 
   -- ⟨ m₁ ∥ read p r ⟩ ⟼ ⟨ m₁ ∥ return (r !! m₁) ⟩
   read : ∀ {l h n α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} -> (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
-            ⟨ m₁ ∥ (read p (Γ , (Ref n))) ⟩ ⟼ ⟨ m₁ ∥ (Γ , Abs (Return (Var Here))) $ (# i !! m₁) ⟩
+            ⟨ m₁ ∥ (read p (Γ , (Ref n))) ⟩ ⟼ ⟨ m₁ ∥ (Γ , Abs (Return (Var Here))) $ (m₁ [ # i ] ) ⟩
+
+  Hole : ∀ {τ : Ty} {Δ₁ : Context} -> ⟨ ∙ {{Δ₁}} ∥ ∙ {{τ}} ⟩ ⟼ ⟨ ∙ {{Δ₁}} ∥ ∙ ⟩
 
 -- TODO maybe define Redex for Program instead of single term  
 

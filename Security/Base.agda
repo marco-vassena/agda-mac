@@ -106,6 +106,9 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac-Labeled∙ lₐ (Γ , t) = εᶜ-env lₐ Γ , ε-Mac-Labeled∙ t
 εᶜ-Mac-Labeled∙ lₐ t = ∙
 
+-- εᵖ-Mac-Labeled∙ : ∀ {τ}
+-- lₐ
+
 εᶜ-Mac lₐ p (Γ , t) = εᶜ-env lₐ Γ , ε-Mac lₐ p t
 εᶜ-Mac lₐ (yes p) (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
 εᶜ-Mac lₐ (yes p) (If c Then t Else e) = If (εᶜ lₐ c) Then (εᶜ-Mac lₐ (yes p) t) Else εᶜ-Mac lₐ (yes p) e
@@ -131,9 +134,19 @@ open import Relation.Binary.PropositionalEquality
 
 open import Typed.Semantics
 
+εᵐ : ∀ {Δᵐ} -> Label -> Memory Δᵐ -> Memory Δᵐ
+εᵐ lₐ [] = []
+εᵐ lₐ (c ∷ m) = εᶜ lₐ c ∷ εᵐ lₐ m
+εᵐ lₐ ∙ = ∙
+
+εᵖ-Mac : ∀ {Δᵐ τ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Program Δᵐ (Mac lᵈ τ) -> Program Δᵐ (Mac lᵈ τ)
+εᵖ-Mac lₐ (yes p) ⟨ m ∥ c ⟩ = ⟨ (εᵐ lₐ m) ∥ (εᶜ-Mac lₐ (yes p) c) ⟩
+εᵖ-Mac lₐ (no ¬p) ⟨ m ∥ c ⟩ = ⟨ ∙ ∥ (εᶜ-Mac lₐ (no ¬p) c) ⟩
+
 -- Erasure for programs, i.e. closed term with memory
 εᵖ : ∀ {Δᵐ τ} -> Label -> Program Δᵐ τ -> Program Δᵐ τ
-εᵖ lₐ ⟨ m ∥ c ⟩ = ⟨ (εᶜ-env lₐ m) ∥ εᶜ lₐ c ⟩
+εᵖ {τ = Mac lᵈ τ} lₐ p = εᵖ-Mac lₐ (lᵈ ⊑? lₐ) p
+εᵖ lₐ ⟨ m ∥ c ⟩ = ⟨ (εᵐ lₐ m) ∥ (εᶜ lₐ c) ⟩
 
 -- Applying the erausre function to an environment and looking up the value is the same
 -- as first looking up a variable and then erasing the result.

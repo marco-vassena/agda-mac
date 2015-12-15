@@ -37,10 +37,12 @@ progress (Γ , new p r) v = inj₁ (Step (new p))
 progress (Γ , ∙) v = inj₁ (Step (Pure Dist-∙))
 progress (f $ x) (v₁ $ v₂) with progress f v₁
 progress (f $ x₁) (v₁ $ v₂) | inj₁ (Step (Pure x)) = inj₁ (Step (Pure (AppL x)))
+progress (.∙ $ x₁) (v₁ $ v₂) | inj₁ (Step Hole) = inj₁ (Step (Pure (AppL Hole)))
 progress (.(Γ , Abs t) $ x₁) (v₁ $ v₂) | inj₂ (Γ , Abs t) = inj₁ (Step (Pure Beta))
 progress (If c₁ Then c₂ Else e) (If v₁ Then v₂ Else v₃) with progress c₁ v₁
 progress (If c₁ Then c₃ Else e) (If v₁ Then v₂ Else v₃) | inj₁ (Step (Pure x)) 
   = inj₁ (Step (Pure (IfCond x)))
+progress (If .∙ Then c₃ Else e) (If v₁ Then v₂ Else v₃) | inj₁ (Step Hole) = inj₁ (Step (Pure (IfCond Hole)))
 progress (If .(Γ , True) Then c₂ Else e) (If v₁ Then v₂ Else v₃) | inj₂ (Γ , True) 
   = inj₁ (Step (Pure IfTrue))
 progress (If .(Γ , False) Then c₂ Else e) (If v₁ Then v₂ Else v₃) | inj₂ (Γ , False) 
@@ -112,6 +114,7 @@ determinismMixedC IfTrue (Pure s) = determinism⇝ IfTrue s
 determinismMixedC IfFalse (Pure s) = determinism⇝ IfFalse s
 determinismMixedC Dist-∙ (Pure s) = determinism⇝ Dist-∙ s
 determinismMixedC Hole (Pure s) = determinism⇝ Hole s
+determinismMixedC Hole Hole = refl
 
 determinismC : ∀ {τ Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₃ ∥ c₃ ⟩ -> c₂ ≡ c₃
@@ -163,6 +166,7 @@ determinismC (readCtx p s₁) (readCtx .p s₂) rewrite determinismC s₁ s₂ =
 determinismC (readCtx p (Pure ())) (read .p r)
 determinismC (read p i) (readCtx .p (Pure ()))
 determinismC (read p i) (read .p j) rewrite uniqueIx i j = refl
+determinismC Hole Hole = refl
 
 determinismMixedM : ∀ {Δ₁ Δ₂ τ} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ c₃ : CTerm τ} -> 
                    c₁ ⇝ c₂ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₃ ⟩ -> m₁ ≅ m₂
@@ -176,6 +180,7 @@ determinismMixedM IfTrue (Pure s₂) = refl
 determinismMixedM IfFalse (Pure s₂) = refl
 determinismMixedM Dist-∙ (Pure s₂) = refl
 determinismMixedM Hole (Pure s₂) = refl
+determinismMixedM Hole Hole = refl
 
 determinismM : ∀ {τ Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₃ ∥ c₃ ⟩ -> m₂ ≅ m₃
@@ -227,6 +232,7 @@ determinismM (readCtx p s₁) (readCtx .p s₂) = determinismM s₁ s₂
 determinismM (readCtx p (Pure ())) (read .p r)
 determinismM (read p i) (readCtx .p (Pure ()))
 determinismM (read p i) (read .p j) = refl
+determinismM Hole Hole = refl
 
 determinism :  ∀ {τ Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₃ ∥ c₃ ⟩ -> m₂ ≅ m₃ × c₂ ≡ c₃

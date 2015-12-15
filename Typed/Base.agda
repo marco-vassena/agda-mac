@@ -43,7 +43,7 @@ data Term (Δ : Context) : Ty -> Set where
   new : ∀ {α l h} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Ref h α))
 
   -- Erased term ∙
-  ∙ : ∀ {τ} -> Term Δ τ
+  ∙ : ∀ {{τ}} -> Term Δ τ
 
 infixr 3 _,_
 infixr 0 _$_
@@ -61,26 +61,11 @@ mutual
     write : ∀ {α l h} -> l ⊑ h -> CTerm (Ref h α) -> CTerm α -> CTerm (Mac l （）)
     read : ∀ {α l h} -> l ⊑ h -> CTerm (Ref l α) -> CTerm (Mac h α)
     -- Erased closed term
-    ∙ : ∀ {τ} -> CTerm τ
+    ∙ : ∀ {{τ}} -> CTerm τ
 
   data Env : (Δ : Context) -> Set where
     [] : Env []
     _∷_ : ∀ {Δ τ} -> CTerm τ -> Env Δ -> Env (τ ∷ Δ)
-
--- I will start first with concrete memory containing closed terms
--- to implement references and then abstract over that with a more
--- generic Store.
--- The question I cannot answer right now is given
--- a store Store (A : Ty -> Set) : (Δ : Context) : Set
--- how can I abstract over generic read/write operations?
-
--- data Memory : (Δ : Context) -> Set where
---   [] : Memory []
---   _∷_ : ∀ {τ Δ} -> CTerm τ -> Memory Δ -> Memory (τ ∷ Δ)
-
--- At the moment momory is completely the same as Env
-Memory : Context -> Set
-Memory = Env
 
 -- Lookup
 _!!_ : ∀ {τ Δ} -> τ ∈ Δ -> Env Δ -> CTerm τ
@@ -89,18 +74,42 @@ There p !! (x ∷ Γ) = p !! Γ
 
 infixr 6 _!!_
 
+--------------------------------------------------------------------------------
+
+-- I will start first with concrete memory containing closed terms
+-- to implement references and then abstract over that with a more
+-- generic Store.
+-- The question I cannot answer right now is given
+-- a store Store (A : Ty -> Set) : (Δ : Context) : Set
+-- how can I abstract over generic read/write operations?
+
+data Memory : (Δ : Context) -> Set where
+  [] : Memory []
+  _∷_ : ∀ {τ Δ} -> CTerm τ -> Memory Δ -> Memory (τ ∷ Δ)
+  ∙ : ∀ {{Δ}} -> Memory Δ
+
+-- Memory access
+_[_] : ∀ {τ Δ} -> Memory Δ -> τ ∈ Δ -> CTerm τ
+[] [ () ]
+(x ∷ m) [ Here ] = x
+(x ∷ m) [ There r ] = _[_] m r
+∙ [ r ] = ∙
+
 -- Update
-_[_]≔_ : ∀ {τ Δ} -> Env Δ -> τ ∈ Δ -> CTerm τ -> Env Δ
+_[_]≔_ : ∀ {τ Δ} -> Memory Δ -> τ ∈ Δ -> CTerm τ -> Memory Δ
 _ ∷ Γ [ Here ]≔ v = v ∷ Γ
 x ∷ Γ [ There i ]≔ v = x ∷ (Γ [ i ]≔ v)
+∙ [ _ ]≔ _ = ∙
 
 infixr 2 _[_]≔_
 
 -- Snoc
-_∷ʳ_ : ∀ {τ Δ} -> Env Δ -> CTerm τ ->  Env (Δ L.∷ʳ τ) 
+_∷ʳ_ : ∀ {τ Δ} -> Memory Δ -> CTerm τ ->  Memory (Δ L.∷ʳ τ) 
 [] ∷ʳ c = c ∷ []
 (x ∷ Γ) ∷ʳ c = x ∷ (Γ ∷ʳ c)
+∙ ∷ʳ c = ∙
 
+-- Move to Types
 snoc=∈ : (τ : Ty) (Δ : Context) -> τ ∈ (Δ L.∷ʳ τ)
 snoc=∈ τ [] = Here
 snoc=∈ τ (x ∷ Δ) = There (snoc=∈ τ Δ)
