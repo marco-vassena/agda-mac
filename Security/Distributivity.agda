@@ -106,152 +106,126 @@ open import Relation.Binary.PropositionalEquality
 εᵖ-Mac-dist : ∀ {lᵈ τ Δ₁ Δ₂} {p₁ : Program  Δ₁ (Mac lᵈ τ)} {p₂ : Program Δ₂ (Mac lᵈ τ)} -> 
                 (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) -> 
                 p₁ ⟼ p₂ -> εᵖ-Mac lₐ x p₁ ⟼ εᵖ-Mac lₐ x p₂
-εᵖ-Mac-dist lₐ (yes p) s = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (Pure x) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) Return = {!Hole!}
-εᵖ-Mac-dist lₐ (no ¬p) Dist->>= = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (BindCtx s) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) Bind = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) BindEx = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) Throw = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) Dist-Catch = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (CatchCtx s) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) Catch = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) CatchEx = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (label p) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (Dist-unlabel p) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (unlabel p) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (unlabelEx p) = {!!}
+εᵖ-Mac-dist lₐ (yes p) (Pure s) = Pure (εᶜ-Mac-dist⇝ lₐ (yes p) s)
+εᵖ-Mac-dist {lᵈ} lₐ (yes p) Return with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) Return | yes p = Return
+εᵖ-Mac-dist lₐ (yes p) Return | no ¬p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p) Dist->>= = Dist->>=
+εᵖ-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (εᵖ-Mac-dist lₐ (yes p) s)
+εᵖ-Mac-dist lₐ (yes p) (Bind {t = t}) rewrite εᶜ-Closure t lₐ = Bind
+εᵖ-Mac-dist {lᵈ} lₐ (yes p) (BindEx {e = e}) with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) BindEx | yes p = BindEx
+εᵖ-Mac-dist lₐ (yes p) BindEx | no ¬p = ⊥-elim (¬p p) 
+εᵖ-Mac-dist {lᵈ} lₐ (yes p) Throw with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) Throw | yes p = Throw
+εᵖ-Mac-dist lₐ (yes p) Throw | no ¬p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p) Dist-Catch = Dist-Catch
+εᵖ-Mac-dist lₐ (yes p) (CatchCtx s) = CatchCtx (εᵖ-Mac-dist lₐ (yes p) s)
+εᵖ-Mac-dist {lᵈ} lₐ (yes p) Catch with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) Catch | yes p = Catch
+εᵖ-Mac-dist lₐ (yes p) Catch | no ¬p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p) CatchEx = CatchEx
+εᵖ-Mac-dist lₐ (yes p) (label {h = lʰ} d⊑h) with lʰ ⊑? lₐ
+εᵖ-Mac-dist {lᵈ} lₐ (yes p₁) (label d⊑h) | yes h⊑a with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (label {h = lʰ} d⊑h) | yes h⊑a | yes p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₂) (label d⊑h) | yes h⊑a | yes p₁ | yes p = label d⊑h
+εᵖ-Mac-dist lₐ (yes p₁) (label d⊑h) | yes h⊑a | yes p | no ¬p = ⊥-elim (¬p h⊑a)
+εᵖ-Mac-dist lₐ (yes p₁) (label d⊑h) | yes h⊑a | no ¬p = ⊥-elim (¬p p₁)
+εᵖ-Mac-dist {lᵈ} lₐ (yes p) (label d⊑h) | no ¬h⊑a with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (label {h = lʰ} d⊑h) | no ¬h⊑a | yes p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₂) (label d⊑h) | no ¬h⊑a | yes p₁ | yes p = ⊥-elim (¬h⊑a p)
+εᵖ-Mac-dist lₐ (yes p₁) (label d⊑h) | no ¬h⊑a | yes p | no ¬p = label d⊑h
+εᵖ-Mac-dist lₐ (yes p) (label d⊑h) | no ¬h⊑a | no ¬p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p) (Dist-unlabel {l = lᵈ} {h = lʰ} d⊑h) = Dist-unlabel d⊑h
+εᵖ-Mac-dist lₐ (yes p) (unlabel {l = lᵈ} {h = lʰ} d⊑h) with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (unlabel {h = lʰ} d⊑h) | yes p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₂) (unlabel d⊑h) | yes p₁ | yes p = unlabel d⊑h
+εᵖ-Mac-dist lₐ (yes p₁) (unlabel d⊑h) | yes p | no ¬p = ⊥-elim (¬p p₁)
+εᵖ-Mac-dist lₐ (yes p) (unlabel {h = lʰ} d⊑h) | no ¬p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (unlabel d⊑h) | no ¬d⊑a | yes h⊑a = ⊥-elim (¬d⊑a (trans-⊑ d⊑h h⊑a))
+εᵖ-Mac-dist lₐ (yes p) (unlabel d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p) (unlabelEx {l = lᵈ} d⊑h) with lᵈ ⊑? lₐ
+εᵖ-Mac-dist {lʰ} lₐ (yes p₁) (unlabelEx d⊑h) | yes p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₂) (unlabelEx d⊑h) | yes p₁ | yes p = unlabelEx d⊑h
+εᵖ-Mac-dist lₐ (yes p₁) (unlabelEx d⊑h) | yes p | no ¬p = ⊥-elim (¬p p₁)
+εᵖ-Mac-dist {lʰ} lₐ (yes p) (unlabelEx d⊑h) | no ¬p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (unlabelEx d⊑h) | no ¬p | yes h⊑a = ⊥-elim (¬p (trans-⊑ d⊑h p₁))
+εᵖ-Mac-dist lₐ (yes p) (unlabelEx d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p) (unlabelCtx d⊑h s) = unlabelCtx d⊑h (εᵖ-dist lₐ s)
+εᵖ-Mac-dist lₐ (yes p) (Dist-join {h = lʰ} d⊑h) with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (Dist-join d⊑h) | yes p = Dist-join d⊑h
+εᵖ-Mac-dist lₐ (yes p) (Dist-join d⊑h) | no ¬p = Dist-join d⊑h
+εᵖ-Mac-dist lₐ (yes p) (joinCtx {h = lʰ} d⊑h s) with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (joinCtx d⊑h s) | yes p = joinCtx d⊑h (εᵖ-Mac-dist lₐ (yes p) s)
+εᵖ-Mac-dist lₐ (yes p) (joinCtx d⊑h s) | no ¬p = joinCtx d⊑h {!!} -- (εᵖ-Mac-Labeled∙-dist s)
+εᵖ-Mac-dist lₐ (yes p) (join {l = lᵈ} {h = lʰ} d⊑h) with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (join {l = lᵈ} d⊑h) | yes p with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₂) (join {h = lʰ} d⊑h) | yes p₁ | yes p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₃) (join d⊑h) | yes p₂ | yes p₁ | yes p = join d⊑h
+εᵖ-Mac-dist lₐ (yes p₂) (join d⊑h) | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
+εᵖ-Mac-dist lₐ (yes p₁) (join d⊑h) | yes p | no ¬p = ⊥-elim (¬p p₁)
+εᵖ-Mac-dist lₐ (yes p) (join {l = lᵈ} {h = lʰ} d⊑h) | no ¬p with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (join {h = lʰ} d⊑h) | no ¬p | yes p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₂) (join d⊑h) | no ¬p | yes p₁ | yes p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p₁) (join d⊑h) | no ¬p₁ | yes p | no ¬p = join d⊑h
+εᵖ-Mac-dist lₐ (yes p) (join d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p) (joinEx {l = lᵈ} {h = lʰ} d⊑h) with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (joinEx {l = lᵈ} d⊑h) | yes p with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₂) (joinEx {h = lʰ} d⊑h) | yes p₁ | yes p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₃) (joinEx d⊑h) | yes p₂ | yes p₁ | yes p = joinEx d⊑h
+εᵖ-Mac-dist lₐ (yes p₂) (joinEx d⊑h) | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
+εᵖ-Mac-dist lₐ (yes p₁) (joinEx d⊑h) | yes p | no ¬p = ⊥-elim (¬p p₁)
+εᵖ-Mac-dist lₐ (yes p) (joinEx {l = lᵈ} d⊑h) | no ¬p with lᵈ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (joinEx {h = lʰ} d⊑h) | no ¬p | yes p with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₂) (joinEx d⊑h) | no ¬p | yes p₁ | yes p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p₁) (joinEx d⊑h) | no ¬p₁ | yes p | no ¬p = joinEx d⊑h
+εᵖ-Mac-dist lₐ (yes p) (joinEx d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
+εᵖ-Mac-dist lₐ (yes p') (new p) = {!new p!} -- Auxiliary lemma
+εᵖ-Mac-dist {p₁  = ⟨ _ ∥ Γ , write .p r t ⟩} lₐ (yes p') (Dist-write p) 
+  rewrite εᶜ-Closure t lₐ = Dist-write p
+εᵖ-Mac-dist lₐ (yes p') (Dist-read p) = Dist-read p
+εᵖ-Mac-dist lₐ (yes p') (readCtx p s) = readCtx p (εᵖ-dist lₐ s)
+εᵖ-Mac-dist {lᵈ} lₐ (yes p') (read p x) with lᵈ ⊑? lₐ
+-- Lemma simil closure ?
+εᵖ-Mac-dist {lᵈ} {（）} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x!} -- lemma about reading in memory
+εᵖ-Mac-dist {lᵈ} {Bool} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x!}
+εᵖ-Mac-dist {lᵈ} {τ => τ₁} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x!}
+εᵖ-Mac-dist {lᵈ} {Mac x τ} lₐ (yes p') (read p₁ x₁) | yes p = {!read p₁ x₁!}
+εᵖ-Mac-dist {lᵈ} {Labeled x τ} lₐ (yes p') (read p₁ x₁) | yes p = {!read p₁ x₁!}
+εᵖ-Mac-dist {lᵈ} {Exception} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x !}
+εᵖ-Mac-dist {lᵈ} {Ref x τ} lₐ (yes p') (read p₁ x₁) | yes p = {!read p₁ x₁ !}
+εᵖ-Mac-dist lₐ (yes p') (read p x) | no ¬p = ⊥-elim (¬p p')
+εᵖ-Mac-dist lₐ (yes p) Hole = Hole
+εᵖ-Mac-dist lₐ (yes p') (writeCtx p s) = writeCtx p (εᵖ-dist lₐ s)
+εᵖ-Mac-dist lₐ (yes p') (write p x) = {!write p x!} -- Lemma
+εᵖ-Mac-dist lₐ (no ¬p) (Pure s) = Pure (εᶜ-Mac-dist⇝ lₐ (no ¬p) s)
+εᵖ-Mac-dist lₐ (no ¬p) Return = Pure Dist-∙
+εᵖ-Mac-dist lₐ (no ¬p) Dist->>= = Pure Dist-∙
+εᵖ-Mac-dist lₐ (no ¬p) (BindCtx s) = {!Pure Hole!} -- Pure Hole does not work because the first ∙ is Memory Δ₁ and the second is Memory Δ₂ 
+εᵖ-Mac-dist lₐ (no ¬p) Bind = Hole
+εᵖ-Mac-dist lₐ (no ¬p) BindEx = Hole
+εᵖ-Mac-dist lₐ (no ¬p) Throw = Pure Dist-∙
+εᵖ-Mac-dist lₐ (no ¬p) Dist-Catch = Pure Dist-∙
+εᵖ-Mac-dist lₐ (no ¬p) (CatchCtx s) = {!Pure Hole!}
+εᵖ-Mac-dist lₐ (no ¬p) Catch = Hole
+εᵖ-Mac-dist lₐ (no ¬p) CatchEx = Hole
+εᵖ-Mac-dist lₐ (no ¬p) (label p) = Pure Dist-∙
+εᵖ-Mac-dist lₐ (no ¬p) (Dist-unlabel p) = Pure Dist-∙
+εᵖ-Mac-dist lₐ (no ¬p) (unlabel p) = Hole
+εᵖ-Mac-dist lₐ (no ¬p) (unlabelEx p) = Hole
 εᵖ-Mac-dist lₐ (no ¬p) (unlabelCtx p s) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (Dist-join p) = {!!}
+εᵖ-Mac-dist lₐ (no ¬p) (Dist-join p) = Pure Dist-∙
 εᵖ-Mac-dist lₐ (no ¬p) (joinCtx p s) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (join p) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (joinEx p) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (new p) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (Dist-write p) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (Dist-read p) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (writeCtx p s) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (write p i) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (readCtx p s) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) (read p i) = {!!}
-εᵖ-Mac-dist lₐ (no ¬p) Hole = {!!}
--- εᶜ-Mac-dist lₐ p (Pure s) = ? -- Pure (εᶜ-Mac-dist⇝ lₐ p s)
--- εᶜ-Mac-dist {lᵈ} lₐ (yes p) Return with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) Return | yes p = ? -- Return
--- εᶜ-Mac-dist lₐ (yes p) Return | no ¬p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p) Dist->>= = ? -- Dist->>=
--- εᶜ-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (εᶜ-Mac-dist lₐ (yes p) s)
--- εᶜ-Mac-dist lₐ (yes p) (Bind {t = t}) rewrite εᶜ-Closure t lₐ = Bind
--- εᶜ-Mac-dist {lᵈ} lₐ (yes p) (BindEx {e = e}) with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) BindEx | yes p = BindEx
--- εᶜ-Mac-dist lₐ (yes p) BindEx | no ¬p = ⊥-elim (¬p p) 
--- εᶜ-Mac-dist {lᵈ} lₐ (yes p) Throw with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) Throw | yes p = Throw
--- εᶜ-Mac-dist lₐ (yes p) Throw | no ¬p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p) Dist-Catch = Dist-Catch
--- εᶜ-Mac-dist lₐ (yes p) (CatchCtx s) = CatchCtx (εᶜ-Mac-dist lₐ (yes p) s)
--- εᶜ-Mac-dist {lᵈ} lₐ (yes p) Catch with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) Catch | yes p = Catch
--- εᶜ-Mac-dist lₐ (yes p) Catch | no ¬p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p) CatchEx = CatchEx
--- εᶜ-Mac-dist lₐ (yes p) (label {h = lʰ} d⊑h) with lʰ ⊑? lₐ
--- εᶜ-Mac-dist {lᵈ} lₐ (yes p₁) (label d⊑h) | yes h⊑a with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (label {h = lʰ} d⊑h) | yes h⊑a | yes p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₂) (label d⊑h) | yes h⊑a | yes p₁ | yes p = label d⊑h
--- εᶜ-Mac-dist lₐ (yes p₁) (label d⊑h) | yes h⊑a | yes p | no ¬p = ⊥-elim (¬p h⊑a)
--- εᶜ-Mac-dist lₐ (yes p₁) (label d⊑h) | yes h⊑a | no ¬p = ⊥-elim (¬p p₁)
--- εᶜ-Mac-dist {lᵈ} lₐ (yes p) (label d⊑h) | no ¬h⊑a with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (label {h = lʰ} d⊑h) | no ¬h⊑a | yes p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₂) (label d⊑h) | no ¬h⊑a | yes p₁ | yes p = ⊥-elim (¬h⊑a p)
--- εᶜ-Mac-dist lₐ (yes p₁) (label d⊑h) | no ¬h⊑a | yes p | no ¬p = label d⊑h
--- εᶜ-Mac-dist lₐ (yes p) (label d⊑h) | no ¬h⊑a | no ¬p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p) (Dist-unlabel {l = lᵈ} {h = lʰ} d⊑h) = Dist-unlabel d⊑h
--- εᶜ-Mac-dist lₐ (yes p) (unlabel {l = lᵈ} {h = lʰ} d⊑h) with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (unlabel {h = lʰ} d⊑h) | yes p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₂) (unlabel d⊑h) | yes p₁ | yes p = unlabel d⊑h
--- εᶜ-Mac-dist lₐ (yes p₁) (unlabel d⊑h) | yes p | no ¬p = ⊥-elim (¬p p₁)
--- εᶜ-Mac-dist lₐ (yes p) (unlabel {h = lʰ} d⊑h) | no ¬p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (unlabel d⊑h) | no ¬d⊑a | yes h⊑a = ⊥-elim (¬d⊑a (trans-⊑ d⊑h h⊑a))
--- εᶜ-Mac-dist lₐ (yes p) (unlabel d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p) (unlabelEx {l = lᵈ} d⊑h) with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist {lʰ} lₐ (yes p₁) (unlabelEx d⊑h) | yes p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₂) (unlabelEx d⊑h) | yes p₁ | yes p = unlabelEx d⊑h
--- εᶜ-Mac-dist lₐ (yes p₁) (unlabelEx d⊑h) | yes p | no ¬p = ⊥-elim (¬p p₁)
--- εᶜ-Mac-dist {lʰ} lₐ (yes p) (unlabelEx d⊑h) | no ¬p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (unlabelEx d⊑h) | no ¬p | yes h⊑a = ⊥-elim (¬p (trans-⊑ d⊑h p₁))
--- εᶜ-Mac-dist lₐ (yes p) (unlabelEx d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p) (unlabelCtx d⊑h s) = unlabelCtx d⊑h (εᵖ-dist lₐ s)
--- εᶜ-Mac-dist lₐ (yes p) (Dist-join {h = lʰ} d⊑h) with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (Dist-join d⊑h) | yes p = Dist-join d⊑h
--- εᶜ-Mac-dist lₐ (yes p) (Dist-join d⊑h) | no ¬p = Dist-join d⊑h
--- εᶜ-Mac-dist lₐ (yes p) (joinCtx {h = lʰ} d⊑h s) with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (joinCtx d⊑h s) | yes p = joinCtx d⊑h (εᶜ-Mac-dist lₐ (yes p) s)
--- εᶜ-Mac-dist lₐ (yes p) (joinCtx d⊑h s) | no ¬p = joinCtx d⊑h ? -- (εᶜ-Mac-Labeled∙-dist s)
--- εᶜ-Mac-dist lₐ (yes p) (join {l = lᵈ} {h = lʰ} d⊑h) with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (join {l = lᵈ} d⊑h) | yes p with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₂) (join {h = lʰ} d⊑h) | yes p₁ | yes p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₃) (join d⊑h) | yes p₂ | yes p₁ | yes p = join d⊑h
--- εᶜ-Mac-dist lₐ (yes p₂) (join d⊑h) | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
--- εᶜ-Mac-dist lₐ (yes p₁) (join d⊑h) | yes p | no ¬p = ⊥-elim (¬p p₁)
--- εᶜ-Mac-dist lₐ (yes p) (join {l = lᵈ} {h = lʰ} d⊑h) | no ¬p with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (join {h = lʰ} d⊑h) | no ¬p | yes p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₂) (join d⊑h) | no ¬p | yes p₁ | yes p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p₁) (join d⊑h) | no ¬p₁ | yes p | no ¬p = join d⊑h
--- εᶜ-Mac-dist lₐ (yes p) (join d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p) (joinEx {l = lᵈ} {h = lʰ} d⊑h) with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (joinEx {l = lᵈ} d⊑h) | yes p with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₂) (joinEx {h = lʰ} d⊑h) | yes p₁ | yes p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₃) (joinEx d⊑h) | yes p₂ | yes p₁ | yes p = joinEx d⊑h
--- εᶜ-Mac-dist lₐ (yes p₂) (joinEx d⊑h) | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
--- εᶜ-Mac-dist lₐ (yes p₁) (joinEx d⊑h) | yes p | no ¬p = ⊥-elim (¬p p₁)
--- εᶜ-Mac-dist lₐ (yes p) (joinEx {l = lᵈ} d⊑h) | no ¬p with lᵈ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₁) (joinEx {h = lʰ} d⊑h) | no ¬p | yes p with lʰ ⊑? lₐ
--- εᶜ-Mac-dist lₐ (yes p₂) (joinEx d⊑h) | no ¬p | yes p₁ | yes p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p₁) (joinEx d⊑h) | no ¬p₁ | yes p | no ¬p = joinEx d⊑h
--- εᶜ-Mac-dist lₐ (yes p) (joinEx d⊑h) | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
--- εᶜ-Mac-dist lₐ (yes p') (new p) = {!new p!} -- Auxiliary lemma
--- εᶜ-Mac-dist {c₁  = Γ , write .p r t} lₐ (yes p') (Dist-write p) 
---   rewrite εᶜ-Closure t lₐ = Dist-write p
--- εᶜ-Mac-dist lₐ (yes p') (Dist-read p) = Dist-read p
--- εᶜ-Mac-dist lₐ (yes p') (readCtx p s) = readCtx p (εᵖ-dist lₐ s)
--- εᶜ-Mac-dist {lᵈ} lₐ (yes p') (read p x) with lᵈ ⊑? lₐ
--- -- Lemma simil closure ?
--- εᶜ-Mac-dist {lᵈ} {（）} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x!} -- lemma about reading in memory
--- εᶜ-Mac-dist {lᵈ} {Bool} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x!}
--- εᶜ-Mac-dist {lᵈ} {τ => τ₁} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x!}
--- εᶜ-Mac-dist {lᵈ} {Mac x τ} lₐ (yes p') (read p₁ x₁) | yes p = {!read p₁ x₁!}
--- εᶜ-Mac-dist {lᵈ} {Labeled x τ} lₐ (yes p') (read p₁ x₁) | yes p = {!read p₁ x₁!}
--- εᶜ-Mac-dist {lᵈ} {Exception} lₐ (yes p') (read p₁ x) | yes p = {!read p₁ x !}
--- εᶜ-Mac-dist {lᵈ} {Ref x τ} lₐ (yes p') (read p₁ x₁) | yes p = {!read p₁ x₁ !}
--- εᶜ-Mac-dist lₐ (yes p') (read p x) | no ¬p = ⊥-elim (¬p p')
--- εᶜ-Mac-dist lₐ (yes p') (writeCtx p s) = writeCtx p (εᵖ-dist lₐ s)
--- εᶜ-Mac-dist lₐ (yes p') (write p x) = {!!} -- Lemma
--- εᶜ-Mac-dist lₐ (no ¬p) Return = Pure Dist-∙
--- εᶜ-Mac-dist lₐ (no ¬p) Dist->>= = Pure Dist-∙
--- εᶜ-Mac-dist lₐ (no ¬p) (BindCtx s) = {!!} -- Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) Bind = Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) BindEx = Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) Throw = Pure Dist-∙
--- εᶜ-Mac-dist lₐ (no ¬p) Dist-Catch = Pure Dist-∙
--- εᶜ-Mac-dist lₐ (no ¬p) (CatchCtx s) = {!!} -- Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) Catch = Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) CatchEx = Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) (label p) = Pure Dist-∙
--- εᶜ-Mac-dist lₐ (no ¬p) (Dist-unlabel p) = Pure Dist-∙
--- εᶜ-Mac-dist lₐ (no ¬p) (unlabel p) = Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) (unlabelEx p) = Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) (unlabelCtx p s) = {!!} -- Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) (Dist-join p) = Pure Dist-∙
--- εᶜ-Mac-dist lₐ (no ¬p) (joinCtx p s) = {!!} -- Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) (join p) = Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) (joinEx p) = Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) (new p) = {!Pure Hole!}
--- εᶜ-Mac-dist lₐ (no ¬p) (Dist-write p) = Pure Dist-∙
--- εᶜ-Mac-dist lₐ (no ¬p) (Dist-read p) = Pure Dist-∙
--- εᶜ-Mac-dist lₐ (no ¬p) (readCtx p s) = {!!}
--- εᶜ-Mac-dist lₐ (no ¬p) (read p x) = Pure Hole
--- εᶜ-Mac-dist lₐ (no ¬p) (writeCtx p s) = {!!}
--- εᶜ-Mac-dist lₐ (no ¬p) (write p x) = {!!}
+εᵖ-Mac-dist lₐ (no ¬p) (join p) = Hole
+εᵖ-Mac-dist lₐ (no ¬p) (joinEx p) = Hole
+εᵖ-Mac-dist lₐ (no ¬p) (new p) = {!Pure Dist-∙!}
+εᵖ-Mac-dist lₐ (no ¬p) (Dist-write p) = Pure Dist-∙
+εᵖ-Mac-dist lₐ (no ¬p) (Dist-read p) = Pure Dist-∙
+εᵖ-Mac-dist lₐ (no ¬p) (writeCtx p s) = {!Pure Hole!}
+εᵖ-Mac-dist lₐ (no ¬p) (write p i) = Hole
+εᵖ-Mac-dist lₐ (no ¬p) (readCtx p s) = {!Pure Hole!}
+εᵖ-Mac-dist lₐ (no ¬p) (read p i) = Hole
+εᵖ-Mac-dist lₐ (no ¬p) Hole = Hole
 
 --------------------------------------------------------------------------------
 -- The main distributivity theorem: 
