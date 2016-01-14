@@ -50,6 +50,8 @@ open import Relation.Binary.PropositionalEquality
 ε-Labeled lₐ p (Var x) = Var x
 ε-Labeled lₐ p (App f x) = App (ε lₐ f) (ε lₐ x)
 ε-Labeled lₐ p (If c Then t Else e) = If (ε lₐ c) Then (ε-Labeled lₐ p t) Else (ε-Labeled lₐ p e)
+-- @Ale
+-- Here I should arbitrarily choose, but I don't see why.
 ε-Labeled lₐ (yes p) (Res t) = Res (ε lₐ t)
 ε-Labeled lₐ (no ¬p) (Res t) = Res ∙
 ε-Labeled lₐ (yes p) (Resₓ t) = Resₓ (ε lₐ t)

@@ -214,6 +214,10 @@ mutual
               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
               ⟨ m₁ ∥ (read p c₁) ⟩ ⟼ ⟨ m₂ ∥ (read p c₂) ⟩
 
+   -- ⟨ m₁ ∥ read p r ⟩ ⟼ ⟨ m₁ ∥ return (r !! m₁) ⟩
+    read : ∀ {l h n α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} -> (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
+              ⟨ m₁ ∥ (read p (Γ , (Ref n))) ⟩ ⟼ ⟨ m₁ ∥ (Γ , Abs (Return (Var Here))) $ (m₁ [ # i ] ) ⟩
+
     Hole : ∀ {τ : Ty} {Δ₁ : Context} -> ⟨ ∙ {{Δ₁}} ∥ ∙ {{τ}} ⟩ ⟼ ⟨ ∙ {{Δ₁}} ∥ ∙ ⟩
 
 -- TODO maybe define Redex for Program instead of single term  
