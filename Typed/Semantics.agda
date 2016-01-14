@@ -108,114 +108,122 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 data Program (Δ : Context) (τ : Ty) : Set where
   ⟨_∥_⟩ : Memory Δ -> CTerm τ -> Program Δ τ
 
-data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
-  Pure : ∀ {Δ₁ τ} {m₁ : Memory Δ₁} {c₁ c₂ : CTerm τ} -> c₁ ⇝ c₂ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₁ ∥ c₂ ⟩
 
-  Return : ∀ {Δ₁ l Δ τ} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ τ} ->
-             ⟨ m₁ ∥ (Γ , Return t) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Mac t)) ⟩
+mutual
 
-  Dist->>= : ∀ {l Δ Δ₁ α β} {m₁ : Memory Δ₁} {Γ : Env Δ} {c : Term Δ (Mac l α)} {k : Term Δ (α => Mac l β)} ->
-              ⟨ m₁ ∥ (Γ , c >>= k) ⟩ ⟼ ⟨ m₁ ∥  ((Γ , c) >>= (Γ , k)) ⟩
+  -- The transitive reflexive closure of a small step
+  data _⟼⋆_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
+    [] : ∀ {Δ} {m : Memory Δ} {c : CTerm τ} -> ⟨ m ∥ c ⟩ ⟼⋆ ⟨ m ∥ c ⟩ 
+    _∷_ : ∀ {Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
+            ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₂ ∥ c₂ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩
 
-  BindCtx : ∀ {l α β Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac l α)} {k : CTerm (α => Mac l β)} ->
-            ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-            ⟨ m₁ ∥ (c₁ >>= k) ⟩ ⟼ ⟨ m₂ ∥ (c₂ >>= k) ⟩
+  -- Big step, a finite number (possibly 0) of reduction steps of a term that reduces it to a value.
+  data _⇓_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
+    BigStep : ∀ {Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c v : CTerm τ} -> IsValue v -> ⟨ m₁ ∥ c ⟩ ⟼⋆ ⟨ m₂ ∥ v ⟩ -> ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥ v ⟩
 
-  Bind : ∀ {l Δ Δ₁ α β} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} {k : CTerm (α => Mac l β)} ->
-           ⟨ m₁ ∥ ((Γ , Mac t) >>= k) ⟩ ⟼ ⟨ m₁ ∥ (k $ Γ , t) ⟩
+  data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
+    Pure : ∀ {Δ₁ τ} {m₁ : Memory Δ₁} {c₁ c₂ : CTerm τ} -> c₁ ⇝ c₂ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₁ ∥ c₂ ⟩
 
-  -- Rethrown as in LIO. It could be also (Γ , Macₓ e)
-  BindEx : ∀ {l Δ Δ₁ α β} {m₁ : Memory Δ₁} {Γ : Env Δ} {e : Term Δ Exception} {k : CTerm (α => Mac l β)} ->
-           ⟨ m₁ ∥ ((Γ , Macₓ e) >>= k) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Throw e)) ⟩
-           
-  Throw : ∀ {l : Label} {Δ Δ₁} {α : Ty} {m₁ : Memory Δ₁} {Γ : Env Δ} {e : Term Δ Exception} ->
-            ⟨ m₁ ∥ (Γ , Throw {{l}} {{α}} e) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Macₓ e)) ⟩
+    Return : ∀ {Δ₁ l Δ τ} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ τ} ->
+               ⟨ m₁ ∥ (Γ , Return t) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Mac t)) ⟩
 
-  Dist-Catch : ∀ {l : Label} {Δ Δ₁} {α : Ty} {m₁ : Memory Δ₁} {Γ : Env Δ}
-                 {c : Term Δ (Mac l α)} {h : Term Δ (Exception => Mac l α)} ->
-                 ⟨ m₁ ∥ (Γ , Catch c h) ⟩ ⟼ ⟨ m₁ ∥ Catch (Γ , c) (Γ , h) ⟩
+    Dist->>= : ∀ {l Δ Δ₁ α β} {m₁ : Memory Δ₁} {Γ : Env Δ} {c : Term Δ (Mac l α)} {k : Term Δ (α => Mac l β)} ->
+                ⟨ m₁ ∥ (Γ , c >>= k) ⟩ ⟼ ⟨ m₁ ∥  ((Γ , c) >>= (Γ , k)) ⟩
 
-  CatchCtx : ∀ {l α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂}
-               {c₁ c₂ : CTerm (Mac l α)} {h : CTerm (Exception => Mac l α)} ->
-               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-               ⟨ m₁ ∥ Catch c₁ h ⟩ ⟼ ⟨ m₂ ∥ Catch c₂ h ⟩
+    BindCtx : ∀ {l α β Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac l α)} {k : CTerm (α => Mac l β)} ->
+              ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
+              ⟨ m₁ ∥ (c₁ >>= k) ⟩ ⟼ ⟨ m₂ ∥ (c₂ >>= k) ⟩
 
-  Catch : ∀ {l : Label} {Δ Δ₁} {α : Ty} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} {h : CTerm (Exception => Mac l α)} ->
-            -- (λ x . x) $ (Γ , Return e)
-            ⟨ m₁ ∥ Catch (Γ , Mac t) h ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , (Return t))) ⟩
+    Bind : ∀ {l Δ Δ₁ α β} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} {k : CTerm (α => Mac l β)} ->
+             ⟨ m₁ ∥ ((Γ , Mac t) >>= k) ⟩ ⟼ ⟨ m₁ ∥ (k $ Γ , t) ⟩
 
-  CatchEx : ∀ {l : Label} {Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {α : Ty}
-              {e : Term Δ Exception} {h : CTerm (Exception => Mac l α)} ->
-              ⟨ m₁ ∥ Catch (Γ , Macₓ e) h ⟩ ⟼ ⟨ m₁ ∥ (h $ (Γ , e)) ⟩
+    -- Rethrown as in LIO. It could be also (Γ , Macₓ e)
+    BindEx : ∀ {l Δ Δ₁ α β} {m₁ : Memory Δ₁} {Γ : Env Δ} {e : Term Δ Exception} {k : CTerm (α => Mac l β)} ->
+             ⟨ m₁ ∥ ((Γ , Macₓ e) >>= k) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Throw e)) ⟩
 
-  label : ∀ {l Δ Δ₁ h α} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
-            ⟨ m₁ ∥ (Γ , label p t) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Return (Res t))) ⟩
+    Throw : ∀ {l : Label} {Δ Δ₁} {α : Ty} {m₁ : Memory Δ₁} {Γ : Env Δ} {e : Term Δ Exception} ->
+              ⟨ m₁ ∥ (Γ , Throw {{l}} {{α}} e) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Macₓ e)) ⟩
 
-  Dist-unlabel : ∀ {l Δ Δ₁ α h} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ (Labeled l α)} -> (p : l ⊑ h) ->
-                 ⟨ m₁ ∥ (Γ , unlabel p t) ⟩ ⟼ ⟨ m₁ ∥ unlabel p (Γ , t) ⟩
+    Dist-Catch : ∀ {l : Label} {Δ Δ₁} {α : Ty} {m₁ : Memory Δ₁} {Γ : Env Δ}
+                   {c : Term Δ (Mac l α)} {h : Term Δ (Exception => Mac l α)} ->
+                   ⟨ m₁ ∥ (Γ , Catch c h) ⟩ ⟼ ⟨ m₁ ∥ Catch (Γ , c) (Γ , h) ⟩
 
-  unlabel : ∀ {l Δ Δ₁ h α} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
-            ⟨ m₁ ∥ unlabel p (Γ , Res t) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Return t)) ⟩
-
-  unlabelEx : ∀ {l Δ Δ₁ h α} {m₁ : Memory Δ₁} {Γ : Env Δ} {e : Term Δ Exception} -> (p : l ⊑ h) ->
-            ⟨ m₁ ∥ unlabel {l} {α} {h}  p (Γ , Resₓ e) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Throw e)) ⟩
-
-  unlabelCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Labeled l α)} -> (p : l ⊑ h) ->
+    CatchCtx : ∀ {l α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂}
+                 {c₁ c₂ : CTerm (Mac l α)} {h : CTerm (Exception => Mac l α)} ->
                  ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-                 ⟨ m₁ ∥ unlabel p c₁ ⟩ ⟼ ⟨ m₂ ∥ unlabel p c₂ ⟩
+                 ⟨ m₁ ∥ Catch c₁ h ⟩ ⟼ ⟨ m₂ ∥ Catch c₂ h ⟩
 
-  Dist-join : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ (Mac h α)} -> (p : l ⊑ h) ->
-                ⟨ m₁ ∥ (Γ , join p t) ⟩ ⟼ ⟨ m₁ ∥ join p (Γ , t) ⟩
+    Catch : ∀ {l : Label} {Δ Δ₁} {α : Ty} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} {h : CTerm (Exception => Mac l α)} ->
+              -- (λ x . x) $ (Γ , Return e)
+              ⟨ m₁ ∥ Catch (Γ , Mac t) h ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , (Return t))) ⟩
 
-  joinCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac h α)} -> (p : l ⊑ h) ->
-               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₁ ∥ join p c₁ ⟩ ⟼ ⟨ m₂ ∥ join p c₂ ⟩
+    CatchEx : ∀ {l : Label} {Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {α : Ty}
+                {e : Term Δ Exception} {h : CTerm (Exception => Mac l α)} ->
+                ⟨ m₁ ∥ Catch (Γ , Macₓ e) h ⟩ ⟼ ⟨ m₁ ∥ (h $ (Γ , e)) ⟩
 
-  join : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} (p : l ⊑ h) ->
-            ⟨ m₁ ∥ join p (Γ , Mac t) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ = Γ}} $ (Γ , (Return (Res t)))) ⟩
+    label : ∀ {l Δ Δ₁ h α} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
+              ⟨ m₁ ∥ (Γ , label p t) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Return (Res t))) ⟩
 
-  joinEx : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {e : Term Δ Exception} (p : l ⊑ h) ->
-              ⟨ m₁ ∥ join {α = α} p (Γ , Macₓ e) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ = Γ}} $ (Γ , Return (Resₓ e))) ⟩
+    Dist-unlabel : ∀ {l Δ Δ₁ α h} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ (Labeled l α)} -> (p : l ⊑ h) ->
+                   ⟨ m₁ ∥ (Γ , unlabel p t) ⟩ ⟼ ⟨ m₁ ∥ unlabel p (Γ , t) ⟩
 
-  -- In LIO values stored in memory are labeled
+    unlabel : ∀ {l Δ Δ₁ h α} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
+              ⟨ m₁ ∥ unlabel p (Γ , Res t) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Return t)) ⟩
 
-  new : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
-          ⟨ m₁ ∥ (Γ , new p t) ⟩ ⟼ ⟨ m₁ ∷ʳ (Γ , t) ∥ id {{Γ = Γ}} $ (Γ , Return (Ref (length Δ₁))) ⟩
+    unlabelEx : ∀ {l Δ Δ₁ h α} {m₁ : Memory Δ₁} {Γ : Env Δ} {e : Term Δ Exception} -> (p : l ⊑ h) ->
+              ⟨ m₁ ∥ unlabel {l} {α} {h}  p (Γ , Resₓ e) ⟩ ⟼ ⟨ m₁ ∥ (id {{Γ}} $ (Γ , Throw e)) ⟩
 
-  Dist-write : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {r : Term Δ (Ref h α)} {t : Term Δ α} -> (p : l ⊑ h) ->
-          ⟨ m₁ ∥ Γ , write p r t ⟩ ⟼ ⟨ m₁ ∥ write p (Γ , r) (Γ , t) ⟩
+    unlabelCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Labeled l α)} -> (p : l ⊑ h) ->
+                   ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
+                   ⟨ m₁ ∥ unlabel p c₁ ⟩ ⟼ ⟨ m₂ ∥ unlabel p c₂ ⟩
 
-  Dist-read : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ (Ref l α)} -> (p : l ⊑ h) ->
-           ⟨ m₁ ∥ Γ , read p t ⟩ ⟼ ⟨ m₁ ∥ read p (Γ , t) ⟩
+    Dist-join : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ (Mac h α)} -> (p : l ⊑ h) ->
+                  ⟨ m₁ ∥ (Γ , join p t) ⟩ ⟼ ⟨ m₁ ∥ join p (Γ , t) ⟩
 
-  writeCtx :  ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
-                (p : l ⊑ h) -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-                ⟨ m₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ m₂ ∥ write p c₂ c₃  ⟩
+    join : ∀ {l h α Δ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {Γ : Env Δ} {t : Term Δ α} {c : CTerm (Mac h α)} (p : l ⊑ h) ->
+              ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥ Γ , Mac t ⟩ ->
+              ⟨ m₁ ∥ join p c ⟩ ⟼ ⟨ m₂ ∥ (id {{Γ = Γ}} $ (Γ , (Return (Res t)))) ⟩
 
-  -- TODO to make the semantics deterministic we need to put references in the variables
-  -- otherwise the reference used in each step is existentially quantified and hence
-  -- different in general.
-  write : ∀ {l h n α Δ₁ Δ} {m₁ : Memory Δ₁} {Γ : Env Δ} {c : CTerm α} ->
-            (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
-          ⟨ m₁ ∥ write p (Γ , (Ref n)) c ⟩ ⟼ ⟨ m₁ [ # i ]≔ c ∥ id {{Γ = Γ}} $ (Γ , Return （）) ⟩
+    joinEx : ∀ {l h α Δ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {Γ : Env Δ} {e : Term Δ Exception} {c : CTerm (Mac h α)} (p : l ⊑ h) ->
+                ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥ Γ , Macₓ e ⟩ ->
+                ⟨ m₁ ∥ join p c ⟩ ⟼ ⟨ m₂ ∥ (id {{Γ = Γ}} $ (Γ , Return (Resₓ e))) ⟩
 
-  readCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
-            ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-            ⟨ m₁ ∥ (read p c₁) ⟩ ⟼ ⟨ m₂ ∥ (read p c₂) ⟩
+    -- In LIO values stored in memory are labeled
 
-  -- ⟨ m₁ ∥ read p r ⟩ ⟼ ⟨ m₁ ∥ return (r !! m₁) ⟩
-  read : ∀ {l h n α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} -> (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
-            ⟨ m₁ ∥ (read p (Γ , (Ref n))) ⟩ ⟼ ⟨ m₁ ∥ (Γ , Abs (Return (Var Here))) $ (m₁ [ # i ] ) ⟩
+    new : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ α} -> (p : l ⊑ h) ->
+            ⟨ m₁ ∥ (Γ , new p t) ⟩ ⟼ ⟨ m₁ ∷ʳ (Γ , t) ∥ id {{Γ = Γ}} $ (Γ , Return (Ref (length Δ₁))) ⟩
 
-  Hole : ∀ {τ : Ty} {Δ₁ : Context} -> ⟨ ∙ {{Δ₁}} ∥ ∙ {{τ}} ⟩ ⟼ ⟨ ∙ {{Δ₁}} ∥ ∙ ⟩
+    Dist-write : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {r : Term Δ (Ref h α)} {t : Term Δ α} -> (p : l ⊑ h) ->
+            ⟨ m₁ ∥ Γ , write p r t ⟩ ⟼ ⟨ m₁ ∥ write p (Γ , r) (Γ , t) ⟩
+
+    Dist-read : ∀ {l h α Δ Δ₁} {m₁ : Memory Δ₁} {Γ : Env Δ} {t : Term Δ (Ref l α)} -> (p : l ⊑ h) ->
+             ⟨ m₁ ∥ Γ , read p t ⟩ ⟼ ⟨ m₁ ∥ read p (Γ , t) ⟩
+
+    writeCtx :  ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
+                  (p : l ⊑ h) -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
+                  ⟨ m₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ m₂ ∥ write p c₂ c₃  ⟩
+
+    -- TODO to make the semantics deterministic we need to put references in the variables
+    -- otherwise the reference used in each step is existentially quantified and hence
+    -- different in general.
+    write : ∀ {l h n α Δ₁ Δ} {m₁ : Memory Δ₁} {Γ : Env Δ} {c : CTerm α} ->
+              (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
+            ⟨ m₁ ∥ write p (Γ , (Ref n)) c ⟩ ⟼ ⟨ m₁ [ # i ]≔ c ∥ id {{Γ = Γ}} $ (Γ , Return （）) ⟩
+
+    readCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
+              ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
+              ⟨ m₁ ∥ (read p c₁) ⟩ ⟼ ⟨ m₂ ∥ (read p c₂) ⟩
+
+    Hole : ∀ {τ : Ty} {Δ₁ : Context} -> ⟨ ∙ {{Δ₁}} ∥ ∙ {{τ}} ⟩ ⟼ ⟨ ∙ {{Δ₁}} ∥ ∙ ⟩
 
 -- TODO maybe define Redex for Program instead of single term  
 
--- A closed term is a Redex if it can be reduced further in a certain memory configuration
-data Redex {Δ₁ : Context} {τ : Ty} (m₁ : Memory Δ₁) (c₁ : CTerm τ) : Set where
-  Step : ∀ {Δ₂} {m₂ : Memory Δ₂} {c₂ : CTerm τ} -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Redex m₁ c₁
+  -- A closed term is a Redex if it can be reduced further in a certain memory configuration
+  data Redex {Δ₁ : Context} {τ : Ty} (m₁ : Memory Δ₁) (c₁ : CTerm τ) : Set where
+    Step : ∀ {Δ₂} {m₂ : Memory Δ₂} {c₂ : CTerm τ} -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Redex m₁ c₁
 
--- Normal forms
--- A closed term is in normal form for a given memory configuration
--- if it cannot be reduced further
-NormalForm : ∀ {Δ₁ τ} -> Memory Δ₁ -> CTerm τ -> Set
-NormalForm m₁ c = ¬ Redex m₁ c
+  -- Normal forms
+  -- A closed term is in normal form for a given memory configuration
+  -- if it cannot be reduced further
+  NormalForm : ∀ {Δ₁ τ} -> Memory Δ₁ -> CTerm τ -> Set
+  NormalForm m₁ c = ¬ Redex m₁ c
