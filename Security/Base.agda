@@ -12,16 +12,10 @@ open import Relation.Binary.PropositionalEquality
 -- It applies ε homomorphically.
 ε-Mac : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Term Δ (Mac lᵈ τ) -> Term Δ (Mac lᵈ τ)
 
-ε-Mac-Labeled : ∀ {lʰ lₐ Δ τ} -> Dec (lʰ ⊑ lₐ) -> Term Δ (Mac lʰ τ) -> Term Δ (Mac lʰ τ)
-ε-Mac-Labeled (yes p) t = ε-Mac _ (yes p) t
-ε-Mac-Labeled (no ¬p) (Mac t) = Mac ∙
-ε-Mac-Labeled (no ¬p) (Macₓ t) = Macₓ ∙
-ε-Mac-Labeled (no ¬p) t = ∙
-
-ε-Mac-Labeled∙ : ∀ {τ lʰ Δ} -> Term Δ (Mac lʰ τ) -> Term Δ (Mac lʰ τ)
-ε-Mac-Labeled∙ (Mac t) =  Mac ∙
-ε-Mac-Labeled∙ (Macₓ t) = Macₓ ∙
-ε-Mac-Labeled∙ t = ∙
+ε-keep : ∀ {τ Δ lʰ} -> (lₐ : Label) -> Term Δ (Mac lʰ τ) -> Term Δ (Mac lʰ τ)
+ε-keep lₐ (Mac t) = Mac ∙
+ε-keep lₐ (Macₓ t) = Macₓ ∙
+ε-keep lₐ t = ∙
 
 ε-Mac lₐ (yes p) (Var x) = Var x
 ε-Mac lₐ (yes p) (App f x) = App (ε lₐ f) (ε lₐ x)
@@ -38,7 +32,7 @@ open import Relation.Binary.PropositionalEquality
 ε-Mac lₐ (yes p) (unlabel x t) = unlabel x (ε lₐ t)
 ε-Mac lₐ (yes p) (join {l = lᵈ} {h = lʰ} x t) with lʰ ⊑? lₐ
 ε-Mac lₐ (yes p₁) (join x t) | yes p = join x (ε-Mac lₐ (yes p) t)
-ε-Mac lₐ (yes p) (join x t) | no ¬p = join x (ε-Mac-Labeled∙ t)
+ε-Mac lₐ (yes p) (join x t) | no ¬p = join x (ε-keep lₐ t)
 ε-Mac lₐ (yes _) (read p r) = read p (ε lₐ r)
 ε-Mac lₐ (yes _) (write p r t) = write p (ε lₐ r) (ε lₐ t)
 ε-Mac lₐ (yes _) (new p t) = new p (ε lₐ t)
@@ -50,12 +44,13 @@ open import Relation.Binary.PropositionalEquality
 ε-Labeled lₐ p (Var x) = Var x
 ε-Labeled lₐ p (App f x) = App (ε lₐ f) (ε lₐ x)
 ε-Labeled lₐ p (If c Then t Else e) = If (ε lₐ c) Then (ε-Labeled lₐ p t) Else (ε-Labeled lₐ p e)
--- @Ale
--- Here I should arbitrarily choose, but I don't see why.
 ε-Labeled lₐ (yes p) (Res t) = Res (ε lₐ t)
 ε-Labeled lₐ (no ¬p) (Res t) = Res ∙
 ε-Labeled lₐ (yes p) (Resₓ t) = Resₓ (ε lₐ t)
-ε-Labeled lₐ (no ¬p) (Resₓ t) = Resₓ ∙
+-- It is not possible to distinguish between Res and Resₓ when they are sensitive,
+-- because you would need to be in a high computation to unlabel them,
+-- which would get collapsed.
+ε-Labeled lₐ (no ¬p) (Resₓ t) = Res ∙ 
 ε-Labeled lₐ p ∙ = ∙
 
 ε {Mac lᵈ τ} lₐ t = ε-Mac lₐ (lᵈ ⊑? lₐ) t
@@ -99,17 +94,9 @@ open import Relation.Binary.PropositionalEquality
 
 εᶜ-Mac : ∀ {τ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> CTerm (Mac lᵈ τ) -> CTerm (Mac lᵈ τ)
 
-εᶜ-Mac-Labeled : ∀ {lₐ lʰ τ} -> Dec (lʰ ⊑ lₐ) -> CTerm (Mac lʰ τ) -> CTerm (Mac lʰ τ)
-εᶜ-Mac-Labeled {lₐ} d (Γ , t) = εᶜ-env lₐ Γ , ε-Mac-Labeled d t
-εᶜ-Mac-Labeled {lₐ} (yes p) c = εᶜ-Mac lₐ (yes p) c 
-εᶜ-Mac-Labeled (no ¬p) c = ∙
-
-εᶜ-Mac-Labeled∙ : ∀ {τ lʰ} -> (lₐ : Label) -> CTerm (Mac lʰ τ) -> CTerm (Mac lʰ τ)
-εᶜ-Mac-Labeled∙ lₐ (Γ , t) = εᶜ-env lₐ Γ , ε-Mac-Labeled∙ t
-εᶜ-Mac-Labeled∙ lₐ t = ∙
-
--- εᵖ-Mac-Labeled∙ : ∀ {τ}
--- lₐ
+εᶜ-keep : ∀ {lʰ α} -> (lₐ : Label) -> CTerm (Mac lʰ α) -> CTerm (Mac lʰ α)
+εᶜ-keep lₐ (Γ , t) = (εᶜ-env lₐ Γ) , ε-keep lₐ t
+εᶜ-keep lₐ c = ∙
 
 εᶜ-Mac lₐ p (Γ , t) = εᶜ-env lₐ Γ , ε-Mac lₐ p t
 εᶜ-Mac lₐ (yes p) (f $ x) = (εᶜ lₐ f) $ (εᶜ lₐ x)
@@ -119,7 +106,7 @@ open import Relation.Binary.PropositionalEquality
 εᶜ-Mac lₐ (yes p) (unlabel x c) = unlabel x (εᶜ lₐ c)
 εᶜ-Mac lₐ (yes p) (join {l = lᵈ} {h = lʰ} x c) with lʰ ⊑? lₐ
 εᶜ-Mac lₐ (yes p₁) (join x c) | yes p = join x (εᶜ-Mac lₐ (yes p) c)
-εᶜ-Mac lₐ (yes p) (join x c) | no ¬p = join x (εᶜ-Mac-Labeled∙ lₐ c)
+εᶜ-Mac lₐ (yes p) (join x c) | no ¬p = join x (εᶜ-keep lₐ c)
 εᶜ-Mac lₐ (yes _) (write {l = lᵈ} {h = lʰ} p r c) = write p (εᶜ lₐ r) (εᶜ lₐ c)
 εᶜ-Mac lₐ (yes p) (read {l = l} {h = h} l⊑h r) = read l⊑h (εᶜ lₐ r)
 εᶜ-Mac lₐ (yes p) ∙ = ∙
@@ -136,19 +123,29 @@ open import Relation.Binary.PropositionalEquality
 
 open import Typed.Semantics
 
-εᵐ : ∀ {Δᵐ} -> Label -> Memory Δᵐ -> Memory Δᵐ
-εᵐ lₐ [] = []
-εᵐ lₐ (c ∷ m) = εᶜ lₐ c ∷ εᵐ lₐ m
-εᵐ lₐ ∙ = ∙
+map-εᶜ : ∀ {Δᵐ} -> Label -> Memory Δᵐ -> Memory Δᵐ
+map-εᶜ lₐ [] = []
+map-εᶜ lₐ (x ∷ m) = εᶜ lₐ x ∷ map-εᶜ lₐ m
+map-εᶜ lₐ ∙ = ∙
 
-εᵖ-Mac : ∀ {Δᵐ τ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Program Δᵐ (Mac lᵈ τ) -> Program Δᵐ (Mac lᵈ τ)
-εᵖ-Mac lₐ (yes p) ⟨ m ∥ c ⟩ = ⟨ (εᵐ lₐ m) ∥ (εᶜ-Mac lₐ (yes p) c) ⟩
+εᵐ : ∀ {Δᵐ} -> Label -> Ty -> Memory Δᵐ -> Memory Δᵐ
+εᵐ lₐ (Mac lᵈ τ) m with lᵈ ⊑? lₐ
+εᵐ lₐ (Mac lᵈ (Labeled lʰ τ)) m | yes p with lʰ ⊑? lₐ
+εᵐ lₐ (Mac lᵈ (Labeled lʰ τ)) m | yes p₁ | yes p = map-εᶜ lₐ m
+εᵐ lₐ (Mac lᵈ (Labeled lʰ τ)) m | yes p | no ¬p = ∙
+εᵐ lₐ (Mac lᵈ τ) m | yes p =  map-εᶜ lₐ m
+εᵐ lₐ (Mac lᵈ τ) m | no ¬p = ∙
+εᵐ lₐ τ m = map-εᶜ lₐ m
+
+
+εᵖ-Mac : ∀ {τ lᵈ Δᵐ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Program Δᵐ (Mac lᵈ τ) -> Program Δᵐ (Mac lᵈ τ)
+εᵖ-Mac {τ} {lᵈ} lₐ (yes p) ⟨ m ∥ c ⟩ = ⟨ (εᵐ lₐ (Mac lᵈ τ) m) ∥ (εᶜ-Mac lₐ (yes p) c) ⟩
 εᵖ-Mac lₐ (no ¬p) ⟨ m ∥ c ⟩ = ⟨ ∙ ∥ (εᶜ-Mac lₐ (no ¬p) c) ⟩
 
 -- Erasure for programs, i.e. closed term with memory
 εᵖ : ∀ {Δᵐ τ} -> Label -> Program Δᵐ τ -> Program Δᵐ τ
 εᵖ {τ = Mac lᵈ τ} lₐ p = εᵖ-Mac lₐ (lᵈ ⊑? lₐ) p
-εᵖ lₐ ⟨ m ∥ c ⟩ = ⟨ (εᵐ lₐ m) ∥ (εᶜ lₐ c) ⟩
+εᵖ lₐ ⟨ m ∥ c ⟩ = ⟨ (map-εᶜ lₐ m) ∥ (εᶜ lₐ c) ⟩
 
 -- Applying the erausre function to an environment and looking up the value is the same
 -- as first looking up a variable and then erasing the result.
