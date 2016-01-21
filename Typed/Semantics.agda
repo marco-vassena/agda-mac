@@ -184,7 +184,7 @@ mutual
                    ⟨ m₁ ∥ unlabel p c₁ ⟩ ⟼ ⟨ m₂ ∥ unlabel p c₂ ⟩
 
     -- Let's what would break with small step semantics for context
-    joinCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {t : CTerm α} {c₁ c₂ : CTerm (Mac h α)} (p : l ⊑ h) ->
+    joinCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac h α)} (p : l ⊑ h) ->
                  ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
                  ⟨ m₁ ∥ join p c₁ ⟩ ⟼ ⟨ m₂ ∥ join p c₂ ⟩
                  
