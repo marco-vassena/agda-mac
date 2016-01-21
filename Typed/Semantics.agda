@@ -3,9 +3,12 @@ module Typed.Semantics where
 open import Typed.Base public
 import Data.List as L
 
+
+-- TODO remove
 data _≅ᵛ_ {α : Ty} {Δ : Context} (x : α ∈ Δ) : ∀ {β} -> (y : β ∈ Δ) -> Set where
   refl : x ≅ᵛ x
 
+-- TODO remove
 varEq? : ∀ {α β Δ} -> (x : α ∈ Δ) (y : β ∈ Δ) -> Dec (x ≅ᵛ y)
 varEq? Here Here = yes refl
 varEq? Here (There y) = no (λ ())
@@ -16,6 +19,9 @@ varEq? (There x) (There y) | no ¬p = no (aux ¬p)
   where aux : ∀ {α β γ Δ} {x : α ∈ Δ} {y : β ∈ Δ} -> ¬ (x ≅ᵛ y) -> ¬ ((There {β = γ} x) ≅ᵛ There y)
         aux ¬p₁ refl = ¬p₁ refl
 
+
+--------------------------------------------------------------------------------
+-- TODO move to types
 -- subset
 data _⊆ˡ_ : List Ty -> List Ty -> Set where
   base : [] ⊆ˡ [] 
@@ -26,75 +32,78 @@ refl-⊆ˡ : ∀ {Δ} -> Δ ⊆ˡ Δ
 refl-⊆ˡ {[]} = base
 refl-⊆ˡ {x ∷ Δ} = cons refl-⊆ˡ
 
-extend-∈' : ∀ {τ Δ₁ Δ₂} -> τ ∈ Δ₁ -> Δ₁ ⊆ˡ Δ₂ -> τ ∈ Δ₂
-extend-∈' () base
-extend-∈' Here (cons p) = Here
-extend-∈' (There x) (cons p) = There (extend-∈' x p)
-extend-∈' x (drop p) = There (extend-∈' x p)
+wken-∈ : ∀ {τ Δ₁ Δ₂} -> τ ∈ Δ₁ -> Δ₁ ⊆ˡ Δ₂ -> τ ∈ Δ₂
+wken-∈ () base
+wken-∈ Here (cons p) = Here
+wken-∈ (There x) (cons p) = There (wken-∈ x p)
+wken-∈ x (drop p) = There (wken-∈ x p)
 
 infixr 2 _⊆ˡ_
+--------------------------------------------------------------------------------
 
 -- The context of a term can be extended without harm
-extend : ∀ {τ Δ₁ Δ₂} -> Term Δ₁ τ -> Δ₁ ⊆ˡ Δ₂ -> Term Δ₂ τ
-extend （） p = （）
-extend True p = True
-extend False p = False
-extend (Var x) p = Var (extend-∈' x p)
-extend (Abs t) p = Abs (extend t (cons p))
-extend (App t t₁) p = App (extend t p) (extend t₁ p)
-extend (If t Then t₁ Else t₂) p = If (extend t p) Then (extend t₁ p) Else (extend t₂ p)
-extend (Return t) p = Return (extend t p)
-extend (t >>= t₁) p = (extend t p) >>= (extend t₁ p)
-extend ξ p = ξ
-extend (Throw t) p = Throw (extend t p)
-extend (Catch t t₁) p = Catch (extend t p) (extend t₁ p)
-extend (Mac t) p = Mac (extend t p)
-extend (Macₓ t) p = Macₓ (extend t p)
-extend (Res t) p = Res (extend t p)
-extend (Resₓ t) p = Resₓ (extend t p)
-extend (label x t) p = label x (extend t p)
-extend (unlabel x t) p = unlabel x (extend t p)
-extend (join x t) p = join x (extend t p)
-extend (Ref x) p = Ref x
-extend (read x t) p = read x (extend t p)
-extend (write x t t₁) p = write x (extend t p) (extend t₁ p)
-extend (new x t) p = new x (extend t p)
-extend ∙ p = ∙
+wken : ∀ {τ Δ₁ Δ₂} -> Term Δ₁ τ -> Δ₁ ⊆ˡ Δ₂ -> Term Δ₂ τ
+wken （） p = （）
+wken True p = True
+wken False p = False
+wken (Var x) p = Var (wken-∈ x p)
+wken (Abs t) p = Abs (wken t (cons p))
+wken (App t t₁) p = App (wken t p) (wken t₁ p)
+wken (If t Then t₁ Else t₂) p = If (wken t p) Then (wken t₁ p) Else (wken t₂ p)
+wken (Return t) p = Return (wken t p)
+wken (t >>= t₁) p = (wken t p) >>= (wken t₁ p)
+wken ξ p = ξ
+wken (Throw t) p = Throw (wken t p)
+wken (Catch t t₁) p = Catch (wken t p) (wken t₁ p)
+wken (Mac t) p = Mac (wken t p)
+wken (Macₓ t) p = Macₓ (wken t p)
+wken (Res t) p = Res (wken t p)
+wken (Resₓ t) p = Resₓ (wken t p)
+wken (label x t) p = label x (wken t p)
+wken (unlabel x t) p = unlabel x (wken t p)
+wken (join x t) p = join x (wken t p)
+wken (Ref x) p = Ref x
+wken (read x t) p = read x (wken t p)
+wken (write x t t₁) p = write x (wken t p) (wken t₁ p)
+wken (new x t) p = new x (wken t p)
+wken ∙ p = ∙
 
 _↑¹ : ∀ {α β Δ} -> Term Δ α -> Term (β ∷ Δ) α
-t ↑¹ = extend t (drop refl-⊆ˡ)
+t ↑¹ = wken t (drop refl-⊆ˡ)
 
--- Substitution
-[_↦_]_ : ∀ {Δ τ β α} -> τ ∈ (α ∷ Δ) -> Term (α ∷ Δ) τ -> Term Δ β -> Term Δ β
-[ x ↦ v ] （） = （）
-[ x ↦ v ] True = True
-[ x ↦ v ] False = False
-[ x ↦ v ] Var y = {!!}
--- with varEq? x y
--- [ x ↦ v ] Var .x | yes refl = v
--- [ x ↦ v ] Var y | no ¬p = Var y
-[ x ↦ v ] Abs t = Abs ([ {!There x!} ↦ {!v!} ] t) -- Abs ([ extend-∈' x (cons (drop refl-⊆ˡ)) ↦ extend v (drop refl-⊆ˡ) ] t) -- Abs ([ (There x) ↦ (extend v (drop refl-⊆ˡ)) ] t)
-[ x ↦ v ] App t t₁ = App ([ x ↦ v ] t) ([ x ↦ v ] t₁)
-[ x ↦ v ] (If t Then t₁ Else t₂) = If ([ x ↦ v ] t) Then ([ x ↦ v ] t₁) Else ([ x ↦ v ] t₂)
-[ x ↦ v ] Return t = Return ([ x ↦ v ] t)
-[ x ↦ v ] (t >>= t₁) = ([ x ↦ v ] t) >>= ([ x ↦ v ] t₁)
-[ x ↦ v ] ξ = ξ
-[ x ↦ v ] Throw t = Throw ([ x ↦ v ] t)
-[ x ↦ v ] Catch t t₁ = Catch ([ x ↦ v ] t) ([ x ↦ v ] t₁)
-[ x ↦ v ] Mac t = Mac ([ x ↦ v ] t)
-[ x ↦ v ] Macₓ t = Macₓ ([ x ↦ v ] t)
-[ x ↦ v ] Res t = Res ([ x ↦ v ] t)
-[ x ↦ v ] Resₓ t = Resₓ ([ x ↦ v ] t)
-[ x ↦ v ] label x₁ t = label x₁ ([ x ↦ v ] t)
-[ x ↦ v ] unlabel x₁ t = unlabel x₁ ([ x ↦ v ] t)
-[ x ↦ v ] join x₁ t = join x₁ ([ x ↦ v ] t)
-[ x ↦ v ] Ref x₁ = Ref x₁
-[ x ↦ v ] read x₁ t = read x₁ ([ x ↦ v ] t)
-[ x ↦ v ] write x₁ t t₁ = write x₁ ([ x ↦ v ] t) ([ x ↦ v ] t₁)
-[ x ↦ v ] new x₁ t = new x₁ ([ x ↦ v ] t)
-[ x ↦ v ] ∙ = ∙
+subst : ∀ {Δ α β} -> Term Δ α -> Term (α ∷ Δ) β -> Term Δ β
+subst v t = tm-subst [] _ v t
+  where var-subst : ∀ {α β} (Δ₁ Δ₂ : Context) -> Term Δ₂ α -> β ∈ (Δ₁ ++ L.[ α ] ++ Δ₂) -> Term (Δ₁ ++ Δ₂) β
+        var-subst [] Δ₂ t Here = t
+        var-subst [] Δ t (There p) = Var p
+        var-subst (β ∷ Δ₁) Δ₂ t Here = Var Here
+        var-subst (x ∷ Δ₁) Δ₂ t (There p) = (var-subst Δ₁ Δ₂ t p) ↑¹
 
-infixr 2 [_↦_]_ 
+        tm-subst : ∀ {α τ} (Δ₁ Δ₂ : Context) -> Term Δ₂ α -> Term (Δ₁ ++ L.[ α ] ++ Δ₂) τ -> Term (Δ₁ ++ Δ₂) τ
+        tm-subst Δ₁ Δ₂ v （） = （）
+        tm-subst Δ₁ Δ₂ v True = True
+        tm-subst Δ₁ Δ₂ v False = False
+        tm-subst Δ₁ Δ₂ v (Var x) = var-subst Δ₁ Δ₂ v x
+        tm-subst Δ₁ Δ₂ v (Abs t) = Abs (tm-subst (_ ∷ Δ₁) Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (App t t₁) = App (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
+        tm-subst Δ₁ Δ₂ v (If t Then t₁ Else t₂) = If (tm-subst Δ₁ Δ₂ v t) Then (tm-subst Δ₁ Δ₂ v t₁) Else (tm-subst Δ₁ Δ₂ v t₂)
+        tm-subst Δ₁ Δ₂ v (Return t) = Return (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (t >>= t₁) = (tm-subst Δ₁ Δ₂ v t) >>= (tm-subst Δ₁ Δ₂ v t₁)
+        tm-subst Δ₁ Δ₂ v ξ = ξ
+        tm-subst Δ₁ Δ₂ v (Throw t) = Throw (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (Catch t t₁) = Catch (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
+        tm-subst Δ₁ Δ₂ v (Mac t) = Mac (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (Macₓ t) = Macₓ (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (Res t) = Res (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (Resₓ t) = Resₓ (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (label x t) = label x (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (unlabel x t) = unlabel x (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (join x t) = join x (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (Ref x) = Ref x
+        tm-subst Δ₁ Δ₂ v (read x t) = read x (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v (write x t t₁) = write x (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
+        tm-subst Δ₁ Δ₂ v (new x t) = new x (tm-subst Δ₁ Δ₂ v t)
+        tm-subst Δ₁ Δ₂ v ∙ = ∙
 
 data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
@@ -102,11 +111,8 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   AppL : ∀ {α β} {c₁ c₂ : CTerm (α => β)} {x : CTerm α} -> c₁ ⇝ c₂ -> App c₁ x ⇝ App c₂ x
 
   -- Pushes a term in the environment
-  Beta : ∀ {α β} {t : Term (α ∷ []) β} {x : CTerm α} -> App (Abs t) x ⇝ ([ {!!} ↦ {!!} ] {!!})  -- ([ Here ↦ x ] t)
-
---   -- Looks up a variable in the environment
---   Lookup : ∀ {Δ τ} {Γ : Env Δ} {p : τ ∈ Δ} -> (Γ , Var p) ⇝ (id {{Γ}} $ (p !! Γ))
-
+  Beta : ∀ {α β} {t : Term (α ∷ []) β} {x : CTerm α} -> App (Abs t) x ⇝ subst x t
+  
 --   -- Distributes the environment forming two closures wrapped in a CLapp
 --   Dist-$ : ∀ {Δ α β} {Γ : Env Δ} {f : Term Δ (α => β)} {x : Term Δ α} -> (Γ , App f x) ⇝ ((Γ , f) $ (Γ , x))
 
