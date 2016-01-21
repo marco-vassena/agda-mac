@@ -45,34 +45,8 @@ data Term (Δ : Context) : Ty -> Set where
   -- Erased term ∙
   ∙ : ∀ {{τ}} -> Term Δ τ
 
-infixr 3 _,_
-infixr 0 _$_
-infixl 5 _>>=_
-
-mutual
-  data CTerm : Ty -> Set where
-    _,_ : ∀ {Δ τ} -> Env Δ -> Term Δ τ -> CTerm τ
-    _$_ : ∀ {α β} -> CTerm (α => β) -> CTerm α -> CTerm β
-    If_Then_Else_ : ∀ {τ} -> CTerm Bool -> CTerm τ -> CTerm τ -> CTerm τ
-    _>>=_ : ∀ {l α β} -> CTerm (Mac l α) -> CTerm (α => Mac l β) -> CTerm (Mac l β)
-    Catch : ∀ {l α} -> CTerm (Mac l α) -> CTerm (Exception => Mac l α) -> CTerm (Mac l α)
-    unlabel : ∀ {l τ h} -> l ⊑ h -> CTerm (Labeled l τ) -> CTerm (Mac h τ)
-    join : ∀ {l h α} -> l ⊑ h -> CTerm (Mac h α) -> CTerm (Mac l (Labeled h α))
-    write : ∀ {α l h} -> l ⊑ h -> CTerm (Ref h α) -> CTerm α -> CTerm (Mac l （）)
-    read : ∀ {α l h} -> l ⊑ h -> CTerm (Ref l α) -> CTerm (Mac h α)
-    -- Erased closed term
-    ∙ : ∀ {{τ}} -> CTerm τ
-
-  data Env : (Δ : Context) -> Set where
-    [] : Env []
-    _∷_ : ∀ {Δ τ} -> CTerm τ -> Env Δ -> Env (τ ∷ Δ)
-
--- Lookup
-_!!_ : ∀ {τ Δ} -> τ ∈ Δ -> Env Δ -> CTerm τ
-Here !! (x ∷ Γ) = x
-There p !! (x ∷ Γ) = p !! Γ
-
-infixr 6 _!!_
+CTerm : Ty -> Set
+CTerm τ = Term [] τ
 
 --------------------------------------------------------------------------------
 
@@ -152,5 +126,5 @@ data IsTValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsTValue (Resₓ {α = α} e)
   Ref : ∀ {l} {α : Ty} -> (n : ℕ) -> IsTValue (Ref {{α}} n)
 
-data IsValue {τ : Ty} : CTerm τ -> Set where
-  _,_ : ∀ {Δ} {t : Term Δ τ} -> (Γ : Env Δ) -> IsTValue t -> IsValue (Γ , t)
+-- data IsValue {τ : Ty} : CTerm τ -> Set where
+--   _,_ : ∀ {Δ} {t : Term Δ τ} -> (Γ : Env Δ) -> IsTValue t -> IsValue (Γ , t)

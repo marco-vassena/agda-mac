@@ -62,3 +62,8 @@ snoc-⊆ (x₁ ∷ xs) = cons (snoc-⊆ xs)
 fin : ∀ {τ Δ} -> τ ∈ Δ -> Fin (length Δ)
 fin Here = zero
 fin (There p) = suc (fin p)
+
+extend-∈ : ∀ {τ Δ₁ Δ₂} -> τ ∈ Δ₁ -> Δ₁ ⊆ Δ₂ -> τ ∈ Δ₂
+extend-∈ () base
+extend-∈ Here (cons p) = Here
+extend-∈ (There x) (cons p) = There (extend-∈ x p)
