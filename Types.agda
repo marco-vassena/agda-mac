@@ -46,17 +46,17 @@ data _⊆_ {A : Set} : List A -> List A -> Set where
   base : ∀ {xs : List A} -> [] ⊆ xs
   cons : ∀ {xs ys x} -> xs ⊆ ys -> (x ∷ xs) ⊆ (x ∷ ys)
 
-refl-⊆ : ∀ {A} -> (xs : List A) -> xs ⊆ xs
-refl-⊆ [] = base
-refl-⊆ (x ∷ xs) = cons (refl-⊆ xs)
+refl-⊆ : ∀ {A} {xs : List A} -> xs ⊆ xs
+refl-⊆ {_} {[]} = base
+refl-⊆ {_} {x ∷ xs} = cons refl-⊆
 
 trans-⊆ : ∀ {A} {xs ys zs : List A} -> xs ⊆ ys -> ys ⊆ zs -> xs ⊆ zs
 trans-⊆ base q = base
 trans-⊆ (cons p) (cons q) = cons (trans-⊆ p q)
 
-snoc-⊆ : ∀ {A} {x : A} -> (xs : List A) -> xs ⊆ (xs L.∷ʳ x)
-snoc-⊆ [] = base
-snoc-⊆ (x₁ ∷ xs) = cons (snoc-⊆ xs)
+snoc-⊆ : ∀ {A} {xs : List A} {x : A} -> xs ⊆ (xs L.∷ʳ x)
+snoc-⊆ {_} {[]} = base
+snoc-⊆ {_} {x₁ ∷ xs} = cons snoc-⊆
 
 -- Transform τ ∈ᵗ Δ in Fin
 fin : ∀ {τ Δ} -> τ ∈ Δ -> Fin (length Δ)
