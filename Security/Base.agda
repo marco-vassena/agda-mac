@@ -97,14 +97,19 @@ open import Relation.Binary.PropositionalEquality
 -- εᵐ lₐ (Mac lᵈ τ) m | no ¬p = ∙
 -- εᵐ lₐ τ m = map-εᶜ lₐ m
 
+εᵐ-Mac : ∀ {Δᵐ} -> (lₐ : Label) -> Ty -> Memory Δᵐ -> Memory Δᵐ
+εᵐ-Mac lₐ (Labeled lᵈ τ) m with lᵈ ⊑? lₐ
+εᵐ-Mac lₐ (Labeled lᵈ τ) m | yes p = εᵐ lₐ m
+εᵐ-Mac lₐ (Labeled lᵈ τ) m | no ¬p = ∙
+εᵐ-Mac lₐ τ m = εᵐ lₐ m
 
--- εᵖ-Mac : ∀ {τ lᵈ Δᵐ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Program Δᵐ (Mac lᵈ τ) -> Program Δᵐ (Mac lᵈ τ)
--- εᵖ-Mac {τ} {lᵈ} lₐ (yes p) ⟨ m ∥ c ⟩ = ⟨ (εᵐ lₐ (Mac lᵈ τ) m) ∥ (εᶜ-Mac lₐ (yes p) c) ⟩
--- εᵖ-Mac lₐ (no ¬p) ⟨ m ∥ c ⟩ = ⟨ ∙ ∥ (εᶜ-Mac lₐ (no ¬p) c) ⟩
+εᵖ-Mac : ∀ {τ lᵈ Δᵐ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Program Δᵐ (Mac lᵈ τ) -> Program Δᵐ (Mac lᵈ τ)
+εᵖ-Mac {τ} lₐ (yes p) ⟨ m ∥ c ⟩ = ⟨ (εᵐ-Mac lₐ τ  m) ∥ (ε-Mac lₐ (yes p) c) ⟩
+εᵖ-Mac lₐ (no ¬p) ⟨ m ∥ c ⟩ = ⟨ ∙ ∥ (ε-Mac lₐ (no ¬p) c) ⟩
 
 -- Erasure for programs, i.e. closed term with memory
 εᵖ : ∀ {Δᵐ τ} -> Label -> Program Δᵐ τ -> Program Δᵐ τ
--- εᵖ {τ = Mac lᵈ τ} lₐ p = εᵖ-Mac lₐ (lᵈ ⊑? lₐ) p
+εᵖ {τ = Mac lᵈ τ} lₐ p = εᵖ-Mac lₐ (lᵈ ⊑? lₐ) p
 εᵖ lₐ ⟨ m ∥ c ⟩ = ⟨ εᵐ lₐ m ∥ ε lₐ c ⟩
 
 ε-Mac-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Mac lᵈ τ)) -> ε-Mac lₐ x t ≡ ε-Mac lₐ y t
@@ -180,7 +185,6 @@ open import Relation.Binary.PropositionalEquality
 ε-Mac-extensional (no ¬p) (yes p) ∙ = refl
 ε-Mac-extensional (no ¬p) (no ¬p₁) ∙ = refl
 
-
 ε∙≡∙ : ∀ {τ : Ty} {Δ : Context} -> (lₐ : Label) -> ε {τ} {Δ} lₐ ∙ ≡ ∙
 ε∙≡∙ {（）} lₐ = refl
 ε∙≡∙ {Bool} lₐ = refl
@@ -205,3 +209,14 @@ open import Relation.Binary.PropositionalEquality
 
 εVar≡Var' : ∀ {α Δ} -> (lₐ : Label) (p : α ∈ Δ) ->  Var p ≡ ε lₐ (Var p)
 εVar≡Var' lₐ p = sym (εVar≡Var lₐ p)
+
+εᵐ∙≡∙ : ∀ {Δᵐ} (lₐ : Label) (τ : Ty) -> εᵐ-Mac {Δᵐ = Δᵐ} lₐ τ ∙ ≡ ∙
+εᵐ∙≡∙ lₐ （） = refl
+εᵐ∙≡∙ lₐ Bool = refl
+εᵐ∙≡∙ lₐ (τ => τ₁) = refl
+εᵐ∙≡∙ lₐ (Mac x τ) = refl
+εᵐ∙≡∙ lₐ (Labeled lᵈ τ) with lᵈ ⊑? lₐ
+εᵐ∙≡∙ lₐ (Labeled lᵈ τ) | yes p = refl
+εᵐ∙≡∙ lₐ (Labeled lᵈ τ) | no ¬p = refl
+εᵐ∙≡∙ lₐ Exception = refl
+εᵐ∙≡∙ lₐ (Ref x τ) = refl

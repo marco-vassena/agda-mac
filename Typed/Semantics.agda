@@ -198,7 +198,7 @@ mutual
 
 --     -- In LIO values stored in memory are labeled
 
-    new : ∀ {l h α Δ₁} {m₁ : Memory Δ₁} {t : CTerm α} -> (p : l ⊑ h) -> ⟨ m₁ ∥ new p t ⟩ ⟼ ⟨ m₁ ∷ʳ t ∥ Return (Ref (length Δ₁)) ⟩
+    new : ∀ {l h α Δ₁} {m : Memory Δ₁} {t : CTerm α} -> (p : l ⊑ h) -> ⟨ m ∥ new p t ⟩ ⟼ ⟨ m ∷ʳ t ∥ Return (Ref (length Δ₁)) ⟩
 
 
     writeCtx :  ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
@@ -208,9 +208,9 @@ mutual
 --     -- TODO to make the semantics deterministic we need to put references in the variables
 --     -- otherwise the reference used in each step is existentially quantified and hence
 --     -- different in general.
-    write : ∀ {l h n α Δ₁} {m₁ : Memory Δ₁} {c : CTerm α} ->
+    write : ∀ {l h n α Δ₁} {m : Memory Δ₁} {c : CTerm α} ->
               (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
-            ⟨ m₁ ∥ write p (Ref n) c ⟩ ⟼ ⟨ m₁ [ # i ]≔ c ∥ Return （） ⟩
+            ⟨ m ∥ write p (Ref n) c ⟩ ⟼ ⟨ m [ # i ]≔ c ∥ Return （） ⟩
 
     readCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
