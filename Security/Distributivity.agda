@@ -359,9 +359,9 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εᵖ-Mac-dist : ∀ {lᵈ τ Δ₁ Δ₂} {p₁ : Program Δ₁ (Mac lᵈ τ)} {p₂ : Program Δ₂ (Mac lᵈ τ)}  (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) ->
             p₁ ⟼ p₂ -> εᵖ-Mac lₐ x p₁ ⟼ εᵖ-Mac lₐ x p₂
 εᵖ-Mac-dist lₐ (yes p) (Pure x) = Pure (ε-Mac-dist⇝ lₐ (yes p) x)
-εᵖ-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (εᵖ-Mac-dist lₐ (yes p) s) -- Do we need εᵐ-Mac ?
+εᵖ-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (εᵖ-Mac-dist lₐ (yes p) s)
 εᵖ-Mac-dist lₐ (yes p) (CatchCtx s) = CatchCtx (εᵖ-Mac-dist lₐ (yes p) s)
-εᵖ-Mac-dist lₐ (yes p) (unlabelCtx p₁ s) = unlabelCtx p₁ (εᵖ-dist lₐ s) -- Do we need εᵐ-Mac ?
+εᵖ-Mac-dist lₐ (yes p) (unlabelCtx p₁ s) = unlabelCtx p₁ (εᵖ-dist lₐ s)
 εᵖ-Mac-dist lₐ (yes p) (joinCtx p₁ s) = {!!}
 εᵖ-Mac-dist lₐ (yes p) (join p₁) = {!!}
 εᵖ-Mac-dist lₐ (yes p) (joinEx p₁) = {!!}

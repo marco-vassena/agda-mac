@@ -156,15 +156,15 @@ data Program (Δ : Context) (τ : Ty) : Set where
 mutual
   infixr 1 _⟼_
 
---   -- The transitive reflexive closure of a small step
---   data _⟼⋆_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
---     [] : ∀ {Δ} {m : Memory Δ} {c : CTerm τ} -> ⟨ m ∥ c ⟩ ⟼⋆ ⟨ m ∥ c ⟩ 
---     _∷_ : ∀ {Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
---             ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₂ ∥ c₂ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩
+  -- The transitive reflexive closure of a small step
+  data _⟼⋆_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
+    [] : ∀ {Δ} {m : Memory Δ} {c : CTerm τ} -> ⟨ m ∥ c ⟩ ⟼⋆ ⟨ m ∥ c ⟩ 
+    _∷_ : ∀ {Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
+            ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₂ ∥ c₂ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩
 
---   -- Big step, a finite number (possibly 0) of reduction steps of a term that reduces it to a value.
---   data _⇓_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
---     BigStep : ∀ {Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c v : CTerm τ} -> IsValue v -> ⟨ m₁ ∥ c ⟩ ⟼⋆ ⟨ m₂ ∥ v ⟩ -> ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥ v ⟩
+  -- Big step, a finite number (possibly 0) of reduction steps of a term that reduces it to a value.
+  data _⇓_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
+    BigStep : ∀ {Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c v : CTerm τ} -> IsValue v -> ⟨ m₁ ∥ c ⟩ ⟼⋆ ⟨ m₂ ∥ v ⟩ -> ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥ v ⟩
 
   data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
     Pure : ∀ {Δ₁ τ} {m₁ : Memory Δ₁} {c₁ c₂ : CTerm τ} -> c₁ ⇝ c₂ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₁ ∥ c₂ ⟩
@@ -182,19 +182,14 @@ mutual
     unlabelCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Labeled l α)} -> (p : l ⊑ h) ->
                    ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
                    ⟨ m₁ ∥ unlabel p c₁ ⟩ ⟼ ⟨ m₂ ∥ unlabel p c₂ ⟩
-
-    -- Let's what would break with small step semantics for context
-    joinCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac h α)} (p : l ⊑ h) ->
-                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-                 ⟨ m₁ ∥ join p c₁ ⟩ ⟼ ⟨ m₂ ∥ join p c₂ ⟩
                  
-    join : ∀ {l h α Δ₁} {m₁ : Memory Δ₁}  {t : CTerm α} (p : l ⊑ h) ->
---              ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥ Γ , Mac t ⟩ ->
-              ⟨ m₁ ∥ join p (Mac t) ⟩ ⟼ ⟨ m₁ ∥ (Return (Res t)) ⟩
+    join : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂}  {c : CTerm (Mac h α)} {t : CTerm α} (p : l ⊑ h) ->
+             ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥  Mac t ⟩ ->
+             ⟨ m₁ ∥ join p c ⟩ ⟼ ⟨ m₂ ∥ (Return (Res t)) ⟩
 
-    joinEx : ∀ {l h α Δ₁} {m₁ : Memory Δ₁} {e : CTerm Exception} (p : l ⊑ h) ->
---                ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥ Γ , Macₓ e ⟩ ->
-                ⟨ m₁ ∥ join {α = α} p (Macₓ e) ⟩ ⟼ ⟨ m₁ ∥ (Return (Resₓ e)) ⟩
+    joinEx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c : CTerm (Mac h α)} {e : CTerm Exception} (p : l ⊑ h) ->
+               ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥  Macₓ e ⟩ ->
+               ⟨ m₁ ∥ join p c ⟩ ⟼ ⟨ m₂ ∥ (Return (Resₓ e)) ⟩
 
 --     -- In LIO values stored in memory are labeled
 
