@@ -87,24 +87,8 @@ open import Relation.Binary.PropositionalEquality
 εᵐ lₐ (x ∷ m) = (ε lₐ x) ∷ (εᵐ lₐ m)
 εᵐ lₐ ∙ = ∙
 
--- εᵐ : ∀ {Δᵐ} -> Label -> Ty -> Memory Δᵐ -> Memory Δᵐ
--- εᵐ lₐ τ m = {!!}
--- εᵐ lₐ (Mac lᵈ τ) m with lᵈ ⊑? lₐ
--- εᵐ lₐ (Mac lᵈ (Labeled lʰ τ)) m | yes p with lʰ ⊑? lₐ
--- εᵐ lₐ (Mac lᵈ (Labeled lʰ τ)) m | yes p₁ | yes p = map-εᶜ lₐ m
--- εᵐ lₐ (Mac lᵈ (Labeled lʰ τ)) m | yes p | no ¬p = ∙
--- εᵐ lₐ (Mac lᵈ τ) m | yes p =  map-εᶜ lₐ m
--- εᵐ lₐ (Mac lᵈ τ) m | no ¬p = ∙
--- εᵐ lₐ τ m = map-εᶜ lₐ m
-
-εᵐ-Mac : ∀ {Δᵐ} -> (lₐ : Label) -> Ty -> Memory Δᵐ -> Memory Δᵐ
-εᵐ-Mac lₐ (Labeled lᵈ τ) m with lᵈ ⊑? lₐ
-εᵐ-Mac lₐ (Labeled lᵈ τ) m | yes p = εᵐ lₐ m
-εᵐ-Mac lₐ (Labeled lᵈ τ) m | no ¬p = ∙
-εᵐ-Mac lₐ τ m = εᵐ lₐ m
-
 εᵖ-Mac : ∀ {τ lᵈ Δᵐ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Program Δᵐ (Mac lᵈ τ) -> Program Δᵐ (Mac lᵈ τ)
-εᵖ-Mac {τ} lₐ (yes p) ⟨ m ∥ c ⟩ = ⟨ (εᵐ-Mac lₐ τ  m) ∥ (ε-Mac lₐ (yes p) c) ⟩
+εᵖ-Mac {τ} lₐ (yes p) ⟨ m ∥ c ⟩ = ⟨ (εᵐ lₐ  m) ∥ (ε-Mac lₐ (yes p) c) ⟩
 εᵖ-Mac lₐ (no ¬p) ⟨ m ∥ c ⟩ = ⟨ ∙ ∥ (ε-Mac lₐ (no ¬p) c) ⟩
 
 -- Erasure for programs, i.e. closed term with memory
@@ -209,14 +193,3 @@ open import Relation.Binary.PropositionalEquality
 
 εVar≡Var' : ∀ {α Δ} -> (lₐ : Label) (p : α ∈ Δ) ->  Var p ≡ ε lₐ (Var p)
 εVar≡Var' lₐ p = sym (εVar≡Var lₐ p)
-
-εᵐ∙≡∙ : ∀ {Δᵐ} (lₐ : Label) (τ : Ty) -> εᵐ-Mac {Δᵐ = Δᵐ} lₐ τ ∙ ≡ ∙
-εᵐ∙≡∙ lₐ （） = refl
-εᵐ∙≡∙ lₐ Bool = refl
-εᵐ∙≡∙ lₐ (τ => τ₁) = refl
-εᵐ∙≡∙ lₐ (Mac x τ) = refl
-εᵐ∙≡∙ lₐ (Labeled lᵈ τ) with lᵈ ⊑? lₐ
-εᵐ∙≡∙ lₐ (Labeled lᵈ τ) | yes p = refl
-εᵐ∙≡∙ lₐ (Labeled lᵈ τ) | no ¬p = refl
-εᵐ∙≡∙ lₐ Exception = refl
-εᵐ∙≡∙ lₐ (Ref x τ) = refl

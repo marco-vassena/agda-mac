@@ -216,8 +216,8 @@ mutual
               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
               ⟨ m₁ ∥ (read p c₁) ⟩ ⟼ ⟨ m₂ ∥ (read p c₂) ⟩
 
-    read : ∀ {l h n α Δ₁} {m₁ : Memory Δ₁} -> (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
-              ⟨ m₁ ∥ (read p (Ref n)) ⟩ ⟼ ⟨ m₁ ∥ Return (m₁ [ # i ] ) ⟩
+    read : ∀ {l h n α Δ₁} {m : Memory Δ₁} -> (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
+              ⟨ m ∥ (read p (Ref n)) ⟩ ⟼ ⟨ m ∥ Return (m [ # i ] ) ⟩
 
     Hole : ∀ {τ : Ty} {Δ₁ Δ₂ : Context} -> Δ₁ ⊆ Δ₂ -> ⟨ ∙ {{Δ₁}} ∥ ∙ {{τ}} ⟩ ⟼ ⟨ ∙ {{Δ₂}} ∥ ∙ ⟩
 

@@ -350,41 +350,27 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εᵐ-write lₐ (x ∷ m) c (There i) rewrite εᵐ-write lₐ m c i = refl
 εᵐ-write lₐ ∙ c (There i) = refl
 
-εᵐ-read' : ∀ {τ Δᵐ n} -> (lₐ : Label) (m : Memory Δᵐ) (i : TypedIx τ n Δᵐ) -> _[_] (εᵐ lₐ m) (# i)  ≡ ε lₐ (_[_] m (# i))
-εᵐ-read' lₐ (x ∷ m) Here = refl
-εᵐ-read' {τ} {.τ ∷ Δᵐ} lₐ ∙ Here rewrite ε∙≡∙ {τ} {[]} lₐ =  refl
-εᵐ-read' lₐ (x ∷ m) (There i) rewrite εᵐ-read' lₐ m i = refl
-εᵐ-read' {τ} lₐ ∙ (There i) rewrite ε∙≡∙ {τ} {[]} lₐ = refl
-
-εᵐ-read : ∀ {τ n Δᵐ} (lₐ : Label) (m : Memory Δᵐ) (i : TypedIx τ n Δᵐ) -> (_[_] (εᵐ-Mac lₐ τ m) (# i)) ≡ ε lₐ (_[_] m  (# i))
-εᵐ-read {（）} lₐ m i = εᵐ-read' lₐ m i
-εᵐ-read {Bool} lₐ m i = εᵐ-read' lₐ m i
-εᵐ-read {τ => τ₁} lₐ m i = εᵐ-read' lₐ m i
-εᵐ-read {Mac lᵈ τ} lₐ m i = εᵐ-read' lₐ m i
-εᵐ-read {Labeled lᵈ τ} lₐ m i with lᵈ ⊑? lₐ
-εᵐ-read {Labeled lᵈ τ} lₐ m i | yes p = εᵐ-read' lₐ m i
-εᵐ-read {Labeled lᵈ τ} lₐ (x ∷ m) Here | no ¬p = {!!}
-εᵐ-read {Labeled lᵈ τ} lₐ ∙ Here | no ¬p = refl
-εᵐ-read {Labeled lᵈ τ} lₐ (x ∷ m) (There i) | no ¬p rewrite εᵐ-read lₐ m i = {!refl!}
-εᵐ-read {Labeled lᵈ τ} lₐ ∙ (There i) | no ¬p = refl
-εᵐ-read {Exception} lₐ m i = εᵐ-read' lₐ m i
-εᵐ-read {Ref x τ} lₐ m i = εᵐ-read' lₐ m i
+εᵐ-read : ∀ {τ Δᵐ n} -> (lₐ : Label) (m : Memory Δᵐ) (i : TypedIx τ n Δᵐ) -> _[_] (εᵐ lₐ m) (# i)  ≡ ε lₐ (_[_] m (# i))
+εᵐ-read lₐ (x ∷ m) Here = refl
+εᵐ-read {τ} {.τ ∷ Δᵐ} lₐ ∙ Here rewrite ε∙≡∙ {τ} {[]} lₐ =  refl
+εᵐ-read lₐ (x ∷ m) (There i) rewrite εᵐ-read lₐ m i = refl
+εᵐ-read {τ} lₐ ∙ (There i) rewrite ε∙≡∙ {τ} {[]} lₐ = refl
 
 εᵖ-Mac-dist : ∀ {lᵈ τ Δ₁ Δ₂} {p₁ : Program Δ₁ (Mac lᵈ τ)} {p₂ : Program Δ₂ (Mac lᵈ τ)}  (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) ->
             p₁ ⟼ p₂ -> εᵖ-Mac lₐ x p₁ ⟼ εᵖ-Mac lₐ x p₂
 εᵖ-Mac-dist lₐ (yes p) (Pure x) = Pure (ε-Mac-dist⇝ lₐ (yes p) x)
-εᵖ-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx {!εᵖ-Mac-dist lₐ (yes p) s!} -- Do we need εᵐ-Mac ?
+εᵖ-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (εᵖ-Mac-dist lₐ (yes p) s) -- Do we need εᵐ-Mac ?
 εᵖ-Mac-dist lₐ (yes p) (CatchCtx s) = CatchCtx (εᵖ-Mac-dist lₐ (yes p) s)
-εᵖ-Mac-dist lₐ (yes p) (unlabelCtx p₁ s) = unlabelCtx p₁ (εᵖ-dist lₐ {!s!}) -- Do we need εᵐ-Mac ?
+εᵖ-Mac-dist lₐ (yes p) (unlabelCtx p₁ s) = unlabelCtx p₁ (εᵖ-dist lₐ s) -- Do we need εᵐ-Mac ?
 εᵖ-Mac-dist lₐ (yes p) (joinCtx p₁ s) = {!!}
 εᵖ-Mac-dist lₐ (yes p) (join p₁) = {!!}
 εᵖ-Mac-dist lₐ (yes p) (joinEx p₁) = {!!}
 εᵖ-Mac-dist lₐ (yes p) (new {m = m} {t = t} p₁) rewrite εᵐ-new lₐ m t = new p₁
 εᵖ-Mac-dist lₐ (yes p) (writeCtx p₁ s) = writeCtx p₁ (εᵖ-dist lₐ s)
 εᵖ-Mac-dist lₐ (yes p) (write {m = m} {c = c} p₁ i) rewrite εᵐ-write lₐ m c i = write p₁ i
-εᵖ-Mac-dist lₐ (yes p) (readCtx p₁ s) = readCtx p₁ (εᵖ-dist lₐ {!s!}) -- Do we need εᵐ-Mac ?
-εᵖ-Mac-dist lₐ (yes p) (read p₁ i) = {!read p₁ i!} -- Do we need εᵐ-Mac ?
-εᵖ-Mac-dist {τ = τ} {Δ₁} {Δ₂} lₐ (yes p) (Hole x) rewrite εᵐ∙≡∙ {Δ₁} lₐ τ | εᵐ∙≡∙ {Δ₂} lₐ τ = Hole x
+εᵖ-Mac-dist lₐ (yes p) (readCtx p₁ s) = readCtx p₁ (εᵖ-dist lₐ s)
+εᵖ-Mac-dist lₐ (yes p) (read {m = m} p₁ i) rewrite sym (εᵐ-read lₐ m i) = read p₁ i
+εᵖ-Mac-dist lₐ (yes p) (Hole x) = Hole x
 εᵖ-Mac-dist lₐ (no ¬p) (Pure x) = Pure (ε-Mac-dist⇝ lₐ (no ¬p) x)
 εᵖ-Mac-dist lₐ (no ¬p) (BindCtx s) = Hole (context-⊆ s)
 εᵖ-Mac-dist lₐ (no ¬p) (CatchCtx s) = Hole (context-⊆ s)
