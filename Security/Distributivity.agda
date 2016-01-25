@@ -125,10 +125,31 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εᵖ-Mac-dist⋆ lₐ p [] = []
 εᵖ-Mac-dist⋆ lₐ p (s ∷ ss) = (εᵖ-Mac-dist lₐ (yes p) s) ∷ (εᵖ-Mac-dist⋆ lₐ p ss)
 
+
 εᵖ-Mac-dist⇓ : ∀ {lᵈ τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {c₁ : CTerm (Mac lᵈ τ)} {m₂ : Memory  Δ₂} {c₂ : CTerm τ} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) ->
              ⟨ m₁ ∥ c₁ ⟩ ⇓ ⟨ m₂ ∥ Mac c₂ ⟩ ->
              ⟨ εᵐ lₐ  m₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⇓ ⟨ εᵐ lₐ m₂ ∥ Mac (ε lₐ c₂) ⟩
 εᵖ-Mac-dist⇓ lₐ p (BigStep (Mac c₂) ss) = BigStep (Mac (ε lₐ c₂)) (εᵖ-Mac-dist⋆ lₐ p ss)
+
+εᵐ-≅ : ∀ {lᵈ τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac lᵈ τ)} (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) ->
+       ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> εᵐ lₐ m₁ ≅ εᵐ lₐ m₂
+εᵐ-≅ lₐ ¬p (Pure x) = refl-≅
+εᵐ-≅ lₐ ¬p (BindCtx s) = εᵐ-≅ lₐ ¬p s
+εᵐ-≅ lₐ ¬p (CatchCtx s) = εᵐ-≅ lₐ ¬p s
+εᵐ-≅ lₐ ¬p (unlabelCtx p s) = {!εᵐ-≅ lₐ ¬p s!}
+εᵐ-≅ lₐ ¬p (join p bs) = {!!}
+εᵐ-≅ lₐ ¬p (joinEx p bs) = {!!}
+εᵐ-≅ lₐ ¬p (new p) = {!!}
+εᵐ-≅ lₐ ¬p (writeCtx p s) = {!!}
+εᵐ-≅ lₐ ¬p (write p i) = {!!}
+εᵐ-≅ lₐ ¬p (readCtx p s) = {!!}
+εᵐ-≅ lₐ ¬p (read p i) = refl-≅
+εᵐ-≅ lₐ ¬p (Hole x) = hole
+
+εᵐ-≅⋆ : ∀ {lᵈ τ Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac lᵈ τ)} (lₐ : Label) -> ¬ (lᵈ ⊑ lₐ) ->
+         ⟨ m₁ ∥ c₁ ⟩ ⟼⋆ ⟨ m₂ ∥ c₂ ⟩ -> εᵐ lₐ m₁ ≅ εᵐ lₐ m₂
+εᵐ-≅⋆ lₐ ¬p [] = refl-≅
+εᵐ-≅⋆ lₐ ¬p (s ∷ ss) = trans-≅ (εᵐ-≅ lₐ ¬p s) (εᵐ-≅⋆ lₐ ¬p ss)         
 
 εᵖ-Mac-dist lₐ (yes p) (Pure x) = Pure (ε-Mac-dist⇝ lₐ (yes p) x)
 εᵖ-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (εᵖ-Mac-dist lₐ (yes p) s)
@@ -136,7 +157,10 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εᵖ-Mac-dist lₐ (yes p) (unlabelCtx p₁ s) = unlabelCtx p₁ (εᵖ-dist lₐ s)
 εᵖ-Mac-dist lₐ (yes p) (join {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
 εᵖ-Mac-dist lₐ (yes p₁) (join p₂ bs) | yes p = join p₂ (εᵖ-Mac-dist⇓ lₐ p bs)
-εᵖ-Mac-dist lₐ (yes p) (join p₁ bs) | no ¬p = join p₁ (BigStep (Mac ∙) {![]!}) -- m₁ and m₂ must be the same to put [] 
+εᵖ-Mac-dist lₐ (yes p) (join {m₁ = m₁} {m₂ = m₂} p₁ (BigStep v ss)) | no ¬p with εᵐ lₐ m₁ | εᵐ lₐ m₂ | εᵐ-≅⋆ lₐ ¬p ss
+εᵖ-Mac-dist lₐ (yes p) (join p₁ (BigStep v ss)) | no ¬p | .[] | .[] | base = join p₁ (BigStep (Mac ∙) [])
+εᵖ-Mac-dist lₐ (yes p) (join p₁ (BigStep v ss)) | no ¬p | ._ | ._ | cons r = join p₁ (BigStep (Mac ∙) {![]!})
+εᵖ-Mac-dist lₐ (yes p) (join p₁ (BigStep v ss)) | no ¬p | .∙ | .∙ | hole = join p₁ (BigStep (Mac ∙) {![]!})  
 εᵖ-Mac-dist lₐ (yes p) (joinEx {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
 εᵖ-Mac-dist lₐ (yes p₁) (joinEx p₂ bs) | yes p = joinEx p₂ (εᵖ-Mac-distₓ⇓ lₐ p bs)
 εᵖ-Mac-dist lₐ (yes p) (joinEx p₁ bs) | no ¬p = join p₁ (BigStep (Mac ∙) {!!})
