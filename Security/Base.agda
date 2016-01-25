@@ -4,7 +4,8 @@ module Security.Base where
 
 open import Typed.Base
 open import Typed.Semantics
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality hiding (subst)
+open import Data.List as L hiding (drop)
 
 -- Erasure function for open terms
 ε : ∀ {τ Δ} -> Label -> Term Δ τ -> Term Δ τ
@@ -95,6 +96,19 @@ open import Relation.Binary.PropositionalEquality
 εᵖ : ∀ {Δᵐ τ} -> Label -> Program Δᵐ τ -> Program Δᵐ τ
 εᵖ {τ = Mac lᵈ τ} lₐ p = εᵖ-Mac lₐ (lᵈ ⊑? lₐ) p
 εᵖ lₐ ⟨ m ∥ c ⟩ = ⟨ εᵐ lₐ m ∥ ε lₐ c ⟩
+
+open import Data.Product
+
+εᵖ-is-program : ∀ {τ Δᵐ} -> (lₐ : Label) -> (p : Program Δᵐ τ) -> ∃ λ mᵉ → ∃ λ cᵉ → εᵖ lₐ p ≡ ⟨ mᵉ ∥ cᵉ ⟩
+εᵖ-is-program {（）} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
+εᵖ-is-program {Bool} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
+εᵖ-is-program {τ => τ₁} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
+εᵖ-is-program {Mac lᵈ τ} lₐ ⟨ m ∥ c ⟩ with lᵈ ⊑? lₐ
+εᵖ-is-program {Mac lᵈ τ} lₐ ⟨ m ∥ c ⟩ | yes p = εᵐ lₐ m , ε-Mac lₐ (yes p) c , refl
+εᵖ-is-program {Mac lᵈ τ} lₐ ⟨ m ∥ c ⟩ | no ¬p = ∙ , ((ε-Mac lₐ (no ¬p) c) , refl)
+εᵖ-is-program {Labeled x τ} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
+εᵖ-is-program {Exception} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
+εᵖ-is-program {Ref x τ} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
 
 ε-Mac-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Mac lᵈ τ)) -> ε-Mac lₐ x t ≡ ε-Mac lₐ y t
 ε-Mac-extensional (yes p) (yes p₁) (Var x₁) = refl
@@ -193,3 +207,258 @@ open import Relation.Binary.PropositionalEquality
 
 εVar≡Var' : ∀ {α Δ} -> (lₐ : Label) (p : α ∈ Δ) ->  Var p ≡ ε lₐ (Var p)
 εVar≡Var' lₐ p = sym (εVar≡Var lₐ p)
+
+--------------------------------------------------------------------------------
+
+ε-wken : ∀ {α Δ₁ Δ₂} -> (lₐ : Label) -> (t : Term Δ₁ α) (p : Δ₁ ⊆ˡ Δ₂) -> ε lₐ (wken t p) ≡ wken (ε lₐ t) p
+
+ε-Mac-wken : ∀ {lᵈ α Δ₁ Δ₂} -> (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) (t : Term Δ₁ (Mac lᵈ α)) (p : Δ₁ ⊆ˡ Δ₂) -> ε-Mac lₐ x (wken t p) ≡ wken (ε-Mac lₐ x t) p
+ε-Mac-wken lₐ (yes p) (Var x₁) p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (Var x₁) p = refl
+ε-Mac-wken lₐ (yes x) (App t t₁) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
+ε-Mac-wken lₐ (no x) (App t t₁) p = refl
+ε-Mac-wken lₐ (yes p) (If t Then t₁ Else t₂) p₁
+  rewrite ε-wken lₐ t p₁ | ε-Mac-wken lₐ (yes p) t₁ p₁ | ε-Mac-wken lₐ (yes p) t₂ p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (If t Then t₁ Else t₂) p = refl
+ε-Mac-wken lₐ (yes p) (Return t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (Return t) p = refl
+ε-Mac-wken lₐ (yes p) (t >>= t₁) p₁
+  rewrite ε-Mac-wken lₐ (yes p) t p₁ | ε-wken lₐ t₁ p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (t >>= t₁) p = refl
+ε-Mac-wken lₐ (yes p) (Throw t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (Throw t) p = refl
+ε-Mac-wken lₐ (yes p) (Catch t t₁) p₁
+  rewrite ε-Mac-wken lₐ (yes p) t p₁ | ε-wken lₐ t₁ p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (Catch t t₁) p = refl
+ε-Mac-wken lₐ (yes p) (Mac t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (Mac t) p = refl
+ε-Mac-wken lₐ (yes p) (Macₓ t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (Macₓ t) p = refl
+ε-Mac-wken lₐ (yes p) (label {h = lʰ} x₁ t) p₁ with lʰ ⊑? lₐ
+ε-Mac-wken lₐ (yes p₁) (label x₁ t) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
+ε-Mac-wken lₐ (yes p) (label x₁ t) p₁ | no ¬p = refl 
+ε-Mac-wken lₐ (no ¬p) (label x₁ t) p = refl
+ε-Mac-wken lₐ (yes p) (unlabel x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (unlabel x₁ t) p = refl
+ε-Mac-wken lₐ (yes p) (join {h = lʰ} x₁ t) p₁ with lʰ ⊑? lₐ
+ε-Mac-wken lₐ (yes p₁) (join x₁ t) p₂ | yes p rewrite ε-Mac-wken lₐ (yes p) t p₂ = refl
+ε-Mac-wken lₐ (yes p) (join x₁ t) p₁ | no ¬p = refl
+ε-Mac-wken lₐ (no ¬p) (join x₁ t) p = refl
+ε-Mac-wken lₐ (yes p) (read x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (read x₁ t) p = refl
+ε-Mac-wken lₐ (yes p) (write x₁ t t₁) p₁ rewrite ε-wken lₐ t p₁ | ε-wken lₐ t₁ p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (write x₁ t t₁) p = refl
+ε-Mac-wken lₐ (yes p) (new x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (new x₁ t) p = refl
+ε-Mac-wken lₐ (yes p) ∙ p₁ = refl
+ε-Mac-wken lₐ (no ¬p) ∙ p = refl
+
+ε-wken {（）} lₐ （） p = refl
+ε-wken {（）} lₐ (Var x) p = refl
+ε-wken {（）} lₐ (App t t₁) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
+ε-wken {（）} lₐ (If t Then t₁ Else t₂) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
+ε-wken {（）} lₐ ∙ p = refl
+ε-wken {Bool} lₐ True p = refl
+ε-wken {Bool} lₐ False p = refl
+ε-wken {Bool} lₐ (Var x) p = refl
+ε-wken {Bool} lₐ (App t t₁) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
+ε-wken {Bool} lₐ (If t Then t₁ Else t₂) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
+ε-wken {Bool} lₐ ∙ p = refl
+ε-wken {α => α₁} lₐ (Var x) p = refl
+ε-wken {α => α₁} lₐ (Abs t) p
+  rewrite ε-wken lₐ t (cons p) = refl
+ε-wken {α => α₁} lₐ (App t t₁) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
+ε-wken {α => α₁} lₐ (If t Then t₁ Else t₂) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
+ε-wken {α => α₁} lₐ ∙ p = refl
+ε-wken {Mac lᵈ α} lₐ t p rewrite ε-Mac-wken lₐ (lᵈ ⊑? lₐ) t p = refl
+ε-wken {Labeled x α} lₐ (Var x₁) p = refl
+ε-wken {Labeled x α} lₐ (App t t₁) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
+ε-wken {Labeled x α} lₐ (If t Then t₁ Else t₂) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
+ε-wken {Labeled lᵈ α} lₐ (Res t) p with lᵈ ⊑? lₐ
+ε-wken {Labeled lᵈ α} lₐ (Res t) p₁ | yes p
+  rewrite ε-wken lₐ t p₁ = refl
+ε-wken {Labeled lᵈ α} lₐ (Res t) p | no ¬p = refl
+ε-wken {Labeled lᵈ α} lₐ (Resₓ t) p with lᵈ ⊑? lₐ
+ε-wken {Labeled lᵈ α} lₐ (Resₓ t) p₁ | yes p
+  rewrite ε-wken lₐ t p₁ = refl
+ε-wken {Labeled lᵈ α} lₐ (Resₓ t) p | no ¬p = refl
+ε-wken {Labeled x α} lₐ ∙ p = refl
+ε-wken {Exception} lₐ (Var x) p = refl
+ε-wken {Exception} lₐ (App t t₁) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
+ε-wken {Exception} lₐ (If t Then t₁ Else t₂) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
+ε-wken {Exception} lₐ ξ p = refl
+ε-wken {Exception} lₐ ∙ p = refl
+ε-wken {Ref x α} lₐ (Var x₁) p = refl
+ε-wken {Ref x α} lₐ (App t t₁) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
+ε-wken {Ref x α} lₐ (If t Then t₁ Else t₂) p
+  rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
+ε-wken {Ref x α} lₐ (Ref x₁) p = refl
+ε-wken {Ref x α} lₐ ∙ p = refl
+
+ε-subst : ∀ {Δ α β} (lₐ : Label) (x : Term Δ α) (t : Term (α ∷ Δ) β) -> subst (ε lₐ x) (ε lₐ t) ≡ ε lₐ (subst x t)
+ε-subst lₐ x t = ε-tm-subst [] _ x t
+  where
+        ε-tm-subst : ∀ {α τ} (Δ₁ Δ₂ : Context) (x : Term Δ₂ α) (t : Term (Δ₁ ++ L.[ α ] ++ Δ₂) τ) ->
+               tm-subst Δ₁ Δ₂ (ε lₐ x) (ε lₐ t) ≡ ε lₐ (tm-subst Δ₁ Δ₂ x t)
+
+        ε-Mac-tm-subst : ∀ {lᵈ α  τ} (Δ₁ Δ₂ : Context) (x : Term Δ₂ α) (t : Term (Δ₁ ++ L.[ α ] ++ Δ₂) (Mac lᵈ τ)) (p : Dec (lᵈ ⊑ lₐ)) ->
+                         tm-subst Δ₁ Δ₂ (ε lₐ x) (ε-Mac lₐ p t) ≡ ε-Mac lₐ p (tm-subst Δ₁ Δ₂ x t)
+
+        ε-var-subst : ∀ {α β} (Δ₁ Δ₂ : Context) (x : Term Δ₂ α) -> (p : β ∈ (Δ₁ ++ L.[ α ] ++ Δ₂)) ->
+                      var-subst Δ₁ Δ₂ (ε lₐ x) p ≡ ε lₐ (var-subst Δ₁ Δ₂ x p)
+        ε-var-subst [] Δ₂ t₁ Here = refl
+        ε-var-subst [] Δ t₁ (There p) rewrite εVar≡Var lₐ p = refl
+        ε-var-subst (（） ∷ Δ₁) Δ₂ t₁ Here = refl
+        ε-var-subst (Bool ∷ Δ₁) Δ₂ t₁ Here = refl
+        ε-var-subst ((β => β₁) ∷ Δ₁) Δ₂ t₁ Here = refl
+        ε-var-subst (Mac lᵈ β ∷ Δ₁) Δ₂ t₁ Here with lᵈ ⊑? lₐ
+        ε-var-subst (Mac lᵈ β ∷ Δ₁) Δ₂ t₁ Here | yes p = refl
+        ε-var-subst (Mac lᵈ β ∷ Δ₁) Δ₂ t₁ Here | no ¬p = refl
+        ε-var-subst (Labeled x₁ β ∷ Δ₁) Δ₂ t₁ Here = refl
+        ε-var-subst (Exception ∷ Δ₁) Δ₂ t₁ Here = refl
+        ε-var-subst (Ref x₁ β ∷ Δ₁) Δ₂ t₁ Here = refl
+        ε-var-subst (x₁ ∷ Δ₁) Δ₂ t₁ (There p)
+          rewrite ε-var-subst Δ₁ Δ₂ t₁ p | ε-wken lₐ (var-subst Δ₁ Δ₂ t₁ p) (drop {x₁} refl-⊆ˡ) = refl
+
+        ε-Mac-var-subst : ∀ {lᵈ α β} (Δ₁ Δ₂ : Context) (x : Term Δ₂ α) (y : Dec (lᵈ ⊑ lₐ)) -> (p : (Mac lᵈ β) ∈ (Δ₁ ++ L.[ α ] ++ Δ₂)) ->
+                          tm-subst Δ₁ Δ₂ (ε lₐ x) (ε-Mac lₐ y (Var p)) ≡ ε-Mac lₐ y (var-subst Δ₁ Δ₂ x p)
+
+        ε-Mac-var-subst {lᵈ} [] Δ₂ x₁ (yes p) Here rewrite ε-Mac-extensional (yes p) (lᵈ ⊑? lₐ) x₁ = refl
+        ε-Mac-var-subst {lᵈ} [] Δ₂ x₁ (no ¬p) Here rewrite ε-Mac-extensional (no ¬p) (lᵈ ⊑? lₐ) x₁ =  refl
+        ε-Mac-var-subst [] Δ x₁ (yes p) (There p₁) = refl
+        ε-Mac-var-subst [] Δ x₁ (no ¬p) (There p) = refl
+        ε-Mac-var-subst (._ ∷ Δ₁) Δ₂ x₂ (yes p) Here = refl
+        ε-Mac-var-subst (._ ∷ Δ₁) Δ₂ x₂ (no ¬p) Here = refl
+        ε-Mac-var-subst (x₁ ∷ Δ₁) Δ₂ x₂ (yes p) (There p₁)
+          rewrite ε-Mac-var-subst Δ₁ Δ₂ x₂ (yes p) p₁ | ε-Mac-wken lₐ (yes p) (var-subst Δ₁ Δ₂ x₂ p₁) (drop {x₁} refl-⊆ˡ) =  refl
+        ε-Mac-var-subst (x₁ ∷ Δ₁) Δ₂ x₂ (no ¬p) (There p)
+          rewrite ε-Mac-var-subst Δ₁ Δ₂ x₂ (no ¬p) p | ε-Mac-wken lₐ (no ¬p) (var-subst Δ₁ Δ₂ x₂ p) (drop {x₁} refl-⊆ˡ) =  refl
+
+        ε-tm-subst {τ = （）} Δ₁ Δ₂ x₁ （） = refl
+        ε-tm-subst {τ = （）} Δ₁ Δ₂ x₁ (Var x₂) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₂ = refl
+        ε-tm-subst {τ = （）} Δ₁ Δ₂ x₁ (App t₁ t₂)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-tm-subst {τ = （）} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
+        ε-tm-subst {τ = （）} Δ₁ Δ₂ x₁ ∙ = refl
+        ε-tm-subst {τ = Bool} Δ₁ Δ₂ x₁ True = refl
+        ε-tm-subst {τ = Bool} Δ₁ Δ₂ x₁ False = refl
+        ε-tm-subst {τ = Bool} Δ₁ Δ₂ x₁ (Var x₂) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₂ = refl
+        ε-tm-subst {τ = Bool} Δ₁ Δ₂ x₁ (App t₁ t₂)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-tm-subst {τ = Bool} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
+        ε-tm-subst {τ = Bool} Δ₁ Δ₂ x₁ ∙ = refl
+        ε-tm-subst {τ = τ => τ₁} Δ₁ Δ₂ x₁ (Var x₂) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₂ = refl
+        ε-tm-subst {τ = τ => τ₁} Δ₁ Δ₂ x₁ (Abs t₁)
+          rewrite ε-tm-subst (_ ∷ Δ₁) Δ₂ x₁ t₁ = refl
+        ε-tm-subst {τ = τ => τ₁} Δ₁ Δ₂ x₁ (App t₁ t₂)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-tm-subst {τ = τ => τ₁} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
+        ε-tm-subst {τ = τ => τ₁} Δ₁ Δ₂ x₁ ∙ = refl
+        ε-tm-subst {τ = Mac lᵈ τ} Δ₁ Δ₂ x₂ t₁ = ε-Mac-tm-subst Δ₁ Δ₂ x₂ t₁ (lᵈ ⊑? lₐ)
+        ε-tm-subst {τ = Labeled x₁ τ} Δ₁ Δ₂ x₂ (Var x₃) rewrite ε-var-subst Δ₁ Δ₂ x₂ x₃ = refl
+        ε-tm-subst {τ = Labeled l τ} Δ₁ Δ₂ x₁ (App t₁ t₂)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-tm-subst {τ = Labeled l τ} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
+        ε-tm-subst {τ = Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) with lᵈ ⊑? lₐ
+        ε-tm-subst {α} {Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) | yes p
+          rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl
+        ε-tm-subst {α} {Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) | no ¬p = refl
+        ε-tm-subst {τ = Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) with lᵈ ⊑? lₐ
+        ε-tm-subst {α} {Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) | yes p
+          rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl
+        ε-tm-subst {α} {Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) | no ¬p = refl
+        ε-tm-subst {τ = Labeled x₁ τ} Δ₁ Δ₂ x₂ ∙ = refl
+        ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ (Var x₂) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₂ = refl
+        ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ (App t₁ t₂)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
+        ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ ξ = refl
+        ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ ∙ = refl
+        ε-tm-subst {τ = Ref l τ} Δ₁ Δ₂ x₁ (Var x₃) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₃ = refl
+        ε-tm-subst {τ = Ref l τ} Δ₁ Δ₂ x₁ (App t₁ t₂)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-tm-subst {τ = Ref l τ} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
+        ε-tm-subst {τ = Ref l τ} Δ₁ Δ₂ x₁ (Ref x₃) = refl
+        ε-tm-subst {τ = Ref l τ} Δ₁ Δ₂ x₂ ∙ = refl
+
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Var p) x rewrite ε-Mac-var-subst Δ₁ Δ₂ x₁ x p = refl         
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (App t₁ t₂) (yes p)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃) (yes p)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₂ (yes p) | ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₃ (yes p) = refl                        
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Return t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (t₁ >>= t₂) (yes p)
+          rewrite ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₁ (yes p) | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Throw t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Catch t₁ t₂) (yes p)
+          rewrite ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₁ (yes p) | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Mac t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Macₓ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label {h = h} x₂ t₁) (yes p) with h ⊑? lₐ
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label x₂ t₁) (yes p₁) | yes p 
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label x₂ t₁) (yes p) | no ¬p = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (unlabel x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join {h = h} x₂ t₁) (yes p) with h ⊑? lₐ
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (yes p₁) | yes p
+          rewrite ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₁ (yes p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (yes p) | no ¬p = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl 
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (yes p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (App t₁ t₂) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Return t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (t₁ >>= t₂) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Throw t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Catch t₁ t₂) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Mac t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Macₓ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label x₂ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (unlabel x₂ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (no ¬p) = refl
+
+ε-Mac-subst : ∀ {lᵈ Δ α β} (lₐ : Label) (y : Dec (lᵈ ⊑ lₐ)) (x : Term Δ α) (t : Term (α ∷ Δ) (Mac lᵈ β))
+              -> subst (ε lₐ x) (ε-Mac lₐ (lᵈ ⊑? lₐ) t) ≡ (ε-Mac lₐ y (subst x t))
+ε-Mac-subst {lᵈ} lₐ y x t rewrite ε-Mac-extensional y (lᵈ ⊑? lₐ) (subst x t) = ε-subst lₐ x t
+
+ε-Mac-CTerm≡∙ : ∀ {lᵈ τ} (lₐ : Label) (c : CTerm (Mac lᵈ τ)) (x : ¬ (lᵈ ⊑ lₐ)) -> ε-Mac lₐ (no x) c ≡ ∙
+ε-Mac-CTerm≡∙ lₐ (Var ()) x₁
+ε-Mac-CTerm≡∙ lₐ (App c c₁) x = refl
+ε-Mac-CTerm≡∙ lₐ (If c Then c₁ Else c₂) x = refl
+ε-Mac-CTerm≡∙ lₐ (Return c) x = refl
+ε-Mac-CTerm≡∙ lₐ (c >>= c₁) x = refl
+ε-Mac-CTerm≡∙ lₐ (Throw c) x = refl
+ε-Mac-CTerm≡∙ lₐ (Catch c c₁) x = refl
+ε-Mac-CTerm≡∙ lₐ (Mac c) x = refl
+ε-Mac-CTerm≡∙ lₐ (Macₓ c) x = refl
+ε-Mac-CTerm≡∙ lₐ (label x c) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (unlabel x c) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (join x c) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (read x c) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (write x c c₁) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (new x c) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ ∙ x = refl

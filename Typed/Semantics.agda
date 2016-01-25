@@ -158,9 +158,9 @@ mutual
 
   -- The transitive reflexive closure of a small step
   data _⟼⋆_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
-    [] : ∀ {Δ} {m : Memory Δ} {c : CTerm τ} -> ⟨ m ∥ c ⟩ ⟼⋆ ⟨ m ∥ c ⟩ 
+    [] : ∀ {Δ} {m : Memory Δ} {c : CTerm τ} -> ⟨ m ∥ c ⟩  ⟼⋆ ⟨ m ∥ c ⟩
     _∷_ : ∀ {Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
-            ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₂ ∥ c₂ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩
+          ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₂ ∥ c₂ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩
 
   -- Big step, a finite number (possibly 0) of reduction steps of a term that reduces it to a value.
   data _⇓_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
