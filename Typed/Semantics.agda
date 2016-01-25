@@ -149,7 +149,7 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
 
 
-data Program (Δ : Context) (τ : Ty) : Set where
+data Program (Δ : Contextˡ) (τ : Ty) : Set where
   ⟨_∥_⟩ : Memory Δ -> CTerm τ -> Program Δ τ
 
 
@@ -193,7 +193,7 @@ mutual
 
 --     -- In LIO values stored in memory are labeled
 
-    new : ∀ {l h α Δ₁} {m : Memory Δ₁} {t : CTerm α} -> (p : l ⊑ h) -> ⟨ m ∥ new p t ⟩ ⟼ ⟨ m ∷ʳ t ∥ Return (Ref (length Δ₁)) ⟩
+    new : ∀ {l h α Δ₁} {m : Memory Δ₁} {t : CTerm α} -> (p : l ⊑ h) -> ⟨ m ∥ new p t ⟩ ⟼ ⟨ m ∷ʳ (Res {{h}} t) ∥ Return (Ref (length Δ₁)) ⟩
 
 
     writeCtx :  ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
@@ -204,23 +204,23 @@ mutual
 --     -- otherwise the reference used in each step is existentially quantified and hence
 --     -- different in general.
     write : ∀ {l h n α Δ₁} {m : Memory Δ₁} {c : CTerm α} ->
-              (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
-            ⟨ m ∥ write p (Ref n) c ⟩ ⟼ ⟨ m [ # i ]≔ c ∥ Return （） ⟩
+              (p : l ⊑ h) -> (i : TypedIx h α n Δ₁) ->
+            ⟨ m ∥ write p (Ref n) c ⟩ ⟼ ⟨ m [ i ]≔ (Res c) ∥ Return （） ⟩
 
     readCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
               ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
               ⟨ m₁ ∥ (read p c₁) ⟩ ⟼ ⟨ m₂ ∥ (read p c₂) ⟩
 
-    read : ∀ {l h n α Δ₁} {m : Memory Δ₁} -> (p : l ⊑ h) -> (i : TypedIx α n Δ₁) ->
-              ⟨ m ∥ (read p (Ref n)) ⟩ ⟼ ⟨ m ∥ Return (m [ # i ] ) ⟩
+    read : ∀ {l h n α Δ₁} {m : Memory Δ₁} -> (p : l ⊑ h) -> (i : TypedIx l α n Δ₁) ->
+              ⟨ m ∥ (read p (Ref n)) ⟩ ⟼ ⟨ m ∥ unlabel p (m [ i ] ) ⟩
 
-    Hole : ∀ {τ : Ty} {Δ₁ Δ₂ : Context} -> Δ₁ ⊆ Δ₂ -> ⟨ ∙ {{Δ₁}} ∥ ∙ {{τ}} ⟩ ⟼ ⟨ ∙ {{Δ₂}} ∥ ∙ ⟩
+    Hole : ∀ {τ : Ty} {Δ₁ Δ₂ : Contextˡ} -> Δ₁ ⊆ Δ₂ -> ⟨ ∙ {{Δ₁}} ∥ ∙ {{τ}} ⟩ ⟼ ⟨ ∙ {{Δ₂}} ∥ ∙ ⟩
 
 
 -- TODO maybe define Redex for Program instead of single term  
 
   -- A closed term is a Redex if it can be reduced further in a certain memory configuration
-  data Redex {Δ₁ : Context} {τ : Ty} (m₁ : Memory Δ₁) (c₁ : CTerm τ) : Set where
+  data Redex {Δ₁ : Contextˡ} {τ : Ty} (m₁ : Memory Δ₁) (c₁ : CTerm τ) : Set where
     Step : ∀ {Δ₂} {m₂ : Memory Δ₂} {c₂ : CTerm τ} -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Redex m₁ c₁
 
   -- Normal forms

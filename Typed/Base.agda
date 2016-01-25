@@ -50,6 +50,15 @@ CTerm τ = Term [] τ
 
 --------------------------------------------------------------------------------
 
+Contextˡ : Set
+Contextˡ = List (Label × Ty)
+
+infixr 3 _∈ˡ_
+
+data _∈ˡ_ : Label × Ty -> Contextˡ -> Set where
+  Here : ∀ {l τ Δˡ} -> (l , τ) ∈ˡ (l , τ) ∷ Δˡ
+  There : ∀ {l₁ l₂ τ₁ τ₂ Δˡ} -> (l₁ , τ₁) ∈ˡ Δˡ -> ((l₁ , τ₁) ∈ˡ (l₂ , τ₂) ∷ Δˡ)
+  
 -- I will start first with concrete memory containing closed terms
 -- to implement references and then abstract over that with a more
 -- generic Store.
@@ -57,28 +66,55 @@ CTerm τ = Term [] τ
 -- a store Store (A : Ty -> Set) : (Δ : Context) : Set
 -- how can I abstract over generic read/write operations?
 
-data Memory : (Δ : Context) -> Set where
+data Memory : (Δˡ : Contextˡ) -> Set where
   [] : Memory []
-  _∷_ : ∀ {τ Δ} -> CTerm τ -> Memory Δ -> Memory (τ ∷ Δ)
+  _∷_ : ∀ {τ l Δ} -> CTerm (Labeled l τ) -> Memory Δ -> Memory ((l , τ) ∷ Δ)
   ∙ : ∀ {{Δ}} -> Memory Δ
 
+--------------------------------------------------------------------------------
+-- Typed 0-based indexes
+
+data TypedIx (l  : Label) (τ : Ty) : ℕ -> Contextˡ -> Set where
+  Here : ∀ {Δ} -> TypedIx l τ zero ((l , τ) ∷ Δ)
+  There : ∀ {Δ n l' τ'} -> TypedIx l τ n Δ -> TypedIx l τ (suc n) ((l' , τ') ∷ Δ)
+
+castIx : ∀ {Δ₁ Δ₂ l τ n} -> TypedIx l τ n Δ₁ -> Δ₁ ⊆ Δ₂ -> TypedIx l τ n Δ₂
+castIx Here (cons q) = Here
+castIx (There p) (cons q) = There (castIx p q) 
+
+newTypeIx : ∀ {τ l} -> (Δ : Contextˡ) -> TypedIx l τ (length Δ) (Δ L.∷ʳ (l , τ))
+newTypeIx [] = Here
+newTypeIx (x ∷ Δ) = There (newTypeIx Δ)
+
+uniqueIx : ∀ {l τ n Δ} -> (ix jx : TypedIx l τ n Δ) -> ix ≡ jx
+uniqueIx Here Here = refl
+uniqueIx (There ix)  (There jx) rewrite uniqueIx ix jx = refl
+
+--------------------------------------------------------------------------------
+
 -- Memory access
-_[_] : ∀ {τ Δ} -> Memory Δ -> τ ∈ Δ -> CTerm τ
-[] [ () ]
+_[_] : ∀ {n τ l Δˡ} -> Memory Δˡ -> TypedIx l τ n Δˡ  -> CTerm (Labeled l τ)
 (x ∷ m) [ Here ] = x
-(x ∷ m) [ There r ] = _[_] m r
-∙ [ r ] = ∙
+∙ [ Here ] = ∙
+(x ∷ m) [ There p ] = _[_] m p
+∙ [ There p ] = ∙
+
+-- [] [ () ]
+-- (x ∷ m) [ Here ] = ?
+-- (x ∷ m) [ There r ] = _[_] m r
+-- ∙ [ r ] = ∙
 
 -- Update
-_[_]≔_ : ∀ {τ Δ} -> Memory Δ -> τ ∈ Δ -> CTerm τ -> Memory Δ
-_ ∷ Γ [ Here ]≔ v = v ∷ Γ
-x ∷ Γ [ There i ]≔ v = x ∷ (Γ [ i ]≔ v)
-∙ [ _ ]≔ _ = ∙
+_[_]≔_ : ∀ {l τ n Δˡ} -> Memory Δˡ -> TypedIx l τ n Δˡ -> CTerm (Labeled l τ) -> Memory Δˡ
+[] [ () ]≔ c
+x ∷ m [ Here ]≔ c = c ∷ m
+x ∷ m [ There i ]≔ c = x ∷ (m [ i ]≔ c)
+∙ [ i ]≔ c = ∙
 
 infixr 2 _[_]≔_
 
 -- Snoc
-_∷ʳ_ : ∀ {τ Δ} -> Memory Δ -> CTerm τ ->  Memory (Δ L.∷ʳ τ) 
+_∷ʳ_ : ∀ {τ l Δ} -> Memory Δ -> CTerm (Labeled l τ) ->  Memory (Δ L.∷ʳ (l , τ)) 
 [] ∷ʳ c = c ∷ []
 (x ∷ Γ) ∷ʳ c = x ∷ (Γ ∷ʳ c)
 ∙ ∷ʳ c = ∙
@@ -88,33 +124,10 @@ snoc=∈ : (τ : Ty) (Δ : Context) -> τ ∈ (Δ L.∷ʳ τ)
 snoc=∈ τ [] = Here
 snoc=∈ τ (x ∷ Δ) = There (snoc=∈ τ Δ)
 
---------------------------------------------------------------------------------
--- Typed 0-based indexes
-
-data TypedIx (τ : Ty) : ℕ -> Context -> Set where
-  Here : ∀ {Δ} -> TypedIx τ zero (τ ∷ Δ)
-  There : ∀ {Δ n τ'} -> TypedIx τ n Δ -> TypedIx τ (suc n) (τ' ∷ Δ)
-
-castIx : ∀ {Δ₁ Δ₂ τ n} -> TypedIx τ n Δ₁ -> Δ₁ ⊆ Δ₂ -> TypedIx τ n Δ₂
-castIx Here (cons q) = Here
-castIx (There p) (cons q) = There (castIx p q) 
-
-newTypeIx : ∀ {τ} -> (Δ : Context) -> TypedIx τ (length Δ) (Δ L.∷ʳ τ)
-newTypeIx [] = Here
-newTypeIx (x ∷ Δ) = There (newTypeIx Δ)
-
-# : ∀ {τ n Δ} -> TypedIx τ n Δ -> τ ∈ Δ
-# Here = Here
-# (There p) = There (# p)
-
-uniqueIx : ∀ {τ n Δ} -> (ix jx : TypedIx τ n Δ) -> ix ≡ jx
-uniqueIx Here Here = refl
-uniqueIx (There ix) (There jx) rewrite uniqueIx ix jx = refl
-
 -- Equality for memory (which only diregards ∙ with different Δ)
 data _≅_ : ∀ {Δ₁ Δ₂} -> Memory Δ₁ ->  Memory Δ₂ -> Set where
   base : [] ≅ []
-  cons : ∀ {τ Δ₁ Δ₂} {x : CTerm τ} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} -> m₁ ≅ m₂ -> (x ∷ m₁) ≅ (x ∷ m₂)
+  cons : ∀ {τ l Δ₁ Δ₂} {x : CTerm (Labeled l τ)} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} -> m₁ ≅ m₂ -> (x ∷ m₁) ≅ (x ∷ m₂)
   hole : ∀ {Δ₁ Δ₂} -> (∙ {{Δ₁}}) ≅ (∙ {{Δ₂}})
 
 refl-≅ : ∀ {Δᵐ} {m : Memory Δᵐ} -> m ≅ m
