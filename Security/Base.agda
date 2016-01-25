@@ -31,8 +31,12 @@ open import Data.List as L hiding (drop)
 ε-Mac lₐ (yes p₁) (join x t) | yes p = join x (ε-Mac lₐ (yes p) t)
 ε-Mac lₐ (yes p) (join x t) | no ¬p = join x (Mac ∙)
 ε-Mac lₐ (yes _) (read p r) = read p (ε lₐ r)
-ε-Mac lₐ (yes _) (write p r t) = write p (ε lₐ r) (ε lₐ t)
-ε-Mac lₐ (yes _) (new p t) = new p (ε lₐ t)
+ε-Mac lₐ (yes _) (write {h = lʰ} p r t) with lʰ ⊑? lₐ
+ε-Mac lₐ (yes p₁) (write p₂ r t) | yes p = write p₂ (ε lₐ r) (ε lₐ t)
+ε-Mac lₐ (yes p) (write p₁ r t) | no ¬p = write p₁ (ε lₐ r) ∙ 
+ε-Mac lₐ (yes _) (new {h = lʰ} p t) with lʰ ⊑? lₐ
+ε-Mac lₐ (yes p₁) (new p₂ t) | yes p = new p₂ (ε lₐ t)
+ε-Mac lₐ (yes p) (new p₁ t) | no ¬p = new p₁ ∙
 ε-Mac lₐ (yes p) ∙ = ∙
 ε-Mac lₐ (no ¬p) (Var x) = Var x
 ε-Mac lₐ (no ¬p) t = ∙
@@ -90,7 +94,7 @@ open import Data.List as L hiding (drop)
 
 εᵖ-Mac : ∀ {τ lᵈ Δᵐ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Program Δᵐ (Mac lᵈ τ) -> Program Δᵐ (Mac lᵈ τ)
 εᵖ-Mac {τ} lₐ (yes p) ⟨ m ∥ c ⟩ = ⟨ (εᵐ lₐ  m) ∥ (ε-Mac lₐ (yes p) c) ⟩
-εᵖ-Mac lₐ (no ¬p) ⟨ m ∥ c ⟩ = ⟨ ∙ ∥ (ε-Mac lₐ (no ¬p) c) ⟩
+εᵖ-Mac lₐ (no ¬p) ⟨ m ∥ c ⟩ = ⟨ ∙ ∥ (ε-Mac lₐ (no ¬p) c) ⟩ -- Do we actually need to collapse memory if we need our own tailored memory equivalence?
 
 -- Erasure for programs, i.e. closed term with memory
 εᵖ : ∀ {Δᵐ τ} -> Label -> Program Δᵐ τ -> Program Δᵐ τ
@@ -170,11 +174,15 @@ open import Data.Product
 ε-Mac-extensional (yes p) (no ¬p) (read p₁ r) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (read p₁ r) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (no ¬p₁) (read p r) = refl
-ε-Mac-extensional (yes p) (yes p₁) (write p₂ r t) = refl
+ε-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (write {h = lʰ} p₂ r t) with lʰ ⊑? lₐ
+ε-Mac-extensional (yes p₁) (yes p₂) (write p₃ r t) | yes p = refl
+ε-Mac-extensional (yes p) (yes p₁) (write p₂ r t) | no ¬p = refl
 ε-Mac-extensional (yes p) (no ¬p) (write p₁ r t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (write p₁ r t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (no ¬p₁) (write p r t) = refl
-ε-Mac-extensional (yes p) (yes p₁) (new p₂ t) = refl
+ε-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (new {h = lʰ} p₂ t) with lʰ ⊑? lₐ
+ε-Mac-extensional (yes p₁) (yes p₂) (new p₃ t) | yes p = refl
+ε-Mac-extensional (yes p) (yes p₁) (new p₂ t) | no ¬p = refl
 ε-Mac-extensional (yes p) (no ¬p) (new p₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (new p₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (no ¬p₁) (new p t) = refl
@@ -247,9 +255,13 @@ open import Data.Product
 ε-Mac-wken lₐ (no ¬p) (join x₁ t) p = refl
 ε-Mac-wken lₐ (yes p) (read x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
 ε-Mac-wken lₐ (no ¬p) (read x₁ t) p = refl
-ε-Mac-wken lₐ (yes p) (write x₁ t t₁) p₁ rewrite ε-wken lₐ t p₁ | ε-wken lₐ t₁ p₁ = refl
+ε-Mac-wken lₐ (yes p) (write {h = lʰ} x₁ t t₁) p₁ with lʰ ⊑? lₐ
+ε-Mac-wken lₐ (yes p₁) (write x₁ t t₁) p₂ | yes p rewrite ε-wken lₐ t p₂ | ε-wken lₐ t₁ p₂ = refl
+ε-Mac-wken lₐ (yes p) (write x₁ t t₁) p₁ | no ¬p rewrite ε-wken lₐ t p₁ = refl
 ε-Mac-wken lₐ (no ¬p) (write x₁ t t₁) p = refl
-ε-Mac-wken lₐ (yes p) (new x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (yes p) (new {h = lʰ} x₁ t) p₁ with lʰ ⊑? lₐ
+ε-Mac-wken lₐ (yes p₁) (new x₁ t) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
+ε-Mac-wken lₐ (yes p) (new x₁ t) p₁ | no ¬p = refl 
 ε-Mac-wken lₐ (no ¬p) (new x₁ t) p = refl
 ε-Mac-wken lₐ (yes p) ∙ p₁ = refl
 ε-Mac-wken lₐ (no ¬p) ∙ p = refl
@@ -422,8 +434,12 @@ open import Data.Product
           rewrite ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₁ (yes p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (yes p) | no ¬p = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl 
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write {h = lʰ} x₂ t₁ t₂) (yes p) with lʰ ⊑? lₐ
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p) | no ¬p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new {h = lʰ} x₂ t₁) (yes p) with  lʰ ⊑? lₐ
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (yes p) | no ¬p = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (yes p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (App t₁ t₂) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃) (no ¬p) = refl

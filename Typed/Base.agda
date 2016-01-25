@@ -52,12 +52,6 @@ CTerm τ = Term [] τ
 
 Contextˡ : Set
 Contextˡ = List (Label × Ty)
-
-infixr 3 _∈ˡ_
-
-data _∈ˡ_ : Label × Ty -> Contextˡ -> Set where
-  Here : ∀ {l τ Δˡ} -> (l , τ) ∈ˡ (l , τ) ∷ Δˡ
-  There : ∀ {l₁ l₂ τ₁ τ₂ Δˡ} -> (l₁ , τ₁) ∈ˡ Δˡ -> ((l₁ , τ₁) ∈ˡ (l₂ , τ₂) ∷ Δˡ)
   
 -- I will start first with concrete memory containing closed terms
 -- to implement references and then abstract over that with a more

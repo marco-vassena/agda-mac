@@ -45,9 +45,9 @@ progress (unlabel x₁ c) (unlabel .x₁ v) | inj₁ (Step x) = inj₁ (Step (un
 progress (unlabel x .(Res t)) (unlabel .x v) | inj₂ (Res t) = inj₁ (Step (Pure (unlabel x)))
 progress (unlabel x .(Resₓ e)) (unlabel .x v) | inj₂ (Resₓ e) = inj₁ (Step (Pure (unlabelEx x)))
 progress {{m}} (join x c) (join .x v) with progress {{m}} c v
-progress (join x₁ c) (join .x₁ v) | inj₁ (Step x) = inj₁ (Step (joinCtx x₁ x))
-progress (join x .(Mac t)) (join .x v) | inj₂ (Mac t) = inj₁ (Step (join x))
-progress (join x .(Macₓ e)) (join .x v) | inj₂ (Macₓ e) = inj₁ (Step (joinEx x))
+progress (join x₁ c) (join .x₁ v) | inj₁ (Step x) = {!!} -- We need a progress⇓ lemma tailored for big step semantics
+progress (join x .(Mac t)) (join .x v) | inj₂ (Mac t) = inj₁ (Step (join x (BigStep (Mac t) [])))
+progress (join x .(Macₓ e)) (join .x v) | inj₂ (Macₓ e) = inj₁ (Step (joinEx x (BigStep (Macₓ e) [])))
 progress (Ref x) v = inj₂ (Ref x)
 progress {{m}} (read x c) (read .x v) with progress {{m}} c v
 progress (read x₁ c) (read .x₁ v) | inj₁ (Step x) = inj₁ (Step (readCtx x₁ x))
@@ -125,13 +125,10 @@ determinismC s₁ (Pure s₂) = P.sym (determinismMixedC s₂ s₁)
 determinismC (BindCtx s₁) (BindCtx s₂) rewrite determinismC s₁ s₂ = refl
 determinismC (CatchCtx s₁) (CatchCtx s₂) rewrite determinismC s₁ s₂ = refl
 determinismC (unlabelCtx p s₁) (unlabelCtx .p s₂) rewrite determinismC s₁ s₂ = refl
-determinismC (joinCtx p s₁) (joinCtx .p s₂) rewrite determinismC s₁ s₂ = refl
-determinismC (joinCtx p (Pure ())) (join .p)
-determinismC (joinCtx p (Pure ())) (joinEx .p)
-determinismC (join p) (joinCtx .p (Pure ()))
-determinismC (join p) (join .p) = refl
-determinismC (joinEx p) (joinCtx .p (Pure ()))
-determinismC (joinEx p) (joinEx .p) = refl
+determinismC (join p bs₁) (join .p bs₂) = {!!} -- refl
+determinismC (join p bs₁) (joinEx .p bs₂) = {!!} -- refl
+determinismC (joinEx p bs₁) (joinEx .p bs₂) = {!!}
+determinismC (joinEx p bs₁) (join .p bs₂) = {!!}
 determinismC (new p) (new .p) = refl
 determinismC (writeCtx p s₁) (writeCtx .p s₂) rewrite determinismC s₁ s₂ = refl
 determinismC (writeCtx p (Pure ())) (write .p r)
@@ -175,13 +172,10 @@ determinismM s₁ (Pure s₂) = sym-≅ (determinismMixedM s₂ s₁)
 determinismM (BindCtx s₁) (BindCtx s₂) = determinismM s₁ s₂
 determinismM (CatchCtx s₁) (CatchCtx s₂) = determinismM s₁ s₂
 determinismM (unlabelCtx p s₁) (unlabelCtx .p s₂) = determinismM s₁ s₂
-determinismM (joinCtx p s₁) (joinCtx .p s₂) = determinismM s₁ s₂
-determinismM (joinCtx p (Pure ())) (join .p)
-determinismM (joinCtx p (Pure ())) (joinEx .p)
-determinismM (join p) (joinCtx .p (Pure ()))
-determinismM (join p) (join .p) = refl-≅
-determinismM (joinEx p) (joinCtx .p (Pure ()))
-determinismM (joinEx p) (joinEx .p) = refl-≅
+determinismM (join p bs₁) (join .p bs₂) = {!!} -- refl-≅
+determinismM (join p bs₁) (joinEx .p bs₂) = {!!} -- refl-≅
+determinismM (joinEx p bs₁) (joinEx .p bs₂) = {!!} -- refl-≅
+determinismM (joinEx p bs₁) (join .p bs₂) = {!!} -- refl-≅
 determinismM (new p) (new .p) = refl-≅
 determinismM (writeCtx p s₁) (writeCtx .p s₂) = determinismM s₁ s₂
 determinismM (writeCtx p (Pure ())) (write .p r)

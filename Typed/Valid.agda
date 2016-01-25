@@ -8,7 +8,7 @@ import Data.List as L
 -- Now that we have memory we have to ensure that memory references are all valid.
 -- The following data type is such a proof.
 
-data Valid {Δ} (Δᵐ : Context) : ∀ {τ} -> Term Δ τ -> Set where
+data Valid {Δ} (Δᵐ : Contextˡ) : ∀ {τ} -> Term Δ τ -> Set where
   （） : Valid Δᵐ （）
   True : Valid Δᵐ True
   False : Valid Δᵐ False
@@ -30,7 +30,7 @@ data Valid {Δ} (Δᵐ : Context) : ∀ {τ} -> Term Δ τ -> Set where
   Resₓ : ∀ {α} {l : Label}{e : Term Δ Exception} ->
            Valid Δᵐ e -> Valid Δᵐ (Resₓ {α = α} e)
 
-  Ref : ∀ {α n} {l : Label} -> TypedIx α n Δᵐ -> Valid Δᵐ (Ref {{α}} n)
+  Ref : ∀ {α n} {l : Label} -> TypedIx l α n Δᵐ -> Valid Δᵐ (Ref {{α}} n)
 
   If_Then_Else_ : ∀ {α} {c : Term Δ Bool} {t e : Term Δ α} ->
                   Valid Δᵐ c -> Valid Δᵐ t -> Valid Δᵐ e -> Valid Δᵐ (If c Then t Else e)
@@ -65,9 +65,9 @@ data Valid {Δ} (Δᵐ : Context) : ∀ {τ} -> Term Δ τ -> Set where
   ∙ : ∀ {τ} -> Valid Δᵐ (∙ {{τ}})
 
 
-data ValidMemory (Δ : Context) : ∀ {Δᵐ} -> (m : Memory Δᵐ) -> Set where
+data ValidMemory (Δ : Contextˡ) : ∀ {Δᵐ} -> (m : Memory Δᵐ) -> Set where
   [] : ValidMemory Δ []
-  _∷_ : ∀ {τ Δᵐ} {c : CTerm τ} {m : Memory Δᵐ} -> Valid Δ c -> ValidMemory Δ m -> ValidMemory Δ (c ∷ m)
+  _∷_ : ∀ {l τ Δᵐ} {c : CTerm (Labeled l τ)} {m : Memory Δᵐ} -> Valid Δ c -> ValidMemory Δ m -> ValidMemory Δ (c ∷ m)
   ∙ : ∀ {Δᵐ} -> ValidMemory Δ {Δᵐ} ∙ 
  
 --------------------------------------------------------------------------------
@@ -140,20 +140,21 @@ extendValidMemory [] p = []
 extendValidMemory (x ∷ m) p = (extendValid x p) ∷ extendValidMemory m p
 extendValidMemory ∙ p = ∙
 
-lookupValidMemory : ∀ {Δᵐ Δ τ} {m : Memory Δᵐ} -> (p : τ ∈ Δᵐ) -> ValidMemory Δ m -> Valid Δ (m [ p ])
+lookupValidMemory : ∀ {Δᵐ Δ l τ n} {m : Memory Δᵐ} -> (p : TypedIx l τ n Δᵐ) -> ValidMemory Δ m -> Valid Δ (m [ p ])
 lookupValidMemory Here (x ∷ m) = x
 lookupValidMemory (There p) (x ∷ m) = lookupValidMemory p m
-lookupValidMemory r ∙ = ∙
+lookupValidMemory Here ∙ = ∙
+lookupValidMemory (There r) ∙ = ∙
 
-validMemoryUpdate : ∀ {Δ Δᵐ τ} {m : Memory Δᵐ} {c : CTerm τ} ->
-                    ValidMemory Δ m -> (p : τ ∈ Δᵐ) -> Valid Δ c  -> ValidMemory Δ (m [ p ]≔ c)
+validMemoryUpdate : ∀ {Δ Δᵐ l τ n} {m : Memory Δᵐ} {c : CTerm (Labeled l τ)} ->
+                    ValidMemory Δ m -> (p : TypedIx l τ n Δᵐ) -> Valid Δ c  -> ValidMemory Δ (m [ p ]≔ c)
 validMemoryUpdate [] () v
 validMemoryUpdate (x ∷ vᵐ) Here v = v ∷ vᵐ
 validMemoryUpdate (x ∷ vᵐ) (There p) v = x ∷ validMemoryUpdate vᵐ p v
 validMemoryUpdate ∙ Here v = ∙
 validMemoryUpdate ∙ (There m) v = ∙
 
-validMemoryNew : ∀ {Δ Δᵐ τ} {m : Memory Δᵐ} {c : CTerm τ} ->
+validMemoryNew : ∀ {Δ Δᵐ τ l} {m : Memory Δᵐ} {c : CTerm (Labeled l τ)} ->
                    ValidMemory Δ m -> Valid Δ c -> ValidMemory Δ (m ∷ʳ c)
 validMemoryNew [] v = v ∷ []
 validMemoryNew (x ∷ Γ₁) v = x ∷ validMemoryNew Γ₁ v
@@ -273,11 +274,11 @@ valid⟼ (join p bs) (join .p v) m with valid⇓ bs v m
 valid⟼ (join p bs) (join .p v) m | m₃ , Mac v₂ = m₃ , (Return (Res v₂))
 valid⟼ (joinEx p bs) (join .p v) m with valid⇓ bs v m
 valid⟼ (joinEx p bs) (join .p v) m | m₃ , Macₓ v₂ = m₃ , (Return (Resₓ v₂))
-valid⟼ {Δ₁ = Δ₁} (new p) (new .p v) m = extendValidMemory (validMemoryNew m v) snoc-⊆ , Return (Ref (newTypeIx Δ₁))
+valid⟼ {Δ₁ = Δ₁} (new p) (new .p v) m = (extendValidMemory (validMemoryNew m (Res v)) snoc-⊆) , Return (Ref (newTypeIx Δ₁))
 valid⟼ (writeCtx p s) (write .p v v') m with valid⟼ s v m
 ... | m₂ , v₂ = m₂ , (write p v₂ (extendValid v' (context-⊆ s)))
-valid⟼ (write p i) (write .p v v₁) m = (validMemoryUpdate m (# i) v₁) , (Return （）)
+valid⟼ (write p i) (write .p v v₁) m = (validMemoryUpdate m i (Res v₁)) , (Return （）)
 valid⟼ (readCtx p s) (read .p v) m with valid⟼ s v m
 ... | m₂ , v₂ = m₂ , (read p v₂)
-valid⟼ (read p i) v m = m , (Return (lookupValidMemory (# i) m))
+valid⟼ (read p i) v m =  m , unlabel p (lookupValidMemory i m)
 valid⟼ (Hole x) ∙ ∙ = ∙ , ∙

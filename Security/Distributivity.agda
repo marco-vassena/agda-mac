@@ -86,20 +86,26 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 ε-dist⇝ {Ref lᵈ τ} lₐ IfFalse = IfFalse
 ε-dist⇝ {Ref lᵈ τ} lₐ Hole = Hole
 
-εᵐ-new : ∀ {τ Δᵐ} (lₐ : Label) (m : Memory Δᵐ) (t : CTerm τ) -> εᵐ lₐ (m ∷ʳ t) ≡ (εᵐ lₐ m ∷ʳ ε lₐ t)
+εᵐ-new : ∀ {τ lᵈ Δᵐ} (lₐ : Label) (m : Memory Δᵐ) (t : CTerm (Labeled lᵈ τ)) -> εᵐ lₐ (m ∷ʳ t) ≡ (εᵐ lₐ m ∷ʳ ε lₐ t)
 εᵐ-new lₐ [] t = refl
 εᵐ-new lₐ (x ∷ m) t rewrite εᵐ-new lₐ m t = refl
 εᵐ-new lₐ ∙ t = refl
 
-εᵐ-write : ∀ {τ n Δᵐ} (lₐ : Label) (m : Memory Δᵐ) (c : CTerm τ) (i : TypedIx τ n Δᵐ) -> εᵐ lₐ (m [ # i ]≔ c) ≡ ((εᵐ lₐ m) [ # i ]≔ ε lₐ c)
+-- εᵐ-new : ∀ {{l}} {τ Δᵐ} (lₐ : Label) (m : Memory Δᵐ) (t : CTerm τ) -> εᵐ lₐ (m ∷ʳ (Res {{l}} t)) ≡ (εᵐ lₐ m ∷ʳ ε lₐ (Res {{l}} t))
+-- εᵐ-new lₐ [] t = refl
+-- εᵐ-new {{l}} lₐ (x ∷ m) t rewrite εᵐ-new {{l}} lₐ m t = refl
+-- εᵐ-new lₐ ∙ t = refl
+
+
+εᵐ-write : ∀ {τ l n Δᵐ} (lₐ : Label) (m : Memory Δᵐ) (c : CTerm (Labeled l τ)) (i : TypedIx l τ n Δᵐ) -> εᵐ lₐ (m [ i ]≔ c) ≡ ((εᵐ lₐ m) [ i ]≔ ε lₐ c)
 εᵐ-write lₐ (x ∷ m) c Here = refl
 εᵐ-write lₐ ∙ c Here = refl
 εᵐ-write lₐ (x ∷ m) c (There i) rewrite εᵐ-write lₐ m c i = refl
 εᵐ-write lₐ ∙ c (There i) = refl
 
-εᵐ-read : ∀ {τ Δᵐ n} -> (lₐ : Label) (m : Memory Δᵐ) (i : TypedIx τ n Δᵐ) -> _[_] (εᵐ lₐ m) (# i)  ≡ ε lₐ (_[_] m (# i))
+εᵐ-read : ∀ {τ l Δᵐ n} -> (lₐ : Label) (m : Memory Δᵐ) (i : TypedIx l τ n Δᵐ) -> _[_] (εᵐ lₐ m) i  ≡ ε lₐ (_[_] m i)
 εᵐ-read lₐ (x ∷ m) Here = refl
-εᵐ-read {τ} {.τ ∷ Δᵐ} lₐ ∙ Here rewrite ε∙≡∙ {τ} {[]} lₐ =  refl
+εᵐ-read {τ} {l} {.(l , τ)  ∷ Δᵐ} lₐ ∙ Here rewrite ε∙≡∙ {τ} {[]} lₐ =  refl
 εᵐ-read lₐ (x ∷ m) (There i) rewrite εᵐ-read lₐ m i = refl
 εᵐ-read {τ} lₐ ∙ (There i) rewrite ε∙≡∙ {τ} {[]} lₐ = refl
 
@@ -151,6 +157,9 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εᵐ-≅⋆ lₐ ¬p [] = refl-≅
 εᵐ-≅⋆ lₐ ¬p (s ∷ ss) = trans-≅ (εᵐ-≅ lₐ ¬p s) (εᵐ-≅⋆ lₐ ¬p ss)         
 
+εᵐ-new-yes : ∀ {lʰ τ Δᵐ} (lₐ : Label) (m : Memory Δᵐ) (t : CTerm τ) -> lʰ ⊑ lₐ -> εᵐ lₐ m ∷ʳ (Res {{lʰ}} t) ≡ εᵐ lₐ (m ∷ʳ (Res t))
+εᵐ-new-yes lₐ m t p = {!!} 
+
 εᵖ-Mac-dist lₐ (yes p) (Pure x) = Pure (ε-Mac-dist⇝ lₐ (yes p) x)
 εᵖ-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (εᵖ-Mac-dist lₐ (yes p) s)
 εᵖ-Mac-dist lₐ (yes p) (CatchCtx s) = CatchCtx (εᵖ-Mac-dist lₐ (yes p) s)
@@ -164,9 +173,15 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εᵖ-Mac-dist lₐ (yes p) (joinEx {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
 εᵖ-Mac-dist lₐ (yes p₁) (joinEx p₂ bs) | yes p = joinEx p₂ (εᵖ-Mac-distₓ⇓ lₐ p bs)
 εᵖ-Mac-dist lₐ (yes p) (joinEx p₁ bs) | no ¬p = join p₁ (BigStep (Mac ∙) {!!})
-εᵖ-Mac-dist lₐ (yes p) (new {m = m} {t = t} p₁) rewrite εᵐ-new lₐ m t = new p₁
-εᵖ-Mac-dist lₐ (yes p) (writeCtx p₁ s) = writeCtx p₁ (εᵖ-dist lₐ s)
-εᵖ-Mac-dist lₐ (yes p) (write {m = m} {c = c} p₁ i) rewrite εᵐ-write lₐ m c i = write p₁ i
+εᵖ-Mac-dist lₐ (yes p) (new {h = lʰ} {m = m} {t = t} p₁) rewrite εᵐ-new lₐ m (Res {{lʰ}} t) with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (new p₂) | yes p = new p₂
+εᵖ-Mac-dist lₐ (yes p) (new p₁) | no ¬p = new p₁
+εᵖ-Mac-dist lₐ (yes p) (writeCtx {h = lʰ} p₁ s) with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (writeCtx p₂ s) | yes p = writeCtx p₂ (εᵖ-dist lₐ s)
+εᵖ-Mac-dist lₐ (yes p) (writeCtx p₁ s) | no ¬p = writeCtx p₁ (εᵖ-dist lₐ s)
+εᵖ-Mac-dist lₐ (yes p) (write {h = lʰ} {m = m} {c = c} p₁ i) rewrite εᵐ-write lₐ m (Res c) i with lʰ ⊑? lₐ
+εᵖ-Mac-dist lₐ (yes p₁) (write p₂ i) | yes p = write p₂ i
+εᵖ-Mac-dist lₐ (yes p) (write p₁ i) | no ¬p = write p₁ i
 εᵖ-Mac-dist lₐ (yes p) (readCtx p₁ s) = readCtx p₁ (εᵖ-dist lₐ s)
 εᵖ-Mac-dist lₐ (yes p) (read {m = m} p₁ i) rewrite sym (εᵐ-read lₐ m i) = read p₁ i
 εᵖ-Mac-dist lₐ (yes p) (Hole x) = Hole x
