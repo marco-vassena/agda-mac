@@ -62,57 +62,18 @@ open import Data.List as L hiding (drop)
 ε lₐ (Ref n) = Ref n
 ε lₐ ∙ = ∙
 
-{- 
-  Typed-driven erasure function for closed terms.
-  
-  εᶜ l c transform a term t in ∙ if it is above the security level l.
-  
-  Note that the erasure function collapse to ∙ composed CTerm (e.g. f $ x, m >>= k),
-  but not simple closure (Γ , t), in which the enviroment Γ is erased and only
-  the open term t is converted into ∙.
-  This distinction is essential, because distributivity would be broken otherwise.
-  Consider for instance applying the erasure function to the terms in the step Dist-$,
-  when the argument is a sensitive computation of type Mac H α:
-
-         (Γ , App f x)   ⟼            (Γ , f)  $  (Γ , x)
-    
-            ↧ εᶜ                                ↧ εᶜ 
-    
-    (εᶜ-env Γ, App f ∙)   ⟼   (εᶜ-env Γ, εᶜ f)   $   ∙
-         
-  The step between the erased terms does not hold, because Dist-$ would require
-  (εᶜ-env Γ , ∙) ≠ ∙
-
--}
-
-
-
-εᵐ : ∀ {Δᵐ} -> Label -> Memory Δᵐ -> Memory Δᵐ
+εᵐ : ∀ {ls} -> Label -> Memory ls -> Memory ls
 εᵐ lₐ [] = []
-εᵐ lₐ (x ∷ m) = (ε lₐ x) ∷ (εᵐ lₐ m)
+εᵐ lₐ (c ∷ s) = (ε lₐ c) ∷ (εᵐ lₐ s)
 εᵐ lₐ ∙ = ∙
 
-εᵖ-Mac : ∀ {τ lᵈ Δᵐ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Program Δᵐ (Mac lᵈ τ) -> Program Δᵐ (Mac lᵈ τ)
-εᵖ-Mac {τ} lₐ (yes p) ⟨ m ∥ c ⟩ = ⟨ (εᵐ lₐ  m) ∥ (ε-Mac lₐ (yes p) c) ⟩
-εᵖ-Mac lₐ (no ¬p) ⟨ m ∥ c ⟩ = ⟨ ∙ ∥ (ε-Mac lₐ (no ¬p) c) ⟩ -- Do we actually need to collapse memory if we need our own tailored memory equivalence?
+εˢ : ∀ {ls} -> (lₐ : Label) -> Store ls -> Store ls
+εˢ lₐ [] = []
+εˢ lₐ (m ∷ s) = εᵐ lₐ m ∷ εˢ lₐ s
 
 -- Erasure for programs, i.e. closed term with memory
-εᵖ : ∀ {Δᵐ τ} -> Label -> Program Δᵐ τ -> Program Δᵐ τ
-εᵖ {τ = Mac lᵈ τ} lₐ p = εᵖ-Mac lₐ (lᵈ ⊑? lₐ) p
-εᵖ lₐ ⟨ m ∥ c ⟩ = ⟨ εᵐ lₐ m ∥ ε lₐ c ⟩
-
-open import Data.Product
-
-εᵖ-is-program : ∀ {τ Δᵐ} -> (lₐ : Label) -> (p : Program Δᵐ τ) -> ∃ λ mᵉ → ∃ λ cᵉ → εᵖ lₐ p ≡ ⟨ mᵉ ∥ cᵉ ⟩
-εᵖ-is-program {（）} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
-εᵖ-is-program {Bool} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
-εᵖ-is-program {τ => τ₁} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
-εᵖ-is-program {Mac lᵈ τ} lₐ ⟨ m ∥ c ⟩ with lᵈ ⊑? lₐ
-εᵖ-is-program {Mac lᵈ τ} lₐ ⟨ m ∥ c ⟩ | yes p = εᵐ lₐ m , ε-Mac lₐ (yes p) c , refl
-εᵖ-is-program {Mac lᵈ τ} lₐ ⟨ m ∥ c ⟩ | no ¬p = ∙ , ((ε-Mac lₐ (no ¬p) c) , refl)
-εᵖ-is-program {Labeled x τ} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
-εᵖ-is-program {Exception} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
-εᵖ-is-program {Ref x τ} lₐ ⟨ m ∥ c ⟩ = εᵐ lₐ m , ε lₐ c , refl
+εᵖ : ∀ {ls τ} -> Label -> Program ls τ -> Program ls τ
+εᵖ lₐ ⟨ s ∥ c ⟩ = ⟨ εˢ lₐ s ∥ ε lₐ c ⟩
 
 ε-Mac-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Mac lᵈ τ)) -> ε-Mac lₐ x t ≡ ε-Mac lₐ y t
 ε-Mac-extensional (yes p) (yes p₁) (Var x₁) = refl
