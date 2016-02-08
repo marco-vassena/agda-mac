@@ -3,23 +3,6 @@ module Typed.Semantics where
 open import Typed.Base public
 import Data.List as L
 
-
--- TODO remove
-data _≅ᵛ_ {α : Ty} {Δ : Context} (x : α ∈ Δ) : ∀ {β} -> (y : β ∈ Δ) -> Set where
-  refl : x ≅ᵛ x
-
--- TODO remove
-varEq? : ∀ {α β Δ} -> (x : α ∈ Δ) (y : β ∈ Δ) -> Dec (x ≅ᵛ y)
-varEq? Here Here = yes refl
-varEq? Here (There y) = no (λ ())
-varEq? (There x) Here = no (λ ())
-varEq? (There x) (There y) with varEq? x y
-varEq? (There x) (There .x) | yes refl = yes refl
-varEq? (There x) (There y) | no ¬p = no (aux ¬p)
-  where aux : ∀ {α β γ Δ} {x : α ∈ Δ} {y : β ∈ Δ} -> ¬ (x ≅ᵛ y) -> ¬ ((There {β = γ} x) ≅ᵛ There y)
-        aux ¬p₁ refl = ¬p₁ refl
-
-
 --------------------------------------------------------------------------------
 -- TODO move to types
 -- subset
@@ -149,82 +132,78 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
 
 
-data Program (Δ : Contextˡ) (τ : Ty) : Set where
-  ⟨_∥_⟩ : Memory Δ -> CTerm τ -> Program Δ τ
+data Program (ls : List Label) (τ : Ty) : Set where
+  ⟨_∥_⟩ : Store ls -> CTerm τ -> Program ls τ
 
 
 mutual
   infixr 1 _⟼_
 
   -- The transitive reflexive closure of a small step
-  data _⟼⋆_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
-    [] : ∀ {Δ} {m : Memory Δ} {c : CTerm τ} -> ⟨ m ∥ c ⟩  ⟼⋆ ⟨ m ∥ c ⟩
-    _∷_ : ∀ {Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} {c₁ c₂ c₃ : CTerm τ} ->
-          ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> ⟨ m₂ ∥ c₂ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩ -> ⟨ m₁ ∥ c₁ ⟩ ⟼⋆ ⟨ m₃ ∥ c₃ ⟩
+  data _⟼⋆_ {ls : List Label} {τ : Ty} : Program ls τ -> Program ls τ -> Set where
+    [] : {s : Store ls} {c : CTerm τ} -> ⟨ s ∥ c ⟩  ⟼⋆ ⟨ s ∥ c ⟩
+    _∷_ : {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
+          ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> ⟨ s₂ ∥ c₂ ⟩ ⟼⋆ ⟨ s₃ ∥ c₃ ⟩ -> ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₃ ∥ c₃ ⟩
 
   -- Big step, a finite number (possibly 0) of reduction steps of a term that reduces it to a value.
-  data _⇓_ {τ : Ty} : ∀ {Δ₁ Δ₂} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
-    BigStep : ∀ {Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c v : CTerm τ} -> IsValue v -> ⟨ m₁ ∥ c ⟩ ⟼⋆ ⟨ m₂ ∥ v ⟩ -> ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥ v ⟩
+  data _⇓_ {ls : List Label} {τ : Ty} : Program ls τ -> Program ls τ -> Set where
+    BigStep : ∀ {s₁ s₂ : Store ls} {c v : CTerm τ} -> IsValue v -> ⟨ s₁ ∥ c ⟩ ⟼⋆ ⟨ s₂ ∥ v ⟩ -> ⟨ s₁ ∥ c ⟩ ⇓ ⟨ s₂ ∥ v ⟩
 
-  data _⟼_ : ∀ {Δ₁ Δ₂ τ} -> Program Δ₁ τ -> Program Δ₂ τ -> Set where
-    Pure : ∀ {Δ₁ τ} {m₁ : Memory Δ₁} {c₁ c₂ : CTerm τ} -> c₁ ⇝ c₂ -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₁ ∥ c₂ ⟩
+  data _⟼_ {ls : List Label} : ∀ {τ} -> Program ls τ -> Program ls τ -> Set where
+    Pure : ∀ {τ} {s₁ : Store ls} {c₁ c₂ : CTerm τ} -> c₁ ⇝ c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₁ ∥ c₂ ⟩
 
-    BindCtx : ∀ {l α β Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Mac l α)} {k : CTerm (α => Mac l β)} ->
-                ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-                ⟨ m₁  ∥  c₁ >>= k ⟩ ⟼ ⟨ m₂ ∥ c₂ >>= k ⟩ 
+    BindCtx : ∀ {l α β} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Mac l α)} {k : CTerm (α => Mac l β)} ->
+                ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
+                ⟨ s₁  ∥  c₁ >>= k ⟩ ⟼ ⟨ s₂ ∥ c₂ >>= k ⟩ 
 
-    CatchCtx : ∀ {l α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂}
+    CatchCtx : ∀ {l α} {s₁ : Store ls} {s₂ : Store ls}
                  {c₁ c₂ : CTerm (Mac l α)} {h : CTerm (Exception => Mac l α)} ->
-                 ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-                 ⟨ m₁ ∥ Catch c₁ h ⟩ ⟼ ⟨ m₂ ∥ Catch c₂ h ⟩
+                 ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
+                 ⟨ s₁ ∥ Catch c₁ h ⟩ ⟼ ⟨ s₂ ∥ Catch c₂ h ⟩
 
 
-    unlabelCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Labeled l α)} -> (p : l ⊑ h) ->
-                   ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-                   ⟨ m₁ ∥ unlabel p c₁ ⟩ ⟼ ⟨ m₂ ∥ unlabel p c₂ ⟩
+    unlabelCtx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Labeled l α)} -> (p : l ⊑ h) ->
+                   ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
+                   ⟨ s₁ ∥ unlabel p c₁ ⟩ ⟼ ⟨ s₂ ∥ unlabel p c₂ ⟩
                  
-    join : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂}  {c : CTerm (Mac h α)} {t : CTerm α} (p : l ⊑ h) ->
-             ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥  Mac t ⟩ ->
-             ⟨ m₁ ∥ join p c ⟩ ⟼ ⟨ m₂ ∥ (Return (Res t)) ⟩
+    join : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls}  {c : CTerm (Mac h α)} {t : CTerm α} (p : l ⊑ h) ->
+             ⟨ s₁ ∥ c ⟩ ⇓ ⟨ s₂ ∥  Mac t ⟩ ->
+             ⟨ s₁ ∥ join p c ⟩ ⟼ ⟨ s₂ ∥ (Return (Res t)) ⟩
 
-    joinEx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c : CTerm (Mac h α)} {e : CTerm Exception} (p : l ⊑ h) ->
-               ⟨ m₁ ∥ c ⟩ ⇓ ⟨ m₂ ∥  Macₓ e ⟩ ->
-               ⟨ m₁ ∥ join p c ⟩ ⟼ ⟨ m₂ ∥ (Return (Resₓ e)) ⟩
+    joinEx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c : CTerm (Mac h α)} {e : CTerm Exception} (p : l ⊑ h) ->
+               ⟨ s₁ ∥ c ⟩ ⇓ ⟨ s₂ ∥  Macₓ e ⟩ ->
+               ⟨ s₁ ∥ join p c ⟩ ⟼ ⟨ s₂ ∥ (Return (Resₓ e)) ⟩
 
---     -- In LIO values stored in memory are labeled
+       -- s ∷ʳ (Res {{h}} t)
+    new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
+                 let m = getMemory q s  in ⟨ s ∥ new p t ⟩ ⟼ ⟨ updateMemory (m ∷ʳ Res t) q s ∥ Return (Ref (lengthᵐ m)) ⟩
 
-    new : ∀ {l h α Δ₁} {m : Memory Δ₁} {t : CTerm α} -> (p : l ⊑ h) -> ⟨ m ∥ new p t ⟩ ⟼ ⟨ m ∷ʳ (Res {{h}} t) ∥ Return (Ref (length Δ₁)) ⟩
 
+    writeCtx :  ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
+                  (p : l ⊑ h) -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
+                  ⟨ s₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ s₂ ∥ write p c₂ c₃  ⟩
 
-    writeCtx :  ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
-                  (p : l ⊑ h) -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-                  ⟨ m₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ m₂ ∥ write p c₂ c₃  ⟩
+    write : ∀ {l h n α} {s : Store ls} {c : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
+              let m = getMemory q s in (i : TypedIx α n m) ->
+            ⟨ s ∥ write p (Ref n) c ⟩ ⟼ ⟨ updateMemory (m [ i ]≔ Res c) q s ∥ Return （） ⟩
 
---     -- TODO to make the semantics deterministic we need to put references in the variables
---     -- otherwise the reference used in each step is existentially quantified and hence
---     -- different in general.
-    write : ∀ {l h n α Δ₁} {m : Memory Δ₁} {c : CTerm α} ->
-              (p : l ⊑ h) -> (i : TypedIx h α n Δ₁) ->
-            ⟨ m ∥ write p (Ref n) c ⟩ ⟼ ⟨ m [ i ]≔ (Res c) ∥ Return （） ⟩
+    readCtx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
+              ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
+              ⟨ s₁ ∥ (read p c₁) ⟩ ⟼ ⟨ s₂ ∥ (read p c₂) ⟩
 
-    readCtx : ∀ {l h α Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
-              ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ ->
-              ⟨ m₁ ∥ (read p c₁) ⟩ ⟼ ⟨ m₂ ∥ (read p c₂) ⟩
-
-    read : ∀ {l h n α Δ₁} {m : Memory Δ₁} -> (p : l ⊑ h) -> (i : TypedIx l α n Δ₁) ->
-              ⟨ m ∥ (read p (Ref n)) ⟩ ⟼ ⟨ m ∥ unlabel p (m [ i ] ) ⟩
-
-    Hole : ∀ {τ : Ty} {Δ₁ Δ₂ : Contextˡ} -> Δ₁ ⊆ Δ₂ -> ⟨ ∙ {{Δ₁}} ∥ ∙ {{τ}} ⟩ ⟼ ⟨ ∙ {{Δ₂}} ∥ ∙ ⟩
+    read : ∀ {l h α n} {s : Store ls} -> (p : l ⊑ h) (q : l ∈ ls) ->
+             let m = getMemory q s in (i : TypedIx α n m) ->
+              ⟨ s ∥ (read p (Ref n)) ⟩ ⟼ ⟨ s ∥ unlabel p (m [ i ]) ⟩
 
 
 -- TODO maybe define Redex for Program instead of single term  
 
   -- A closed term is a Redex if it can be reduced further in a certain memory configuration
-  data Redex {Δ₁ : Contextˡ} {τ : Ty} (m₁ : Memory Δ₁) (c₁ : CTerm τ) : Set where
-    Step : ∀ {Δ₂} {m₂ : Memory Δ₂} {c₂ : CTerm τ} -> ⟨ m₁ ∥ c₁ ⟩ ⟼ ⟨ m₂ ∥ c₂ ⟩ -> Redex m₁ c₁
+  data Redex {ls : List Label} {τ : Ty} (s₁ : Store ls) (c₁ : CTerm τ) : Set where
+    Step : {s₂ : Store ls} {c₂ : CTerm τ} -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> Redex s₁ c₁
 
   -- Normal forms
   -- A closed term is in normal form for a given memory configuration
   -- if it cannot be reduced further
-  NormalForm : ∀ {Δ₁ τ} -> Memory Δ₁ -> CTerm τ -> Set
-  NormalForm m₁ c = ¬ Redex m₁ c
+  NormalForm : ∀ {ls τ} -> Store ls -> CTerm τ -> Set
+  NormalForm s₁ c = ¬ Redex s₁ c

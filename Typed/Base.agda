@@ -50,94 +50,87 @@ CTerm τ = Term [] τ
 
 --------------------------------------------------------------------------------
 
-Contextˡ : Set
-Contextˡ = List (Label × Ty)
-  
--- I will start first with concrete memory containing closed terms
--- to implement references and then abstract over that with a more
--- generic Store.
--- The question I cannot answer right now is given
--- a store Store (A : Ty -> Set) : (Δ : Context) : Set
--- how can I abstract over generic read/write operations?
+data Memory (l : Label) : Set where
+  ∙ : Memory l
+  [] : Memory l
+  _∷_ : ∀ {τ} -> CTerm (Labeled l τ) -> Memory l -> Memory l
 
-data Memory : (Δˡ : Contextˡ) -> Set where
-  [] : Memory []
-  _∷_ : ∀ {τ l Δ} -> CTerm (Labeled l τ) -> Memory Δ -> Memory ((l , τ) ∷ Δ)
-  ∙ : ∀ {{Δ}} -> Memory Δ
+open import Data.List.All
+
+Unique : Label -> List Label -> Set
+Unique l₁ ls = All (λ l₂ → ¬ (l₁ ≡ l₂)) ls
+
+data Store : (List Label) -> Set where
+  [] : Store []
+  _∷_ : ∀ {l ls} {{u : Unique l ls}} -> Memory l -> Store ls -> Store (l ∷ ls)
+
+store-unique : ∀ {l ls} -> Store ls -> (x y : l ∈ ls) -> x ≡ y
+store-unique = aux
+  where
+    unique-lemma : ∀ {l ls} -> l ∈ ls -> Unique l ls -> ⊥
+    unique-lemma Here (px ∷ q) = ⊥-elim (px refl)
+    unique-lemma (There p) (px ∷ q) = unique-lemma p q
+
+    aux : ∀ {l ls} -> Store ls -> (x y : l ∈ ls) -> x ≡ y
+    aux s Here Here = refl
+    aux (_∷_ {{u = u}} x s) Here (There y) = ⊥-elim (unique-lemma y u)
+    aux (_∷_ {{u = u}} x s) (There x₁) Here = ⊥-elim (unique-lemma x₁ u)
+    aux (l ∷ s) (There x) (There y) = cong There (aux s x y)
+
+getMemory : ∀ {l ls} -> l ∈ ls -> Store ls -> Memory l
+getMemory Here (x ∷ s) = x
+getMemory (There p) (x ∷ s) = getMemory p s
+
+updateMemory : ∀ {l ls} -> Memory l -> l ∈ ls -> Store ls -> Store ls
+updateMemory m Here (x ∷ s) = m ∷ s
+updateMemory m (There p) (x ∷ s) = x ∷ updateMemory m p s
+
+lengthᵐ : ∀ {l} -> Memory l -> ℕ
+lengthᵐ [] = 0
+lengthᵐ (x ∷ m) = suc (lengthᵐ m)
+lengthᵐ ∙ = 0
 
 --------------------------------------------------------------------------------
 -- Typed 0-based indexes
 
-data TypedIx (l  : Label) (τ : Ty) : ℕ -> Contextˡ -> Set where
-  Here : ∀ {Δ} -> TypedIx l τ zero ((l , τ) ∷ Δ)
-  There : ∀ {Δ n l' τ'} -> TypedIx l τ n Δ -> TypedIx l τ (suc n) ((l' , τ') ∷ Δ)
+data TypedIx {l : Label} (τ : Ty) : ℕ -> Memory l -> Set where
+  Here : ∀ {m} {c : CTerm (Labeled l τ)} -> TypedIx τ zero (c ∷ m)
+  There : ∀ {m n τ'} {c : CTerm (Labeled l τ')} ->  TypedIx τ n m -> TypedIx τ (suc n) (c ∷ m)
+  Hole : ∀ {n} -> TypedIx τ n ∙
+  
+-- castIx : ∀ {Δ₁ Δ₂ l τ n} -> TypedIx l τ n Δ₁ -> Δ₁ ⊆ Δ₂ -> TypedIx l τ n Δ₂
+-- castIx Here (cons q) = Here
+-- castIx (There p) (cons q) = There (castIx p q) 
 
-castIx : ∀ {Δ₁ Δ₂ l τ n} -> TypedIx l τ n Δ₁ -> Δ₁ ⊆ Δ₂ -> TypedIx l τ n Δ₂
-castIx Here (cons q) = Here
-castIx (There p) (cons q) = There (castIx p q) 
+-- newTypeIx : ∀ {τ l} -> (Δ : Contextˡ) -> TypedIx l τ (length Δ) (Δ L.∷ʳ (l , τ))
+-- newTypeIx [] = Here
+-- newTypeIx (x ∷ Δ) = There (newTypeIx Δ)
 
-newTypeIx : ∀ {τ l} -> (Δ : Contextˡ) -> TypedIx l τ (length Δ) (Δ L.∷ʳ (l , τ))
-newTypeIx [] = Here
-newTypeIx (x ∷ Δ) = There (newTypeIx Δ)
+-- uniqueIx : ∀ {l τ n Δ} -> (ix jx : TypedIx l τ n Δ) -> ix ≡ jx
+-- uniqueIx Here Here = refl
+-- uniqueIx (There ix)  (There jx) rewrite uniqueIx ix jx = refl
 
-uniqueIx : ∀ {l τ n Δ} -> (ix jx : TypedIx l τ n Δ) -> ix ≡ jx
-uniqueIx Here Here = refl
-uniqueIx (There ix)  (There jx) rewrite uniqueIx ix jx = refl
-
---------------------------------------------------------------------------------
+-- --------------------------------------------------------------------------------
 
 -- Memory access
-_[_] : ∀ {n τ l Δˡ} -> Memory Δˡ -> TypedIx l τ n Δˡ  -> CTerm (Labeled l τ)
-(x ∷ m) [ Here ] = x
-∙ [ Here ] = ∙
-(x ∷ m) [ There p ] = _[_] m p
-∙ [ There p ] = ∙
-
--- [] [ () ]
--- (x ∷ m) [ Here ] = ?
--- (x ∷ m) [ There r ] = _[_] m r
--- ∙ [ r ] = ∙
+_[_] : ∀ {n τ l} -> (m : Memory l) -> TypedIx τ n m  -> CTerm (Labeled l τ)
+(c ∷ _) [ Here ] = c
+(c ∷ m) [ There i ] = _[_] m i 
+∙ [ Hole ] = Res ∙ 
 
 -- Update
-_[_]≔_ : ∀ {l τ n Δˡ} -> Memory Δˡ -> TypedIx l τ n Δˡ -> CTerm (Labeled l τ) -> Memory Δˡ
-[] [ () ]≔ c
-x ∷ m [ Here ]≔ c = c ∷ m
-x ∷ m [ There i ]≔ c = x ∷ (m [ i ]≔ c)
-∙ [ i ]≔ c = ∙
+_[_]≔_ : ∀ {l τ n} -> (m : Memory l) -> TypedIx τ n m -> CTerm (Labeled l τ) -> Memory l
+(_ ∷ m) [ Here ]≔ c = c ∷ m
+(c ∷ m) [ There i ]≔ c₁ = c ∷ (m [ i ]≔ c₁)
+∙ [ Hole ]≔ c = ∙
 
 infixr 2 _[_]≔_
 
 -- Snoc
-_∷ʳ_ : ∀ {τ l Δ} -> Memory Δ -> CTerm (Labeled l τ) ->  Memory (Δ L.∷ʳ (l , τ)) 
+_∷ʳ_ : ∀ {τ l} -> Memory l -> CTerm (Labeled l τ) ->  Memory l 
 [] ∷ʳ c = c ∷ []
-(x ∷ Γ) ∷ʳ c = x ∷ (Γ ∷ʳ c)
-∙ ∷ʳ c = ∙
-
--- Move to Types
-snoc=∈ : (τ : Ty) (Δ : Context) -> τ ∈ (Δ L.∷ʳ τ)
-snoc=∈ τ [] = Here
-snoc=∈ τ (x ∷ Δ) = There (snoc=∈ τ Δ)
-
--- Equality for memory (which only diregards ∙ with different Δ)
-data _≅_ : ∀ {Δ₁ Δ₂} -> Memory Δ₁ ->  Memory Δ₂ -> Set where
-  base : [] ≅ []
-  cons : ∀ {τ l Δ₁ Δ₂} {x : CTerm (Labeled l τ)} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} -> m₁ ≅ m₂ -> (x ∷ m₁) ≅ (x ∷ m₂)
-  hole : ∀ {Δ₁ Δ₂} -> (∙ {{Δ₁}}) ≅ (∙ {{Δ₂}})
-
-refl-≅ : ∀ {Δᵐ} {m : Memory Δᵐ} -> m ≅ m
-refl-≅ {m = []} = base
-refl-≅ {m = x ∷ m} = cons refl-≅
-refl-≅ {m = ∙} = hole
-
-sym-≅ : ∀ {Δ₁ Δ₂} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} -> m₁ ≅ m₂ -> m₂ ≅ m₁
-sym-≅ base = base
-sym-≅ (cons p) = cons (sym-≅ p)
-sym-≅ hole = hole
-
-trans-≅ : ∀ {Δ₁ Δ₂ Δ₃} {m₁ : Memory Δ₁} {m₂ : Memory Δ₂} {m₃ : Memory Δ₃} -> m₁ ≅ m₂ -> m₂ ≅ m₃ -> m₁ ≅ m₃
-trans-≅ base base = base
-trans-≅ (cons p) (cons q) = cons (trans-≅ p q)
-trans-≅ hole hole = hole
+(x ∷ m) ∷ʳ c = x ∷ (m ∷ʳ c)
+∙  ∷ʳ c  = ∙
 
 --------------------------------------------------------------------------------
 

@@ -38,7 +38,7 @@ Context : Set
 Context = List Ty
 
 -- Reference to a variable, bound during some abstraction.
-data _∈_ : Ty -> Context -> Set where
+data _∈_ {A : Set} : A -> List A -> Set where
  Here : ∀ {Δ τ} -> τ ∈ (τ ∷ Δ)
  There : ∀ {Δ α β} -> α ∈ Δ -> α ∈ (β ∷ Δ)
 
@@ -60,11 +60,11 @@ snoc-⊆ {_} {[]} = base
 snoc-⊆ {_} {x₁ ∷ xs} = cons snoc-⊆
 
 -- Transform τ ∈ᵗ Δ in Fin
-fin : ∀ {τ Δ} -> τ ∈ Δ -> Fin (length Δ)
+fin : ∀ {A : Set} {τ : A} {Δ : List A} -> τ ∈ Δ -> Fin (length Δ)
 fin Here = zero
 fin (There p) = suc (fin p)
 
-extend-∈ : ∀ {τ Δ₁ Δ₂} -> τ ∈ Δ₁ -> Δ₁ ⊆ Δ₂ -> τ ∈ Δ₂
+extend-∈ : ∀ {A : Set} {τ : A} {Δ₁ Δ₂ : List A} -> τ ∈ Δ₁ -> Δ₁ ⊆ Δ₂ -> τ ∈ Δ₂
 extend-∈ () base
 extend-∈ Here (cons p) = Here
 extend-∈ (There x) (cons p) = There (extend-∈ x p)
