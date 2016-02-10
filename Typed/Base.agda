@@ -53,15 +53,15 @@ mutual
   data Memory (l : Label) : Set where
     ∙ : Memory l
     [] : Memory l
-    _∷_ : ∀ {τ} -> CTerm (Labeled l τ) -> Memory l -> Memory l
+    _∷_ : ∀ {τ} -> CTerm τ -> Memory l -> Memory l
 
   data Store : (List Label) -> Set where
     [] : Store []
     _∷_ : ∀ {l ls} {{u : Unique l ls}} -> Memory l -> Store ls -> Store (l ∷ ls)
 
   data _∈ᵐ_ {l : Label} (τ : Ty) : Memory l -> Set where
-    Here : ∀ {m} {c : CTerm (Labeled l τ)} -> τ ∈ᵐ (c ∷ m)
-    There : ∀ {m τ'} {c : CTerm (Labeled l τ')} -> τ ∈ᵐ m -> τ ∈ᵐ (c ∷ m)
+    Here : ∀ {m} {c : CTerm τ} -> τ ∈ᵐ (c ∷ m)
+    There : ∀ {m τ'} {c : CTerm τ'} -> τ ∈ᵐ m -> τ ∈ᵐ (c ∷ m)
     ∙ : τ ∈ᵐ ∙
 
   data ⟨_,_⟩∈ˢ_ (τ : Ty) (l : Label) : ∀ {ls} -> Store ls -> Set where
@@ -90,12 +90,12 @@ store-unique = aux
 
 -- Memory access
 _[_] : ∀ {τ l} -> (m : Memory l) -> τ ∈ᵐ m  -> CTerm (Labeled l τ)
-(c ∷ _) [ Here ] = c
+(c ∷ _) [ Here ] = Res c
 (c ∷ m) [ There i ] = _[_] m i 
 ∙ [ ∙ ] = Res ∙
 
 -- Update
-_[_]≔_ : ∀ {l τ} -> (m : Memory l) -> τ ∈ᵐ m -> CTerm (Labeled l τ) -> Memory l
+_[_]≔_ : ∀ {l τ} -> (m : Memory l) -> τ ∈ᵐ m -> CTerm τ -> Memory l
 (_ ∷ m) [ Here ]≔ c = c ∷ m
 (c ∷ m) [ There i ]≔ c₁ = c ∷ (m [ i ]≔ c₁)
 ∙ [ ∙ ]≔ c = ∙
@@ -103,12 +103,12 @@ _[_]≔_ : ∀ {l τ} -> (m : Memory l) -> τ ∈ᵐ m -> CTerm (Labeled l τ) -
 infixr 2 _[_]≔_
 
 -- Snoc
-_∷ʳ_ : ∀ {τ l} -> Memory l -> CTerm (Labeled l τ) ->  Memory l 
+_∷ʳ_ : ∀ {τ l} -> Memory l -> CTerm τ ->  Memory l 
 [] ∷ʳ c = c ∷ []
 (x ∷ m) ∷ʳ c = x ∷ (m ∷ʳ c)
 ∙  ∷ʳ c  = ∙
 
-newˢ : ∀ {l ls τ} -> l ∈ ls -> (c : CTerm (Labeled l τ)) -> Store ls -> Store ls
+newˢ : ∀ {l ls τ} -> l ∈ ls -> (c : CTerm τ) -> Store ls -> Store ls
 newˢ Here c (m ∷ s) = (m ∷ʳ c) ∷ s
 newˢ (There q) c (x ∷ s) = x ∷ newˢ q c s
 
@@ -117,17 +117,17 @@ readˢ [] ()
 readˢ (m ∷ s) (Here x) = _[_] m x
 readˢ (m ∷ s) (There q) = readˢ s q
 
-writeˢ : ∀ {l ls τ} -> (c : CTerm (Labeled l τ)) (s : Store ls) -> ⟨ τ , l ⟩∈ˢ s -> Store ls
+writeˢ : ∀ {l ls τ} -> (c : CTerm τ) (s : Store ls) -> ⟨ τ , l ⟩∈ˢ s -> Store ls
 writeˢ c [] ()
 writeˢ c (m ∷ q) (Here x) = (m [ x ]≔ c) ∷ q
 writeˢ c (m ∷ q) (There s) = m ∷ writeˢ c q s
 
-new-∈ᵐ : ∀ {l τ} -> (m : Memory l) (c : CTerm (Labeled l τ)) -> τ ∈ᵐ (m ∷ʳ c)
+new-∈ᵐ : ∀ {l τ} -> (m : Memory l) (c : CTerm τ) -> τ ∈ᵐ (m ∷ʳ c)
 new-∈ᵐ ∙ c = ∙
 new-∈ᵐ [] c = Here
 new-∈ᵐ (x ∷ m) c = There (new-∈ᵐ m c)
 
-new-∈ˢ : ∀ {l ls τ} -> (q : l ∈ ls) (c : CTerm (Labeled l τ)) (s : Store ls) -> ⟨ τ , l ⟩∈ˢ (newˢ q c s)
+new-∈ˢ : ∀ {l ls τ} -> (q : l ∈ ls) (c : CTerm τ) (s : Store ls) -> ⟨ τ , l ⟩∈ˢ (newˢ q c s)
 new-∈ˢ Here c (x ∷ s) = Here (new-∈ᵐ x c)
 new-∈ˢ (There q) c (x ∷ s) = There (new-∈ˢ q c s)
 

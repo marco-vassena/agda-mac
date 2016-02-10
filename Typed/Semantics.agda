@@ -176,14 +176,14 @@ mutual
 
        -- s ∷ʳ (Res {{h}} t)
     new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
-                 ⟨ s ∥ new p t ⟩ ⟼ ⟨ newˢ q (Res t) s ∥ Return (Ref (new-∈ˢ q (Res t) s)) ⟩
+                 ⟨ s ∥ new p t ⟩ ⟼ ⟨ newˢ q t s ∥ Return (Ref (new-∈ˢ q t s)) ⟩
 
     writeCtx :  ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
                   (p : l ⊑ h) -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
                   ⟨ s₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ s₂ ∥ write p c₂ c₃  ⟩
 
     write : ∀ {l h α} {s : Store ls} {c : CTerm α} -> (p : l ⊑ h) (q : ⟨ α , h ⟩∈ˢ s) ->
-              ⟨ s ∥ write p (Ref q) c ⟩ ⟼ ⟨ writeˢ (Res c) s q ∥ Return （） ⟩
+              ⟨ s ∥ write p (Ref q) c ⟩ ⟼ ⟨ writeˢ c s q ∥ Return （） ⟩
 
     readCtx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
               ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->

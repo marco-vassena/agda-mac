@@ -114,7 +114,7 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
              ⟨ εˢ lₐ  s₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⇓ ⟨ εˢ lₐ s₂ ∥ Mac (ε lₐ c₂) ⟩
 ε-Mac-dist⇓ lₐ p (BigStep (Mac c₂) ss) = BigStep (Mac (ε lₐ c₂)) (ε-Mac-dist⋆ lₐ p ss)
 
-εˢ-write-≡ : ∀ {lₐ lᵈ ls τ} {c : CTerm (Labeled lᵈ τ)} -> ¬ (lᵈ ⊑ lₐ) -> (s : Store ls) (q : ⟨ τ , lᵈ ⟩∈ˢ s) ->
+εˢ-write-≡ : ∀ {lₐ lᵈ ls τ} {c : CTerm τ} -> ¬ (lᵈ ⊑ lₐ) -> (s : Store ls) (q : ⟨ τ , lᵈ ⟩∈ˢ s) ->
                εˢ lₐ s ≡ εˢ lₐ (writeˢ c s q) -- (writeˢ q s)
 εˢ-write-≡ {lₐ} {lᵈ} ¬p (m ∷ s) (Here x) with lᵈ ⊑? lₐ
 εˢ-write-≡ ¬p (m ∷ s) (Here x) | yes p = ⊥-elim (¬p p)
@@ -123,7 +123,7 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εˢ-write-≡ ¬p (x ∷ s) (There q) | yes p rewrite εˢ-write-≡ ¬p s q = refl
 εˢ-write-≡ ¬p (x ∷ s) (There q) | no ¬p' rewrite εˢ-write-≡ ¬p s q = refl
 
-εˢ-new-≡ : ∀ {lₐ lᵈ ls τ} {c : CTerm (Labeled lᵈ τ)} -> ¬ (lᵈ ⊑ lₐ) -> (s : Store ls) (q : lᵈ ∈ ls) ->
+εˢ-new-≡ : ∀ {lₐ lᵈ ls τ} {c : CTerm τ} -> ¬ (lᵈ ⊑ lₐ) -> (s : Store ls) (q : lᵈ ∈ ls) ->
                εˢ lₐ s ≡ εˢ lₐ (newˢ q c s)
 εˢ-new-≡ {lₐ} {lᵈ} ¬p (x ∷ s) Here with lᵈ ⊑? lₐ
 εˢ-new-≡ ¬p (x ∷ s) Here | yes p = ⊥-elim (¬p p)
@@ -149,32 +149,40 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 εˢ-≡ lₐ ¬p (readCtx p (Pure x)) = refl
 εˢ-≡ lₐ ¬p (read p q) = refl
 
-readᵐ-≡ : ∀ {l τ} (lₐ : Label) (m : Memory l) (x : τ ∈ᵐ m)  -> _[_] (εᵐ lₐ m) (ε-∈ᵐ lₐ x) ≡ ε lₐ (_[_] m x)
-readᵐ-≡ lₐ ._ Here = refl
-readᵐ-≡ lₐ ._ (There x) = readᵐ-≡ lₐ _ x
-readᵐ-≡ {l = l} lₐ .∙ ∙ with l ⊑? lₐ
-readᵐ-≡ {τ = τ} lₐ .∙ ∙ | yes p rewrite ε∙≡∙ {τ = τ} {[]} lₐ = refl
-readᵐ-≡ lₐ .∙ ∙ | no ¬p = refl
+readᵐ-≡ : ∀ {l lₐ τ} -> l ⊑ lₐ -> (m : Memory l) (x : τ ∈ᵐ m)  -> _[_] (εᵐ lₐ m) (ε-∈ᵐ lₐ x) ≡ ε lₐ (_[_] m x)
+readᵐ-≡ {l} {lₐ} p ._ Here with l ⊑? lₐ
+readᵐ-≡ p₁ ._ Here | yes p = refl
+readᵐ-≡ p ._ Here | no ¬p = ⊥-elim (¬p p)
+readᵐ-≡ p ._ (There x) = readᵐ-≡ p _ x
+readᵐ-≡ {l = l} {lₐ} p  .∙ ∙ with l ⊑? lₐ
+readᵐ-≡ {lₐ = lₐ} {τ = τ} p .∙ ∙ | yes _ rewrite ε∙≡∙ {τ = τ} {[]} lₐ = refl
+readᵐ-≡ {lₐ = lₐ} {τ = τ} p .∙ ∙ | no ¬p rewrite ε∙≡∙ {τ = τ} {[]} lₐ = refl
 
--- readᵐ-≡∙ : ¬ (l ⊑ lₐ) -> 
+readᵐ-≡∙ : ∀ {l lₐ τ} -> ¬ (l ⊑ lₐ) -> (m : Memory l) (x : τ ∈ᵐ m) -> Res ∙ ≡ ε lₐ (_[_] m x)
+readᵐ-≡∙ {l} {lₐ} ¬p ._ Here with l ⊑? lₐ
+readᵐ-≡∙ ¬p ._ Here | yes p = ⊥-elim (¬p p)
+readᵐ-≡∙ ¬p₁ ._ Here | no ¬p = refl
+readᵐ-≡∙ ¬p ._ (There x) = readᵐ-≡∙ ¬p _ x
+readᵐ-≡∙ {l} {lₐ} ¬p .∙ ∙ with l ⊑? lₐ
+readᵐ-≡∙ {lₐ = lₐ} {τ = τ} ¬p .∙ ∙ | yes p rewrite ε∙≡∙ {τ = τ} {[]} lₐ = refl
+readᵐ-≡∙ ¬p₁ .∙ ∙ | no ¬p = refl
 
--- This does not really hold! Looking up in the earsed memory is different than erasing what we look up
 readˢ-≡ : ∀ {l ls τ} (lₐ : Label) (s : Store ls) (q : ⟨ τ , l ⟩∈ˢ s ) -> readˢ (εˢ lₐ s) (ε-∈ˢ lₐ q) ≡ ε lₐ (readˢ s q)
 readˢ-≡ {l} lₐ (m ∷ s) (Here x)  with l ⊑? lₐ
-readˢ-≡ lₐ (m ∷ s) (Here x) | yes p = readᵐ-≡ lₐ _ x
-readˢ-≡ lₐ (m ∷ s) (Here x) | no ¬p = {!_[_] m x!} -- ???
+readˢ-≡ lₐ (m ∷ s) (Here x) | yes p = readᵐ-≡ p _ x
+readˢ-≡ lₐ (m ∷ s) (Here x) | no ¬p = readᵐ-≡∙ ¬p m x
 readˢ-≡ lₐ (m ∷ s) (There {l' = l} q) with l ⊑? lₐ
 readˢ-≡ lₐ (m ∷ s) (There q) | yes p rewrite readˢ-≡ lₐ s q = refl
 readˢ-≡ lₐ (m ∷ s) (There q) | no ¬p = readˢ-≡ lₐ s q 
 
-writeᵐ-≡ : ∀ {l lₐ τ} {m : Memory l} (c : CTerm (Labeled l τ))  -> l ⊑ lₐ -> (x : τ ∈ᵐ m) ->
+writeᵐ-≡ : ∀ {l lₐ τ} {m : Memory l} (c : CTerm τ)  -> l ⊑ lₐ -> (x : τ ∈ᵐ m) ->
              let mᵉ = (εᵐ lₐ m) [ (ε-∈ᵐ lₐ x) ]≔ (ε lₐ c)
                  mᵉ' = εᵐ lₐ (m [ x ]≔ c) in mᵉ ≡ mᵉ'
 writeᵐ-≡ c p Here = refl
 writeᵐ-≡ c p (There x) rewrite writeᵐ-≡ c p x = refl
 writeᵐ-≡ c p ∙ = refl
 
-writeˢ-≡ : ∀ {l ls τ} {s : Store ls} (lₐ : Label) (t : CTerm (Labeled l τ)) (q : ⟨ τ , l ⟩∈ˢ s )
+writeˢ-≡ : ∀ {l ls τ} {s : Store ls} (lₐ : Label) (t : CTerm τ) (q : ⟨ τ , l ⟩∈ˢ s )
              -> εˢ lₐ (writeˢ t s q) ≡ writeˢ (ε lₐ t) (εˢ lₐ s) (ε-∈ˢ lₐ q)
 writeˢ-≡ {l} lₐ c (Here x) with l ⊑? lₐ
 writeˢ-≡ lₐ c (Here x) | yes p rewrite writeᵐ-≡ c p x =  refl
@@ -210,18 +218,18 @@ newˢ-≡ lₐ t (m ∷ s) (There q) | no ¬p rewrite newˢ-≡ lₐ t s q = ref
 -- ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p₂ q) | yes p = ? --  rewrite sym (newˢ-≡ lₐ (Res t) s q) = ?
 -- ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p q) | no ¬p = {!!} -- rewrite sym (newˢ-≡ lₐ (Res t) s q) = ?
 ε-Mac-dist lₐ (yes p) (readCtx p₁ s) = readCtx p₁ (εᵖ-dist lₐ s)
-ε-Mac-dist {ls = ls} lₐ (yes p') (read {l = l} {s = s} p q) = {!read p (ε-∈ˢ lₐ q)!}
--- rewrite sym (readˢ-≡ lₐ s q) = read p (ε-∈ˢ lₐ q)
+ε-Mac-dist {ls = ls} lₐ (yes p') (read {l = l} {s = s} p q) rewrite sym (readˢ-≡ lₐ s q) = read p (ε-∈ˢ lₐ q)
 ε-Mac-dist lₐ (yes p₁) (writeCtx {h = h} p s) with h ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (writeCtx p₂ s) | yes p = writeCtx p₂ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p₁) (writeCtx p s) | no ¬p = writeCtx p (εᵖ-dist lₐ s) 
-ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p q) with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p₂ q) | yes p rewrite writeˢ-≡ lₐ (Res t) q with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₂) (write p₃ q) | yes p₁ | yes p = write p₃ (ε-∈ˢ lₐ q)
-ε-Mac-dist lₐ (yes p₁) (write p₂ q) | yes p | no ¬p = ⊥-elim (¬p p)
-ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p q) | no ¬p rewrite writeˢ-≡ lₐ (Res t) q with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (write p₂ q) | no ¬p | yes p = ⊥-elim (¬p p)
-ε-Mac-dist lₐ (yes p₁) (write p q) | no ¬p₁ | no ¬p = write p (ε-∈ˢ lₐ q)
+ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p q) rewrite writeˢ-≡ lₐ t q = write p (ε-∈ˢ lₐ q)
+-- with h ⊑? lₐ
+-- ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p₂ q) | yes p rewrite writeˢ-≡ lₐ t q with h ⊑? lₐ
+-- ε-Mac-dist lₐ (yes p₂) (write p₃ q) | yes p₁ | yes p = write p₃ (ε-∈ˢ lₐ q)
+-- ε-Mac-dist lₐ (yes p₁) (write p₂ q) | yes p | no ¬p = ⊥-elim (¬p p)
+-- ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p q) | no ¬p rewrite writeˢ-≡ lₐ t q with h ⊑? lₐ
+-- ε-Mac-dist lₐ (yes p₁) (write p₂ q) | no ¬p | yes p = ⊥-elim (¬p p)
+-- ε-Mac-dist lₐ (yes p₁) (write p q) | no ¬p₁ | no ¬p = {! write p (ε-∈ˢ lₐ q)!} 
 ε-Mac-dist {c₁ = c₁} {c₂ = c₂} lₐ (no ¬p) s
   rewrite ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p | εˢ-≡ lₐ ¬p s = Pure Hole
 
