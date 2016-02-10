@@ -92,13 +92,13 @@ store-unique = aux
 _[_] : ∀ {τ l} -> (m : Memory l) -> τ ∈ᵐ m  -> CTerm (Labeled l τ)
 (c ∷ _) [ Here ] = c
 (c ∷ m) [ There i ] = _[_] m i 
-∙ [ Hole ] = Res ∙ 
+∙ [ ∙ ] = Res ∙
 
 -- Update
 _[_]≔_ : ∀ {l τ} -> (m : Memory l) -> τ ∈ᵐ m -> CTerm (Labeled l τ) -> Memory l
 (_ ∷ m) [ Here ]≔ c = c ∷ m
 (c ∷ m) [ There i ]≔ c₁ = c ∷ (m [ i ]≔ c₁)
-∙ [ Hole ]≔ c = ∙
+∙ [ ∙ ]≔ c = ∙
 
 infixr 2 _[_]≔_
 

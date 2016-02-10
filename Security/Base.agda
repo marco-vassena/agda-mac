@@ -34,7 +34,9 @@ open import Data.List as L hiding (drop)
 ε-Mac lₐ (yes _) (write {h = h} p r t) with h ⊑? lₐ
 ε-Mac lₐ (yes p₁) (write p₂ r t) | yes p = write p₂ (ε lₐ r) (ε lₐ t)
 ε-Mac lₐ (yes p) (write p₁ r t) | no ¬p = write p₁ (ε lₐ r) ∙  
-ε-Mac lₐ (yes _) (new {h = lʰ} p t) = new p (ε lₐ t)
+ε-Mac lₐ (yes _) (new {h = lʰ} p t) with lʰ ⊑? lₐ
+ε-Mac lₐ (yes p₁) (new p₂ t) | yes p = new p₂ (ε lₐ t)
+ε-Mac lₐ (yes p) (new p₁ t) | no ¬p = new p₁ ∙
 ε-Mac lₐ (yes p) ∙ = ∙
 ε-Mac lₐ (no ¬p) (Var x) = Var x
 ε-Mac lₐ (no ¬p) t = ∙
@@ -234,7 +236,9 @@ open import Data.List as L hiding (drop)
 ε-Mac-wken lₐ (yes p₁) (write x₁ t t₁) p₂ | yes p rewrite ε-wken lₐ t p₂ | ε-wken lₐ t₁ p₂ = refl
 ε-Mac-wken lₐ (yes p) (write x₁ t t₁) p₁ | no ¬p rewrite ε-wken lₐ t p₁ = refl
 ε-Mac-wken lₐ (no ¬p) (write x₁ t t₁) p = refl
-ε-Mac-wken lₐ (yes p) (new {h = lʰ} x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (yes p) (new {h = lʰ} x₁ t) p₁ with lʰ ⊑? lₐ
+ε-Mac-wken lₐ (yes p₁) (new x₁ t) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
+ε-Mac-wken lₐ (yes p) (new x₁ t) p₁ | no ¬p = refl
 ε-Mac-wken lₐ (no ¬p) (new x₁ t) p = refl
 ε-Mac-wken lₐ (yes p) ∙ p₁ = refl
 ε-Mac-wken lₐ (no ¬p) ∙ p = refl
@@ -414,7 +418,9 @@ open import Data.List as L hiding (drop)
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write {h = lʰ} x₂ t₁ t₂) (yes p) with lʰ ⊑? lₐ
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p₁) | yes p  rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p) | no ¬p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new {h = lʰ} x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new {h = lʰ} x₂ t₁) (yes p) with lʰ ⊑? lₐ
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (yes p) | no ¬p = refl 
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (yes p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (App t₁ t₂) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃) (no ¬p) = refl

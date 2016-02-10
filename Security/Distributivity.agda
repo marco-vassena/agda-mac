@@ -1,3 +1,5 @@
+{-# OPTIONS --rewriting #-}
+
 module Security.Distributivity where
 
 
@@ -85,35 +87,6 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 ε-dist⇝ {Ref lᵈ τ} lₐ IfFalse = IfFalse
 ε-dist⇝ {Ref lᵈ τ} lₐ Hole = Hole
 
--- εˢ-lemma : ∀ {l ls} (lₐ : Label) (s : Store ls) (q : l ∈ ls) ->
---              let sᵉ = εˢ lₐ s
---                  m = getMemory q s
---                  mᵉ = getMemory q sᵉ in updateMemory mᵉ q sᵉ ≡ εˢ lₐ (updateMemory m q s)
--- εˢ-lemma lₐ (_∷_ {l = l} m s) Here with l ⊑? lₐ
--- εˢ-lemma lₐ (m ∷ s) Here | yes p = refl
--- εˢ-lemma lₐ (m ∷ s) Here | no ¬p = refl
--- εˢ-lemma lₐ (_∷_ {l = l} x s) (There q) with l ⊑? lₐ
--- εˢ-lemma lₐ (x ∷ s) (There q) | yes p rewrite εˢ-lemma lₐ s q = refl
--- εˢ-lemma lₐ (x ∷ s) (There q) | no ¬p rewrite εˢ-lemma lₐ s q = refl
-
--- εˢ-getMemory : ∀ {l ls} (lₐ : Label) (s : Store ls) (q : l ∈ ls) ->
---              let sᵉ = εˢ lₐ s
---                  m = getMemory q s 
---                  mᵉ = getMemory q sᵉ in εᵐ lₐ m ≡ mᵉ
--- εˢ-getMemory {l} lₐ (x ∷ s) Here with l ⊑? lₐ
--- εˢ-getMemory lₐ (x ∷ s) Here | yes p = refl
--- εˢ-getMemory lₐ (x ∷ s) Here | no ¬p = {!!} -- This does not work at the moment ... can we ?
--- εˢ-getMemory lₐ (_∷_ {l = l} x s) (There q) with l ⊑? lₐ
--- εˢ-getMemory lₐ (x ∷ s) (There q) | yes p = εˢ-getMemory lₐ s q
--- εˢ-getMemory lₐ (x ∷ s) (There q) | no ¬p = εˢ-getMemory lₐ s q
-
--- εˢ-new : ∀ {l ls τ} {t : CTerm τ} (lₐ : Label) (s : Store ls) (q : l ∈ ls) ->
---               let sᵉ = εˢ lₐ s
---                   m = getMemory q s
---                   mᵉ = getMemory q sᵉ in
---                      updateMemory (mᵉ ∷ʳ Res (ε lₐ t)) q sᵉ ≡ εˢ lₐ (updateMemory (m ∷ʳ Res t) q s) 
--- εˢ-new lₐ s q = {!!}
-
 ε-Mac-dist : ∀ {lᵈ τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac lᵈ τ)} (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) ->
                 ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> ⟨ (εˢ lₐ s₁) ∥ ε-Mac lₐ x c₁ ⟩ ⟼ ⟨ εˢ lₐ s₂ ∥ ε-Mac lₐ x c₂ ⟩
 
@@ -176,10 +149,20 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 εˢ-≡ lₐ ¬p (readCtx p (Pure x)) = refl
 εˢ-≡ lₐ ¬p (read p q) = refl
 
+readᵐ-≡ : ∀ {l τ} (lₐ : Label) (m : Memory l) (x : τ ∈ᵐ m)  -> _[_] (εᵐ lₐ m) (ε-∈ᵐ lₐ x) ≡ ε lₐ (_[_] m x)
+readᵐ-≡ lₐ ._ Here = refl
+readᵐ-≡ lₐ ._ (There x) = readᵐ-≡ lₐ _ x
+readᵐ-≡ {l = l} lₐ .∙ ∙ with l ⊑? lₐ
+readᵐ-≡ {τ = τ} lₐ .∙ ∙ | yes p rewrite ε∙≡∙ {τ = τ} {[]} lₐ = refl
+readᵐ-≡ lₐ .∙ ∙ | no ¬p = refl
+
+-- readᵐ-≡∙ : ¬ (l ⊑ lₐ) -> 
+
+-- This does not really hold! Looking up in the earsed memory is different than erasing what we look up
 readˢ-≡ : ∀ {l ls τ} (lₐ : Label) (s : Store ls) (q : ⟨ τ , l ⟩∈ˢ s ) -> readˢ (εˢ lₐ s) (ε-∈ˢ lₐ q) ≡ ε lₐ (readˢ s q)
-readˢ-≡ {l} lₐ ._ (Here x) with l ⊑? lₐ
-readˢ-≡ lₐ ._ (Here x) | yes p = {!!}
-readˢ-≡ lₐ ._ (Here x) | no ¬p = {!!} -- ???
+readˢ-≡ {l} lₐ (m ∷ s) (Here x)  with l ⊑? lₐ
+readˢ-≡ lₐ (m ∷ s) (Here x) | yes p = readᵐ-≡ lₐ _ x
+readˢ-≡ lₐ (m ∷ s) (Here x) | no ¬p = {!_[_] m x!} -- ???
 readˢ-≡ lₐ (m ∷ s) (There {l' = l} q) with l ⊑? lₐ
 readˢ-≡ lₐ (m ∷ s) (There q) | yes p rewrite readˢ-≡ lₐ s q = refl
 readˢ-≡ lₐ (m ∷ s) (There q) | no ¬p = readˢ-≡ lₐ s q 
@@ -200,6 +183,21 @@ writeˢ-≡ lₐ c (There {l' = l} q) with l ⊑? lₐ
 writeˢ-≡ lₐ c (There q) | yes p rewrite writeˢ-≡ lₐ c q = refl
 writeˢ-≡ lₐ c (There q) | no ¬p rewrite writeˢ-≡ lₐ c q = refl
 
+newᵐ-≡ : ∀ {l τ} (lₐ : Label) (m : Memory l) (t : CTerm (Labeled l τ)) -> εᵐ lₐ (m ∷ʳ t) ≡ εᵐ lₐ m ∷ʳ (ε lₐ t)
+newᵐ-≡ lₐ ∙ x = refl
+newᵐ-≡ lₐ [] x = refl
+newᵐ-≡ lₐ (x ∷ m) x₁ rewrite newᵐ-≡ lₐ m x₁ = refl
+
+newˢ-≡ : ∀ {l ls τ} (lₐ : Label) (t : CTerm (Labeled l τ)) (s : Store ls) (q : l ∈ ls) ->
+            εˢ lₐ (newˢ q t s) ≡ newˢ q (ε lₐ t) (εˢ lₐ s)
+newˢ-≡ lₐ t [] ()
+newˢ-≡ {l = l} lₐ t (x ∷ s) Here with l ⊑? lₐ
+newˢ-≡ lₐ t (x ∷ s) Here | yes p rewrite newᵐ-≡ lₐ x t = refl
+newˢ-≡ lₐ t (x ∷ s) Here | no ¬p = refl
+newˢ-≡ lₐ t (_∷_ {l = l} m s) (There q) with l ⊑? lₐ
+newˢ-≡ lₐ t (m ∷ s) (There q) | yes p rewrite newˢ-≡ lₐ t s q = refl
+newˢ-≡ lₐ t (m ∷ s) (There q) | no ¬p rewrite newˢ-≡ lₐ t s q = refl
+
 ε-Mac-dist lₐ (yes p) (Pure x) = Pure (ε-Mac-dist⇝ lₐ (yes p) x)
 ε-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (ε-Mac-dist lₐ (yes p) s)
 ε-Mac-dist lₐ (yes p) (CatchCtx s) = CatchCtx (ε-Mac-dist lₐ (yes p) s)
@@ -207,8 +205,13 @@ writeˢ-≡ lₐ c (There q) | no ¬p rewrite writeˢ-≡ lₐ c q = refl
 ε-Mac-dist lₐ (yes p) (join {h = lʰ} p₁ bs) = {!!}
 ε-Mac-dist lₐ (yes p) (joinEx {h = lʰ} p₁ bs) = {!!}
 ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) = {!!}
+-- with h ⊑? lₐ
+-- -- I have the right lemma to rewrite the goal as I want, but agda refuses! :(
+-- ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p₂ q) | yes p = ? --  rewrite sym (newˢ-≡ lₐ (Res t) s q) = ?
+-- ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p q) | no ¬p = {!!} -- rewrite sym (newˢ-≡ lₐ (Res t) s q) = ?
 ε-Mac-dist lₐ (yes p) (readCtx p₁ s) = readCtx p₁ (εᵖ-dist lₐ s)
-ε-Mac-dist {ls = ls} lₐ (yes p') (read {l = l} {s = s} p q) rewrite sym (readˢ-≡ lₐ s q) = read p (ε-∈ˢ lₐ q)
+ε-Mac-dist {ls = ls} lₐ (yes p') (read {l = l} {s = s} p q) = {!read p (ε-∈ˢ lₐ q)!}
+-- rewrite sym (readˢ-≡ lₐ s q) = read p (ε-∈ˢ lₐ q)
 ε-Mac-dist lₐ (yes p₁) (writeCtx {h = h} p s) with h ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (writeCtx p₂ s) | yes p = writeCtx p₂ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p₁) (writeCtx p s) | no ¬p = writeCtx p (εᵖ-dist lₐ s) 
