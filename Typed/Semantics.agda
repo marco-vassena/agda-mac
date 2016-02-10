@@ -176,25 +176,21 @@ mutual
 
        -- s ∷ʳ (Res {{h}} t)
     new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
-                 let m = getMemory q s  in ⟨ s ∥ new p t ⟩ ⟼ ⟨ updateMemory (m ∷ʳ Res t) q s ∥ Return (Ref (lengthᵐ m)) ⟩
-
+                 ⟨ s ∥ new p t ⟩ ⟼ ⟨ newˢ q (Res t) s ∥ Return (Ref (new-∈ˢ q (Res t) s)) ⟩
 
     writeCtx :  ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
                   (p : l ⊑ h) -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
                   ⟨ s₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ s₂ ∥ write p c₂ c₃  ⟩
 
-    write : ∀ {l h n α} {s : Store ls} {c : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
-              let m = getMemory q s in (i : TypedIx α n m) ->
-            ⟨ s ∥ write p (Ref n) c ⟩ ⟼ ⟨ updateMemory (m [ i ]≔ Res c) q s ∥ Return （） ⟩
+    write : ∀ {l h α} {s : Store ls} {c : CTerm α} -> (p : l ⊑ h) (q : ⟨ α , h ⟩∈ˢ s) ->
+              ⟨ s ∥ write p (Ref q) c ⟩ ⟼ ⟨ writeˢ (Res c) s q ∥ Return （） ⟩
 
     readCtx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
               ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
               ⟨ s₁ ∥ (read p c₁) ⟩ ⟼ ⟨ s₂ ∥ (read p c₂) ⟩
 
-    read : ∀ {l h α n} {s : Store ls} -> (p : l ⊑ h) (q : l ∈ ls) ->
-             let m = getMemory q s in (i : TypedIx α n m) ->
-              ⟨ s ∥ (read p (Ref n)) ⟩ ⟼ ⟨ s ∥ unlabel p (m [ i ]) ⟩
-
+    read : ∀ {l h α} {s : Store ls} -> (p : l ⊑ h) (q : ⟨ α , l ⟩∈ˢ s) ->
+              ⟨ s ∥ (read p (Ref q)) ⟩ ⟼ ⟨ s ∥ unlabel p (readˢ s q) ⟩
 
 -- TODO maybe define Redex for Program instead of single term  
 
