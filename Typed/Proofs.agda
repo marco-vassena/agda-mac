@@ -189,7 +189,6 @@ determinismMixedM (unlabelEx p) (Pure x) = refl
 determinismMixedM (unlabelEx p) (unlabelCtx .p (Pure ()))
 determinismMixedM Hole (Pure Hole) = refl
 
-
 determinismM⋆ : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> IsValue c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₃ ∥ c₃ ⟩ -> IsValue c₃ -> s₂ ≡ s₃
 determinismM⋆ [] isV₁ [] isV₂ = refl
@@ -217,9 +216,10 @@ determinismM (readCtx p (Pure ())) (read .p r)
 determinismM (read p i) (readCtx .p (Pure ()))
 determinismM (read p i) (read .p .i) = refl
 
-determinism :  ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
-                 ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₃ ∥ c₃ ⟩ -> s₂ ≡ s₃ × c₂ ≡ c₃
-determinism s₁ s₂ = (determinismM s₁ s₂) , (determinismC s₁ s₂)
+determinism :  ∀ {τ ls} {p₁ p₂ p₃ : Program τ ls} ->
+                 p₁ ⟼ p₂ -> p₁ ⟼ p₃ -> p₂ ≡ p₃
+determinism {p₁ = ⟨ s₁ ∥ c₁ ⟩} {⟨ s₂ ∥ c₂ ⟩} {⟨ s₃ ∥ c₃ ⟩} st₁ st₂
+  rewrite determinismM st₁ st₂ | determinismC st₁ st₂ = refl 
 
 preservation : ∀ {ls} {s₁ s₂ : Store ls} {τ : Ty} {c₁ c₂ : CTerm τ} -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> τ ≡ τ
 preservation s = refl
