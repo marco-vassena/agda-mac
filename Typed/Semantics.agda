@@ -48,7 +48,7 @@ wken (join x t) p = join x (wken t p)
 wken (Ref x) p = Ref x
 wken (read x t) p = read x (wken t p)
 wken (write x t t₁) p = write x (wken t p) (wken t₁ p)
-wken (new x t) p = new x (wken t p)
+wken (new x t r) p = new x (wken t p) r
 wken ∙ p = ∙
 
 _↑¹ : ∀ {α β Δ} -> Term Δ α -> Term (β ∷ Δ) α
@@ -83,7 +83,7 @@ tm-subst Δ₁ Δ₂ v (join x t) = join x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (Ref x) = Ref x
 tm-subst Δ₁ Δ₂ v (read x t) = read x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (write x t t₁) = write x (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
-tm-subst Δ₁ Δ₂ v (new x t) = new x (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (new x t r) = new x (tm-subst Δ₁ Δ₂ v t) r
 tm-subst Δ₁ Δ₂ v ∙ = ∙
 
 subst : ∀ {Δ α β} -> Term Δ α -> Term (α ∷ Δ) β -> Term Δ β
@@ -174,9 +174,8 @@ mutual
                ⟨ s₁ ∥ c ⟩ ⇓ ⟨ s₂ ∥  Macₓ e ⟩ ->
                ⟨ s₁ ∥ join p c ⟩ ⟼ ⟨ s₂ ∥ (Return (Resₓ e)) ⟩
 
-       -- s ∷ʳ (Res {{h}} t)
-    new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
-                 ⟨ s ∥ new p t ⟩ ⟼ ⟨ newˢ q t s ∥ Return (Ref (new-∈ˢ q t s)) ⟩
+    new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (r : ⟨ α , h ⟩∈ˢ s ) ->
+                 ⟨ s ∥ new p t r ⟩ ⟼ ⟨ newˢ s r t ∥ Return (Ref r) ⟩
 
     writeCtx :  ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
                   (p : l ⊑ h) -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->

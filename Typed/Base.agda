@@ -42,7 +42,7 @@ mutual
 
     write : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref h α) -> Term Δ α -> Term Δ (Mac l （）)
 
-    new : ∀ {α l h} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Ref h α))
+    new : ∀ {α l h ls} {s : Store ls} -> l ⊑ h -> Term Δ α -> ⟨ α , h ⟩∈ˢ s -> Term Δ (Mac l (Ref h α))
 
     -- Erased term ∙
     ∙ : ∀ {{τ}} -> Term Δ τ
@@ -108,9 +108,9 @@ _∷ʳ_ : ∀ {τ l} -> Memory l -> CTerm τ ->  Memory l
 (x ∷ m) ∷ʳ c = x ∷ (m ∷ʳ c)
 ∙  ∷ʳ c  = ∙
 
-newˢ : ∀ {l ls τ} -> l ∈ ls -> (c : CTerm τ) -> Store ls -> Store ls
-newˢ Here c (m ∷ s) = (m ∷ʳ c) ∷ s
-newˢ (There q) c (x ∷ s) = x ∷ newˢ q c s
+newˢ : ∀ {l ls τ} -> (s : Store ls) -> ⟨ τ , l ⟩∈ˢ s -> (c : CTerm τ) -> Store ls
+newˢ (m ∷ s) (Here x) c = (m ∷ʳ c) ∷ s
+newˢ (x ∷ s) (There q) c = x ∷ newˢ s q c
 
 readˢ : ∀ {l ls τ} -> (s : Store ls) -> ⟨ τ , l ⟩∈ˢ s -> CTerm (Labeled l τ)
 readˢ [] ()
@@ -127,9 +127,9 @@ new-∈ᵐ ∙ c = ∙
 new-∈ᵐ [] c = Here
 new-∈ᵐ (x ∷ m) c = There (new-∈ᵐ m c)
 
-new-∈ˢ : ∀ {l ls τ} -> (q : l ∈ ls) (c : CTerm τ) (s : Store ls) -> ⟨ τ , l ⟩∈ˢ (newˢ q c s)
-new-∈ˢ Here c (x ∷ s) = Here (new-∈ᵐ x c)
-new-∈ˢ (There q) c (x ∷ s) = There (new-∈ˢ q c s)
+-- new-∈ˢ : ∀ {l ls τ} -> (q : l ∈ ls) (c : CTerm τ) (s : Store ls) -> ⟨ τ , l ⟩∈ˢ (newˢ q c s)
+-- new-∈ˢ Here c (x ∷ s) = Here (new-∈ᵐ x c)
+-- new-∈ˢ (There q) c (x ∷ s) = There (new-∈ˢ q c s)
 
 --------------------------------------------------------------------------------
 

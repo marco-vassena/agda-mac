@@ -7,6 +7,10 @@ open import Typed.Semantics
 open import Relation.Binary.PropositionalEquality hiding (subst)
 open import Data.List as L hiding (drop)
 
+
+εˢ : ∀ {ls} -> (lₐ : Label) -> Store ls -> Store ls
+ε-∈ˢ : ∀ {l τ ls} {s : Store ls} (lₐ : Label) -> ⟨ τ , l ⟩∈ˢ s -> ⟨ τ , l ⟩∈ˢ (εˢ lₐ s)
+
 -- Erasure function for open terms
 ε : ∀ {τ Δ} -> Label -> Term Δ τ -> Term Δ τ
 
@@ -35,15 +39,13 @@ open import Data.List as L hiding (drop)
 -- with h ⊑? lₐ
 -- ε-Mac lₐ (yes p₁) (write p₂ r t) | yes p = write p₂ (ε lₐ r) (ε lₐ t)
 -- ε-Mac lₐ (yes p) (write p₁ r t) | no ¬p = write p₁ (ε lₐ r) ∙  
-ε-Mac lₐ (yes _) (new {h = lʰ} p t) with lʰ ⊑? lₐ
-ε-Mac lₐ (yes p₁) (new p₂ t) | yes p = new p₂ (ε lₐ t)
-ε-Mac lₐ (yes p) (new p₁ t) | no ¬p = new p₁ ∙
+ε-Mac lₐ (yes _) (new {h = lʰ} p t r) = new p (ε lₐ t) (ε-∈ˢ lₐ r)
+-- with lʰ ⊑? lₐ
+-- ε-Mac lₐ (yes p₁) (new p₂ t r) | yes p = new p₂ (ε lₐ t) (ε-∈ˢ lₐ r)
+-- ε-Mac lₐ (yes p) (new p₁ t r) | no ¬p = new p₁ ∙ (ε-∈ˢ lₐ r)
 ε-Mac lₐ (yes p) ∙ = ∙
 ε-Mac lₐ (no ¬p) (Var x) = Var x
 ε-Mac lₐ (no ¬p) t = ∙
-
-εˢ : ∀ {ls} -> (lₐ : Label) -> Store ls -> Store ls
-ε-∈ˢ : ∀ {l τ ls} {s : Store ls} (lₐ : Label) -> ⟨ τ , l ⟩∈ˢ s -> ⟨ τ , l ⟩∈ˢ (εˢ lₐ s)
 
 ε {Mac lᵈ τ} lₐ t = ε-Mac lₐ (lᵈ ⊑? lₐ) t
 ε lₐ （） = （）
@@ -158,12 +160,12 @@ open import Data.List as L hiding (drop)
 ε-Mac-extensional (yes p) (no ¬p) (write p₁ r t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (write p₁ r t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (no ¬p₁) (write p r t) = refl
-ε-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (new {h = lʰ} p₂ t) with lʰ ⊑? lₐ
-ε-Mac-extensional (yes p₁) (yes p₂) (new p₃ t) | yes p = refl
-ε-Mac-extensional (yes p) (yes p₁) (new p₂ t) | no ¬p = refl
-ε-Mac-extensional (yes p) (no ¬p) (new p₁ t) = ⊥-elim (¬p p)
-ε-Mac-extensional (no ¬p) (yes p) (new p₁ t) = ⊥-elim (¬p p)
-ε-Mac-extensional (no ¬p) (no ¬p₁) (new p t) = refl
+ε-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (new {h = lʰ} p₂ t r) with lʰ ⊑? lₐ
+ε-Mac-extensional (yes p₁) (yes p₂) (new p₃ t r) | yes p = refl
+ε-Mac-extensional (yes p) (yes p₁) (new p₂ t r) | no ¬p = refl
+ε-Mac-extensional (yes p) (no ¬p) (new p₁ t r) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (new p₁ t r) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (new p t r) = refl
 ε-Mac-extensional (yes p) (yes p₁) ∙ = refl
 ε-Mac-extensional (yes p) (no ¬p) ∙ = refl
 ε-Mac-extensional (no ¬p) (yes p) ∙ = refl
@@ -238,10 +240,11 @@ open import Data.List as L hiding (drop)
 -- ε-Mac-wken lₐ (yes p₁) (write x₁ t t₁) p₂ | yes p rewrite ε-wken lₐ t p₂ | ε-wken lₐ t₁ p₂ = refl
 -- ε-Mac-wken lₐ (yes p) (write x₁ t t₁) p₁ | no ¬p rewrite ε-wken lₐ t p₁ = refl
 ε-Mac-wken lₐ (no ¬p) (write x₁ t t₁) p = refl
-ε-Mac-wken lₐ (yes p) (new {h = lʰ} x₁ t) p₁ with lʰ ⊑? lₐ
-ε-Mac-wken lₐ (yes p₁) (new x₁ t) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
-ε-Mac-wken lₐ (yes p) (new x₁ t) p₁ | no ¬p = refl
-ε-Mac-wken lₐ (no ¬p) (new x₁ t) p = refl
+ε-Mac-wken lₐ (yes p) (new {h = lʰ} x₁ t r) p₁ rewrite ε-wken lₐ t p₁ = refl
+-- with lʰ ⊑? lₐ
+-- ε-Mac-wken lₐ (yes p₁) (new x₁ t r) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
+-- ε-Mac-wken lₐ (yes p) (new x₁ t r) p₁ | no ¬p = refl
+ε-Mac-wken lₐ (no ¬p) (new x₁ t r) p = refl
 ε-Mac-wken lₐ (yes p) ∙ p₁ = refl
 ε-Mac-wken lₐ (no ¬p) ∙ p = refl
 
@@ -421,9 +424,10 @@ open import Data.List as L hiding (drop)
         -- with lʰ ⊑? lₐ
         -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p₁) | yes p  rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
         -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p) | no ¬p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new {h = lʰ} x₂ t₁) (yes p) with lʰ ⊑? lₐ
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (yes p) | no ¬p = refl 
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new {h = lʰ} x₂ t₁ r) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        -- with lʰ ⊑? lₐ
+        -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁ r) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁ r) (yes p) | no ¬p = refl 
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (yes p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (App t₁ t₂) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃) (no ¬p) = refl
@@ -438,7 +442,7 @@ open import Data.List as L hiding (drop)
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (no ¬p) = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁ r) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (no ¬p) = refl
 
 ε-Mac-subst : ∀ {lᵈ Δ α β} (lₐ : Label) (y : Dec (lᵈ ⊑ lₐ)) (x : Term Δ α) (t : Term (α ∷ Δ) (Mac lᵈ β))
@@ -460,5 +464,5 @@ open import Data.List as L hiding (drop)
 ε-Mac-CTerm≡∙ lₐ (join x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (read x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (write x c c₁) x₁ = refl
-ε-Mac-CTerm≡∙ lₐ (new x c) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (new x c r) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ ∙ x = refl

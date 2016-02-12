@@ -123,11 +123,11 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εˢ-write-≡ ¬p (x ∷ s) (There q) | yes p rewrite εˢ-write-≡ ¬p s q = refl
 εˢ-write-≡ ¬p (x ∷ s) (There q) | no ¬p' rewrite εˢ-write-≡ ¬p s q = refl
 
-εˢ-new-≡ : ∀ {lₐ lᵈ ls τ} {c : CTerm τ} -> ¬ (lᵈ ⊑ lₐ) -> (s : Store ls) (q : lᵈ ∈ ls) ->
-               εˢ lₐ s ≡ εˢ lₐ (newˢ q c s)
-εˢ-new-≡ {lₐ} {lᵈ} ¬p (x ∷ s) Here with lᵈ ⊑? lₐ
-εˢ-new-≡ ¬p (x ∷ s) Here | yes p = ⊥-elim (¬p p)
-εˢ-new-≡ ¬p₁ (x ∷ s) Here | no ¬p = refl
+εˢ-new-≡ : ∀ {lₐ lᵈ ls τ} {c : CTerm τ} -> ¬ (lᵈ ⊑ lₐ) -> (s : Store ls) (q : ⟨ τ , lᵈ ⟩∈ˢ s) ->
+               εˢ lₐ s ≡ εˢ lₐ (newˢ s q c)
+εˢ-new-≡ {lₐ} {lᵈ} ¬p (m ∷ s) (Here x) with lᵈ ⊑? lₐ
+εˢ-new-≡ ¬p (m ∷ s) (Here x) | yes p = ⊥-elim (¬p p)
+εˢ-new-≡ ¬p₁ (m ∷ s) (Here x) | no ¬p = refl
 εˢ-new-≡ {lₐ} ¬p (_∷_ {l = l} x s) (There q) with l ⊑? lₐ
 εˢ-new-≡ ¬p (x ∷ s) (There q) | yes p rewrite εˢ-new-≡ ¬p s q = refl
 εˢ-new-≡ ¬p (x ∷ s) (There q) | no ¬p₁ rewrite εˢ-new-≡ ¬p s q = refl 
@@ -191,17 +191,17 @@ writeˢ-≡ lₐ c (There {l' = l} q) with l ⊑? lₐ
 writeˢ-≡ lₐ c (There q) | yes p rewrite writeˢ-≡ lₐ c q = refl
 writeˢ-≡ lₐ c (There q) | no ¬p rewrite writeˢ-≡ lₐ c q = refl
 
-newᵐ-≡ : ∀ {l τ} (lₐ : Label) (m : Memory l) (t : CTerm (Labeled l τ)) -> εᵐ lₐ (m ∷ʳ t) ≡ εᵐ lₐ m ∷ʳ (ε lₐ t)
+newᵐ-≡ : ∀ {l τ} (lₐ : Label) (m : Memory l) (t : CTerm τ) -> εᵐ lₐ (m ∷ʳ t) ≡ εᵐ lₐ m ∷ʳ (ε lₐ t)
 newᵐ-≡ lₐ ∙ x = refl
 newᵐ-≡ lₐ [] x = refl
 newᵐ-≡ lₐ (x ∷ m) x₁ rewrite newᵐ-≡ lₐ m x₁ = refl
 
-newˢ-≡ : ∀ {l ls τ} (lₐ : Label) (t : CTerm (Labeled l τ)) (s : Store ls) (q : l ∈ ls) ->
-            εˢ lₐ (newˢ q t s) ≡ newˢ q (ε lₐ t) (εˢ lₐ s)
+newˢ-≡ : ∀ {l ls τ} (lₐ : Label) (t : CTerm τ) (s : Store ls) (q : ⟨ τ , l ⟩∈ˢ s) ->
+            εˢ lₐ (newˢ s q t) ≡ newˢ  (εˢ lₐ s) (ε-∈ˢ lₐ q) (ε lₐ t) 
 newˢ-≡ lₐ t [] ()
-newˢ-≡ {l = l} lₐ t (x ∷ s) Here with l ⊑? lₐ
-newˢ-≡ lₐ t (x ∷ s) Here | yes p rewrite newᵐ-≡ lₐ x t = refl
-newˢ-≡ lₐ t (x ∷ s) Here | no ¬p = refl
+newˢ-≡ {l = l} lₐ t (m ∷ s) (Here x) with l ⊑? lₐ
+newˢ-≡ lₐ t (m ∷ s) (Here x) | yes p rewrite newᵐ-≡ lₐ m t = refl
+newˢ-≡ lₐ t (m ∷ s) (Here x) | no ¬p = refl
 newˢ-≡ lₐ t (_∷_ {l = l} m s) (There q) with l ⊑? lₐ
 newˢ-≡ lₐ t (m ∷ s) (There q) | yes p rewrite newˢ-≡ lₐ t s q = refl
 newˢ-≡ lₐ t (m ∷ s) (There q) | no ¬p rewrite newˢ-≡ lₐ t s q = refl
@@ -212,11 +212,7 @@ newˢ-≡ lₐ t (m ∷ s) (There q) | no ¬p rewrite newˢ-≡ lₐ t s q = ref
 ε-Mac-dist lₐ (yes p) (unlabelCtx p₁ s) = unlabelCtx p₁ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p) (join {h = lʰ} p₁ bs) = {!!}
 ε-Mac-dist lₐ (yes p) (joinEx {h = lʰ} p₁ bs) = {!!}
-ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) = {!!}
--- with h ⊑? lₐ
--- -- I have the right lemma to rewrite the goal as I want, but agda refuses! :(
--- ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p₂ q) | yes p = ? --  rewrite sym (newˢ-≡ lₐ (Res t) s q) = ?
--- ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p q) | no ¬p = {!!} -- rewrite sym (newˢ-≡ lₐ (Res t) s q) = ?
+ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) rewrite newˢ-≡ lₐ t s q = new p (ε-∈ˢ lₐ q)
 ε-Mac-dist lₐ (yes p) (readCtx p₁ s) = readCtx p₁ (εᵖ-dist lₐ s)
 ε-Mac-dist {ls = ls} lₐ (yes p') (read {l = l} {s = s} p q) rewrite sym (readˢ-≡ lₐ s q) = read p (ε-∈ˢ lₐ q)
 ε-Mac-dist lₐ (yes p₁) (writeCtx {h = h} p s) with h ⊑? lₐ
