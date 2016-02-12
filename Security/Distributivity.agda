@@ -137,12 +137,18 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 
 εˢ-≡ : ∀ {τ h ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac h τ)} -> (lₐ : Label) -> ¬ (h ⊑ lₐ) ->
             ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> εˢ lₐ s₁ ≡ εˢ lₐ s₂
+
+εˢ-≡⋆ : ∀ {τ h ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac h τ)} -> (lₐ : Label) -> ¬ (h ⊑ lₐ) ->
+            ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> εˢ lₐ s₁ ≡ εˢ lₐ s₂
+εˢ-≡⋆ lₐ ¬p [] = refl
+εˢ-≡⋆ lₐ ¬p (s ∷ ss) rewrite εˢ-≡ lₐ ¬p s | εˢ-≡⋆ lₐ ¬p ss =  refl
+
 εˢ-≡ lₐ ¬p (Pure x) = refl
 εˢ-≡ lₐ ¬p (BindCtx s) = εˢ-≡ lₐ ¬p s
 εˢ-≡ lₐ ¬p (CatchCtx s) = εˢ-≡ lₐ ¬p s
 εˢ-≡ lₐ ¬p (unlabelCtx p (Pure x)) = refl
-εˢ-≡ lₐ ¬p (join p x) = {!!}
-εˢ-≡ lₐ ¬p (joinEx p x) = {!!}
+εˢ-≡ lₐ ¬p (join p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (lemma p ¬p) ss = refl
+εˢ-≡ lₐ ¬p (joinEx p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (lemma p ¬p) ss = refl
 εˢ-≡ lₐ ¬p (new {s = s} p q) = εˢ-new-≡ (lemma p ¬p) s q
 εˢ-≡ lₐ ¬p (writeCtx p (Pure x)) = refl
 εˢ-≡ lₐ ¬p (write {s = s} p q) = εˢ-write-≡ (lemma p ¬p) s q
@@ -197,7 +203,7 @@ newᵐ-≡ lₐ [] x = refl
 newᵐ-≡ lₐ (x ∷ m) x₁ rewrite newᵐ-≡ lₐ m x₁ = refl
 
 newˢ-≡ : ∀ {l ls τ} (lₐ : Label) (t : CTerm τ) (s : Store ls) (q : ⟨ τ , l ⟩∈ˢ s) ->
-            εˢ lₐ (newˢ s q t) ≡ newˢ  (εˢ lₐ s) (ε-∈ˢ lₐ q) (ε lₐ t) 
+            εˢ lₐ (newˢ s q t) ≡ newˢ  (εˢ lₐ s) (ε-∈ˢ lₐ q) (ε lₐ t)
 newˢ-≡ lₐ t [] ()
 newˢ-≡ {l = l} lₐ t (m ∷ s) (Here x) with l ⊑? lₐ
 newˢ-≡ lₐ t (m ∷ s) (Here x) | yes p rewrite newᵐ-≡ lₐ m t = refl
@@ -210,8 +216,12 @@ newˢ-≡ lₐ t (m ∷ s) (There q) | no ¬p rewrite newˢ-≡ lₐ t s q = ref
 ε-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (ε-Mac-dist lₐ (yes p) s)
 ε-Mac-dist lₐ (yes p) (CatchCtx s) = CatchCtx (ε-Mac-dist lₐ (yes p) s)
 ε-Mac-dist lₐ (yes p) (unlabelCtx p₁ s) = unlabelCtx p₁ (εᵖ-dist lₐ s)
-ε-Mac-dist lₐ (yes p) (join {h = lʰ} p₁ bs) = {!!}
-ε-Mac-dist lₐ (yes p) (joinEx {h = lʰ} p₁ bs) = {!!}
+ε-Mac-dist lₐ (yes p) (join {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (join p₂ bs) | yes p = join p₂ (ε-Mac-dist⇓ lₐ p bs)
+ε-Mac-dist lₐ (yes p) (join p₁ (BigStep isV ss) ) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = join p₁ (BigStep (Mac ∙) [])
+ε-Mac-dist lₐ (yes p) (joinEx {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (joinEx p₂ bs) | yes p = joinEx p₂ (ε-Mac-distₓ⇓ lₐ p bs)
+ε-Mac-dist lₐ (yes p) (joinEx p₁ (BigStep x ss)) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = join p₁ (BigStep (Mac ∙) [])
 ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) rewrite newˢ-≡ lₐ t s q = new p (ε-∈ˢ lₐ q)
 ε-Mac-dist lₐ (yes p) (readCtx p₁ s) = readCtx p₁ (εᵖ-dist lₐ s)
 ε-Mac-dist {ls = ls} lₐ (yes p') (read {l = l} {s = s} p q) rewrite sym (readˢ-≡ lₐ s q) = read p (ε-∈ˢ lₐ q)
@@ -219,13 +229,6 @@ newˢ-≡ lₐ t (m ∷ s) (There q) | no ¬p rewrite newˢ-≡ lₐ t s q = ref
 ε-Mac-dist lₐ (yes p₁) (writeCtx p₂ s) | yes p = writeCtx p₂ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p₁) (writeCtx p s) | no ¬p = writeCtx p (εᵖ-dist lₐ s) 
 ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p q) rewrite writeˢ-≡ lₐ t q = write p (ε-∈ˢ lₐ q)
--- with h ⊑? lₐ
--- ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p₂ q) | yes p rewrite writeˢ-≡ lₐ t q with h ⊑? lₐ
--- ε-Mac-dist lₐ (yes p₂) (write p₃ q) | yes p₁ | yes p = write p₃ (ε-∈ˢ lₐ q)
--- ε-Mac-dist lₐ (yes p₁) (write p₂ q) | yes p | no ¬p = ⊥-elim (¬p p)
--- ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p q) | no ¬p rewrite writeˢ-≡ lₐ t q with h ⊑? lₐ
--- ε-Mac-dist lₐ (yes p₁) (write p₂ q) | no ¬p | yes p = ⊥-elim (¬p p)
--- ε-Mac-dist lₐ (yes p₁) (write p q) | no ¬p₁ | no ¬p = {! write p (ε-∈ˢ lₐ q)!} 
 ε-Mac-dist {c₁ = c₁} {c₂ = c₂} lₐ (no ¬p) s
   rewrite ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p | εˢ-≡ lₐ ¬p s = Pure Hole
 
