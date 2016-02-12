@@ -1,5 +1,3 @@
-{-# OPTIONS --rewriting #-}
-
 module Security.Distributivity where
 
 
@@ -9,19 +7,20 @@ open import Relation.Binary.PropositionalEquality hiding (subst)
 open import Data.Product
 open import Data.List as L hiding (drop ; _∷ʳ_)
 
--- TODO rename εᶜ-dist with εᵖ-dist ?
+--------------------------------------------------------------------------------
+-- The main distributivity theorem: 
+-- ∀ p₁ p₂ lₐ . if p₁ ⟼ p₂ then (εᵖ lₐ p₁) ⟼ (εᵖ lₐ p₂)
 
--- The closed term erasure function distributes over the small step semantics.
+-- The program erasure function distributes over the small step semantics.
 εᵖ-dist : ∀ {τ ls} {p₁ : Program ls τ} {p₂ : Program ls τ} ->
             (lₐ : Label) -> p₁ ⟼ p₂ -> εᵖ lₐ p₁ ⟼ εᵖ lₐ p₂
 
 --------------------------------------------------------------------------------
--- The main distributivity theorem: 
--- ∀ c₁ c₂ lₐ . if c₁ ⟼ c₂ then (εᶜ lₐ c₁) ⟼ (εᶜ lₐ c₂)
---------------------------------------------------------------------------------
 
+-- The erasure function distributes over the pure term reduction.
 ε-dist⇝ : ∀ {τ} {c₁ c₂ : CTerm τ} -> (lₐ : Label) -> c₁ ⇝ c₂ -> ε lₐ c₁ ⇝ ε lₐ c₂
 
+-- The erasure function distributes over the pure term reduction of Mac computations.
 ε-Mac-dist⇝ : ∀ {τ lᵈ} {c₁ c₂ : CTerm (Mac lᵈ τ)} (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) -> c₁ ⇝ c₂ -> ε-Mac lₐ x c₁ ⇝ ε-Mac lₐ x c₂
 ε-Mac-dist⇝ lₐ (yes p) (AppL s) = AppL (ε-dist⇝ lₐ s)
 ε-Mac-dist⇝ {c₁ = App (Abs t) x} lₐ (yes p) Beta rewrite sym (ε-Mac-subst lₐ (yes p) x t) = Beta
@@ -132,6 +131,8 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εˢ-new-≡ ¬p (x ∷ s) (There q) | yes p rewrite εˢ-new-≡ ¬p s q = refl
 εˢ-new-≡ ¬p (x ∷ s) (There q) | no ¬p₁ rewrite εˢ-new-≡ ¬p s q = refl 
 
+-- TODO move to types.
+-- TODO better name
 lemma : ∀ {a b c} -> a ⊑ b -> ¬ (a ⊑ c) -> ¬ (b ⊑ c)
 lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c)) 
 
