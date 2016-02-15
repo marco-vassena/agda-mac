@@ -11,13 +11,32 @@ open import Data.List as L hiding (drop)
 εˢ : ∀ {ls} -> (lₐ : Label) -> Store ls -> Store ls
 ε-∈ˢ : ∀ {l τ ls} {s : Store ls} (lₐ : Label) -> ⟨ τ , l ⟩∈ˢ s -> ⟨ τ , l ⟩∈ˢ (εˢ lₐ s)
 
--- Erasure function for open terms
+-- Erasure function for open terms.
 ε : ∀ {τ Δ} -> Label -> Term Δ τ -> Term Δ τ
 
--- Erasure function for open Mac terms that are visible to the attacker.
--- It applies ε homomorphically.
-ε-Mac : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Term Δ (Mac lᵈ τ) -> Term Δ (Mac lᵈ τ)
+-- Erasure function for open Mac terms.
+-- Non-visible closed terms computations are collapsed to ∙ (variables are instead preserved to allow subtitution).
+-- Visible computations are erased applying the erasure function homomorphically except for label and join.
+-- The term wrapped by label represent sensitive information which is not reflected by its
+-- type, that is why we need to explicitly check and erased that.
+-- In the join case we collapse the sensitive computation directly to (Mac ∙).
+-- In order for one of the join steps to apply we need to retain the constructor.
+-- We can arbitrarily choose either Mac or Macₓ because the attacker won't be able to distinguish between them
+-- at this sensitive level.
 
+-- Note that it is not possible to define a satisfactory homomorphic erasure for sensitive computations, i.e.
+-- an erasure function that preserves the structure of the computation.
+-- Consider for instance:
+
+  -- Mac t >>= k       ⇝   App k t
+  
+  -- Mac ∙ >>= ε lₐ k‌  ⇝   App k *
+  
+  -- We cannot fill * while retaining distributivity.
+  -- When erased, t :: CTerm α, will be in general different from ∙ demanded by the erased reduction 
+  -- ε lₐ t ≠ ∙
+
+ε-Mac : ∀ {τ Δ lᵈ} -> (lₐ : Label) -> Dec (lᵈ ⊑ lₐ) -> Term Δ (Mac lᵈ τ) -> Term Δ (Mac lᵈ τ)
 ε-Mac lₐ (yes p) (Var x) = Var x
 ε-Mac lₐ (yes p) (App f x) = App (ε lₐ f) (ε lₐ x)
 ε-Mac lₐ (yes p) (If c Then t Else e) = If (ε lₐ c) Then (ε-Mac lₐ (yes p) t) Else (ε-Mac lₐ (yes p) e)
@@ -36,15 +55,9 @@ open import Data.List as L hiding (drop)
 ε-Mac lₐ (yes p) (join x t) | no ¬p = join x (Mac ∙)
 ε-Mac lₐ (yes _) (read p r) = read p (ε lₐ r)
 ε-Mac lₐ (yes _) (write {h = h} p r t) = write p (ε lₐ r) (ε lₐ t)
--- with h ⊑? lₐ
--- ε-Mac lₐ (yes p₁) (write p₂ r t) | yes p = write p₂ (ε lₐ r) (ε lₐ t)
--- ε-Mac lₐ (yes p) (write p₁ r t) | no ¬p = write p₁ (ε lₐ r) ∙  
 ε-Mac lₐ (yes _) (new {h = lʰ} p t r) = new p (ε lₐ t) (ε-∈ˢ lₐ r)
--- with lʰ ⊑? lₐ
--- ε-Mac lₐ (yes p₁) (new p₂ t r) | yes p = new p₂ (ε lₐ t) (ε-∈ˢ lₐ r)
--- ε-Mac lₐ (yes p) (new p₁ t r) | no ¬p = new p₁ ∙ (ε-∈ˢ lₐ r)
 ε-Mac lₐ (yes p) ∙ = ∙
-ε-Mac lₐ (no ¬p) (Var x) = Var x
+ε-Mac lₐ (no ¬p) (Var x) = Var x  -- We don't want to erase variables, because this would prevent substitution of the actually erased term.
 ε-Mac lₐ (no ¬p) t = ∙
 
 ε {Mac lᵈ τ} lₐ t = ε-Mac lₐ (lᵈ ⊑? lₐ) t
@@ -68,21 +81,25 @@ open import Data.List as L hiding (drop)
 ε {Ref l τ} lₐ (Ref n) = Ref (ε-∈ˢ lₐ n)
 ε lₐ ∙ = ∙
 
+-- A memory is erased just by applying the erasure function to every element stored in it. 
 εᵐ : ∀ {l} -> Label -> Memory l -> Memory l
 εᵐ lₐ ∙ = ∙
 εᵐ lₐ [] = []
 εᵐ lₐ (x ∷ m) = (ε lₐ x) ∷ (εᵐ lₐ m)
 
+-- A store is erased by erasing visible memory and collapsing sensitive memories.
 εˢ lₐ [] = []
 εˢ lₐ (_∷_ {l = l} m s) with l ⊑? lₐ
 εˢ lₐ (m ∷ s) | yes p = εᵐ lₐ m ∷ εˢ lₐ s 
 εˢ lₐ (m ∷ s) | no ¬p = ∙ ∷ εˢ lₐ s 
 
+-- Erasure of references contained in memory.
 ε-∈ᵐ : ∀ {l τ} {m : Memory l} -> (lₐ : Label) -> τ ∈ᵐ m -> τ ∈ᵐ (εᵐ lₐ m)
 ε-∈ᵐ lₐ Here = Here
 ε-∈ᵐ lₐ (There p) = There (ε-∈ᵐ lₐ p)
 ε-∈ᵐ lₐ ∙ = ∙
 
+-- Erasure of store references.
 ε-∈ˢ {l = l} lₐ (Here x) with l ⊑? lₐ
 ε-∈ˢ lₐ (Here x) | yes p = Here (ε-∈ᵐ lₐ x)
 ε-∈ˢ lₐ (Here x) | no ¬p = Here ∙
@@ -90,10 +107,11 @@ open import Data.List as L hiding (drop)
 ε-∈ˢ lₐ (There q) | yes p = There (ε-∈ˢ lₐ q)
 ε-∈ˢ lₐ (There q) | no ¬p = There (ε-∈ˢ lₐ q)
 
--- Erasure for programs, i.e. closed term with memory
+-- Programs are erased, by erasing its store and its closed term.
 εᵖ : ∀ {ls τ} -> Label -> Program ls τ -> Program ls τ
 εᵖ lₐ ⟨ s ∥ c ⟩ = ⟨ εˢ lₐ s ∥ ε lₐ c ⟩
 
+-- TODO remove?
 ε-Mac-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Mac lᵈ τ)) -> ε-Mac lₐ x t ≡ ε-Mac lₐ y t
 ε-Mac-extensional (yes p) (yes p₁) (Var x₁) = refl
 ε-Mac-extensional (yes p) (no ¬p) (Var x₁) = ⊥-elim (¬p p)
@@ -171,6 +189,7 @@ open import Data.List as L hiding (drop)
 ε-Mac-extensional (no ¬p) (yes p) ∙ = refl
 ε-Mac-extensional (no ¬p) (no ¬p₁) ∙ = refl
 
+-- Bullet are always erased to bullet.
 ε∙≡∙ : ∀ {τ : Ty} {Δ : Context} -> (lₐ : Label) -> ε {τ} {Δ} lₐ ∙ ≡ ∙
 ε∙≡∙ {（）} lₐ = refl
 ε∙≡∙ {Bool} lₐ = refl
@@ -182,6 +201,7 @@ open import Data.List as L hiding (drop)
 ε∙≡∙ {Exception} lₐ = refl
 ε∙≡∙ {Ref x τ} lₐ = refl
 
+-- Var are left untouched by the erasure function.
 εVar≡Var : ∀ {α Δ} -> (lₐ : Label) (p : α ∈ Δ) -> ε lₐ (Var p) ≡ Var p
 εVar≡Var {（）} lₐ p = refl
 εVar≡Var {Bool} lₐ p = refl
@@ -196,6 +216,10 @@ open import Data.List as L hiding (drop)
 εVar≡Var' : ∀ {α Δ} -> (lₐ : Label) (p : α ∈ Δ) ->  Var p ≡ ε lₐ (Var p)
 εVar≡Var' lₐ p = sym (εVar≡Var lₐ p)
 
+--------------------------------------------------------------------------------
+-- Lemmas about erasure function and substitution of variables in function application.
+-- Roughly speaking erasing the result of a substitution is the same as substituting an erased
+-- term in an earsed function.
 --------------------------------------------------------------------------------
 
 ε-wken : ∀ {α Δ₁ Δ₂} -> (lₐ : Label) -> (t : Term Δ₁ α) (p : Δ₁ ⊆ˡ Δ₂) -> ε lₐ (wken t p) ≡ wken (ε lₐ t) p
@@ -421,13 +445,7 @@ open import Data.List as L hiding (drop)
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (yes p) | no ¬p = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write {h = lʰ} x₂ t₁ t₂) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
-        -- with lʰ ⊑? lₐ
-        -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p₁) | yes p  rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
-        -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p) | no ¬p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new {h = lʰ} x₂ t₁ r) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
-        -- with lʰ ⊑? lₐ
-        -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁ r) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
-        -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁ r) (yes p) | no ¬p = refl 
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (yes p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (App t₁ t₂) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃) (no ¬p) = refl

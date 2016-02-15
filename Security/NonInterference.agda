@@ -10,14 +10,23 @@ open import Typed.Proofs renaming (determinism to determinismᵗ)
 open import Security.Distributivity
 open import Relation.Binary.PropositionalEquality
 
--- l-equivalence
--- Two closed terms are l-equivalent if they are equivalent
--- after applying on them the erasure function with label l.
+-- Low Equivalence
+-- Two terms are low equivalent if they are equivalent after erasing them with label l.
 data _≈ᵗ_ {{l : Label}} {ls : List Label} {τ : Ty} (p₁ p₂ : Programᵗ ls τ) : Set where
   ε-≡ : εᵖ l p₁ ≡ εᵖ l p₂ -> p₁ ≈ᵗ p₂
 
--- Non-interference for typed terms.
--- As expected we need only determinism of the small step semantics and distributivity of ε.
+-- Non-interference for typed terms:
+--
+-- p₁ ≈ᵗ p₂ , p₁ ⟼ᵗ p₁' , p₂ ⟼ᵗ p₂'
+-- then
+-- p₁' ≈ᵗ p₂' 
+--
+-- By distributivity of ε the reductions steps are mapped in reductions of the erased terms:
+-- p₁ ⟼ᵗ p₁'     to      (ε lₐ p₁) ⟼ᵗ (ε lₐ p₁')
+-- p₂ ⟼ᵗ p₂'     to      (ε lₐ p₂) ⟼ᵗ (ε lₐ p₂')
+-- Since the source terms are equivalent (ε lₐ p₁ ≡ ε lₐ p₂) by definition of low equivalence (p₁ ≈ᵗ p₂)
+-- and the semantics is deterministic then the reduced erased terms are equivalent (ε lₐ p₁' ≡ ε lₐ p₂')
+-- This implies that p₁' and p₂' are low-equivalent (p₁ ≈ᵗ p₂).
 non-interferenceᵗ : ∀ {l ls τ} {p₁ p₂ p₁' p₂' : Programᵗ ls τ} -> p₁ ≈ᵗ p₂ -> p₁ ⟼ᵗ p₁' -> p₂ ⟼ᵗ p₂' -> p₁' ≈ᵗ p₂'
 non-interferenceᵗ {l} (ε-≡ eq) s₁ s₂ = ε-≡ (aux eq (εᵖ-dist l s₁) (εᵖ-dist l s₂))
   where aux : ∀ {τ ls} {p₁ p₂ p₃ p₄ : Programᵗ ls τ} -> p₁ ≡ p₂ -> p₁ ⟼ᵗ p₃ -> p₂ ⟼ᵗ p₄ -> p₃ ≡ p₄

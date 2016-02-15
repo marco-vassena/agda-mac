@@ -86,6 +86,7 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 ε-dist⇝ {Ref lᵈ τ} lₐ IfFalse = IfFalse
 ε-dist⇝ {Ref lᵈ τ} lₐ Hole = Hole
 
+
 ε-Mac-dist : ∀ {lᵈ τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac lᵈ τ)} (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) ->
                 ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> ⟨ (εˢ lₐ s₁) ∥ ε-Mac lₐ x c₁ ⟩ ⟼ ⟨ εˢ lₐ s₂ ∥ ε-Mac lₐ x c₂ ⟩
 
@@ -113,8 +114,14 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
              ⟨ εˢ lₐ  s₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⇓ ⟨ εˢ lₐ s₂ ∥ Mac (ε lₐ c₂) ⟩
 ε-Mac-dist⇓ lₐ p (BigStep (Mac c₂) ss) = BigStep (Mac (ε lₐ c₂)) (ε-Mac-dist⋆ lₐ p ss)
 
+--------------------------------------------------------------------------------
+-- Memory related lemmas
+--------------------------------------------------------------------------------
+
+-- Write operations to high, non-visible memories are canceled by the earsure function, because
+-- high memory are collapsed to ∙.
 εˢ-write-≡ : ∀ {lₐ lᵈ ls τ} {c : CTerm τ} -> ¬ (lᵈ ⊑ lₐ) -> (s : Store ls) (q : ⟨ τ , lᵈ ⟩∈ˢ s) ->
-               εˢ lₐ s ≡ εˢ lₐ (writeˢ c s q) -- (writeˢ q s)
+               εˢ lₐ s ≡ εˢ lₐ (writeˢ c s q)
 εˢ-write-≡ {lₐ} {lᵈ} ¬p (m ∷ s) (Here x) with lᵈ ⊑? lₐ
 εˢ-write-≡ ¬p (m ∷ s) (Here x) | yes p = ⊥-elim (¬p p)
 εˢ-write-≡ ¬p₁ (m ∷ s) (Here x) | no ¬p = refl
@@ -122,6 +129,8 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 εˢ-write-≡ ¬p (x ∷ s) (There q) | yes p rewrite εˢ-write-≡ ¬p s q = refl
 εˢ-write-≡ ¬p (x ∷ s) (There q) | no ¬p' rewrite εˢ-write-≡ ¬p s q = refl
 
+-- Allocations to high, non-visible memories are canceled by the earsure function, because
+-- high memory are collapsed to ∙.
 εˢ-new-≡ : ∀ {lₐ lᵈ ls τ} {c : CTerm τ} -> ¬ (lᵈ ⊑ lₐ) -> (s : Store ls) (q : ⟨ τ , lᵈ ⟩∈ˢ s) ->
                εˢ lₐ s ≡ εˢ lₐ (newˢ s q c)
 εˢ-new-≡ {lₐ} {lᵈ} ¬p (m ∷ s) (Here x) with lᵈ ⊑? lₐ
@@ -136,9 +145,13 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 lemma : ∀ {a b c} -> a ⊑ b -> ¬ (a ⊑ c) -> ¬ (b ⊑ c)
 lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c)) 
 
+-- A sensitive, non-visible computation can only affect high memories of the store, which
+-- are collapsed when erased. Hence the erased memory are low-equivalent, i.e. their erasures
+-- are equivalent.
 εˢ-≡ : ∀ {τ h ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac h τ)} -> (lₐ : Label) -> ¬ (h ⊑ lₐ) ->
             ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> εˢ lₐ s₁ ≡ εˢ lₐ s₂
 
+-- The same conclusion can be derived for multiple steps, applying the single-step lemma multiple times.
 εˢ-≡⋆ : ∀ {τ h ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac h τ)} -> (lₐ : Label) -> ¬ (h ⊑ lₐ) ->
             ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> εˢ lₐ s₁ ≡ εˢ lₐ s₂
 εˢ-≡⋆ lₐ ¬p [] = refl
@@ -156,6 +169,7 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 εˢ-≡ lₐ ¬p (readCtx p (Pure x)) = refl
 εˢ-≡ lₐ ¬p (read p q) = refl
 
+-- Erasing a memory and then reading from it is the same as first reading from the original memory and then erasing the result. 
 readᵐ-≡ : ∀ {l lₐ τ} -> l ⊑ lₐ -> (m : Memory l) (x : τ ∈ᵐ m)  -> _[_] (εᵐ lₐ m) (ε-∈ᵐ lₐ x) ≡ ε lₐ (_[_] m x)
 readᵐ-≡ {l} {lₐ} p ._ Here with l ⊑? lₐ
 readᵐ-≡ p₁ ._ Here | yes p = refl
@@ -174,6 +188,7 @@ readᵐ-≡∙ {l} {lₐ} ¬p .∙ ∙ with l ⊑? lₐ
 readᵐ-≡∙ {lₐ = lₐ} {τ = τ} ¬p .∙ ∙ | yes p rewrite ε∙≡∙ {τ = τ} {[]} lₐ = refl
 readᵐ-≡∙ ¬p₁ .∙ ∙ | no ¬p = refl
 
+-- Erasing a store and then reading from it is the same as first reading and then erasing the result
 readˢ-≡ : ∀ {l ls τ} (lₐ : Label) (s : Store ls) (q : ⟨ τ , l ⟩∈ˢ s ) -> readˢ (εˢ lₐ s) (ε-∈ˢ lₐ q) ≡ ε lₐ (readˢ s q)
 readˢ-≡ {l} lₐ (m ∷ s) (Here x)  with l ⊑? lₐ
 readˢ-≡ lₐ (m ∷ s) (Here x) | yes p = readᵐ-≡ p _ x
@@ -182,6 +197,7 @@ readˢ-≡ lₐ (m ∷ s) (There {l' = l} q) with l ⊑? lₐ
 readˢ-≡ lₐ (m ∷ s) (There q) | yes p rewrite readˢ-≡ lₐ s q = refl
 readˢ-≡ lₐ (m ∷ s) (There q) | no ¬p = readˢ-≡ lₐ s q 
 
+-- Erasing a memory and then writing an erased terms in it is the same as first writing to the original memory and erasing it as a whole. 
 writeᵐ-≡ : ∀ {l lₐ τ} {m : Memory l} (c : CTerm τ)  -> l ⊑ lₐ -> (x : τ ∈ᵐ m) ->
              let mᵉ = (εᵐ lₐ m) [ (ε-∈ᵐ lₐ x) ]≔ (ε lₐ c)
                  mᵉ' = εᵐ lₐ (m [ x ]≔ c) in mᵉ ≡ mᵉ'
@@ -189,6 +205,7 @@ writeᵐ-≡ c p Here = refl
 writeᵐ-≡ c p (There x) rewrite writeᵐ-≡ c p x = refl
 writeᵐ-≡ c p ∙ = refl
 
+-- Erasing a store and then writing an erased terms in it is the same as first writing to the original store and erasing it as a whole. 
 writeˢ-≡ : ∀ {l ls τ} {s : Store ls} (lₐ : Label) (t : CTerm τ) (q : ⟨ τ , l ⟩∈ˢ s )
              -> εˢ lₐ (writeˢ t s q) ≡ writeˢ (ε lₐ t) (εˢ lₐ s) (ε-∈ˢ lₐ q)
 writeˢ-≡ {l} lₐ c (Here x) with l ⊑? lₐ
@@ -198,11 +215,13 @@ writeˢ-≡ lₐ c (There {l' = l} q) with l ⊑? lₐ
 writeˢ-≡ lₐ c (There q) | yes p rewrite writeˢ-≡ lₐ c q = refl
 writeˢ-≡ lₐ c (There q) | no ¬p rewrite writeˢ-≡ lₐ c q = refl
 
+-- Allocating a term in  memory and then erasing the result is the same as allocating the erased term in the erased memory.
 newᵐ-≡ : ∀ {l τ} (lₐ : Label) (m : Memory l) (t : CTerm τ) -> εᵐ lₐ (m ∷ʳ t) ≡ εᵐ lₐ m ∷ʳ (ε lₐ t)
 newᵐ-≡ lₐ ∙ x = refl
 newᵐ-≡ lₐ [] x = refl
 newᵐ-≡ lₐ (x ∷ m) x₁ rewrite newᵐ-≡ lₐ m x₁ = refl
 
+-- Allocating a term in a store and then erasing the result is the same as allocating the erased term in the erased store.
 newˢ-≡ : ∀ {l ls τ} (lₐ : Label) (t : CTerm τ) (s : Store ls) (q : ⟨ τ , l ⟩∈ˢ s) ->
             εˢ lₐ (newˢ s q t) ≡ newˢ  (εˢ lₐ s) (ε-∈ˢ lₐ q) (ε lₐ t)
 newˢ-≡ lₐ t [] ()
@@ -212,6 +231,8 @@ newˢ-≡ lₐ t (m ∷ s) (Here x) | no ¬p = refl
 newˢ-≡ lₐ t (_∷_ {l = l} m s) (There q) with l ⊑? lₐ
 newˢ-≡ lₐ t (m ∷ s) (There q) | yes p rewrite newˢ-≡ lₐ t s q = refl
 newˢ-≡ lₐ t (m ∷ s) (There q) | no ¬p rewrite newˢ-≡ lₐ t s q = refl
+
+--------------------------------------------------------------------------------
 
 ε-Mac-dist lₐ (yes p) (Pure x) = Pure (ε-Mac-dist⇝ lₐ (yes p) x)
 ε-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (ε-Mac-dist lₐ (yes p) s)
