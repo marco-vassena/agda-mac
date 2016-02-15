@@ -68,3 +68,25 @@ extend-∈ : ∀ {A : Set} {τ : A} {Δ₁ Δ₂ : List A} -> τ ∈ Δ₁ -> Δ
 extend-∈ () base
 extend-∈ Here (cons p) = Here
 extend-∈ (There x) (cons p) = There (extend-∈ x p)
+
+--------------------------------------------------------------------------------
+
+-- Subset relation
+data _⊆ˡ_ : List Ty -> List Ty -> Set where
+  base : [] ⊆ˡ [] 
+  cons : ∀ {α Δ₁ Δ₂} -> Δ₁ ⊆ˡ Δ₂ -> (α ∷ Δ₁) ⊆ˡ (α ∷ Δ₂)
+  drop : ∀ {α Δ₁ Δ₂} -> Δ₁ ⊆ˡ Δ₂ -> Δ₁ ⊆ˡ (α ∷ Δ₂)
+
+refl-⊆ˡ : ∀ {Δ} -> Δ ⊆ˡ Δ
+refl-⊆ˡ {[]} = base
+refl-⊆ˡ {x ∷ Δ} = cons refl-⊆ˡ
+
+wken-∈ : ∀ {τ Δ₁ Δ₂} -> τ ∈ Δ₁ -> Δ₁ ⊆ˡ Δ₂ -> τ ∈ Δ₂
+wken-∈ () base
+wken-∈ Here (cons p) = Here
+wken-∈ (There x) (cons p) = There (wken-∈ x p)
+wken-∈ x (drop p) = There (wken-∈ x p)
+
+infixr 2 _⊆ˡ_
+
+--------------------------------------------------------------------------------

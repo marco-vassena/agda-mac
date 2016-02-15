@@ -141,21 +141,21 @@ valid-subst x t = valid-tm-subst [] _ x t
 -- If a closed term has valid references in the initial memory context and
 -- can be reduced further then the reduced term is also valid in the final memory context.
 -- The final memory is also valid.
-valid⟼ :  ∀ {τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm τ} ->
-              ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> Valid s₁ c₁ -> ValidStore s₁ -> 
-              ValidStore s₂ × Valid s₂ c₂
+-- valid⟼ :  ∀ {τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm τ} ->
+--               ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> Valid s₁ c₁ -> ValidStore s₁ -> 
+--               ValidStore s₂ × Valid s₂ c₂
 
-valid⟼⋆ :  ∀ {τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm τ} ->
-              ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> Valid s₁ c₁ -> ValidStore s₁ -> 
-              ValidStore s₂ × Valid s₂ c₂
-valid⟼⋆ [] v m = m , v
-valid⟼⋆ (s ∷ ss) v m with valid⟼ s v m
-... | m₂ , c₂ = valid⟼⋆ ss c₂ m₂
+-- valid⟼⋆ :  ∀ {τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm τ} ->
+--               ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> Valid s₁ c₁ -> ValidStore s₁ -> 
+--               ValidStore s₂ × Valid s₂ c₂
+-- valid⟼⋆ [] v m = m , v
+-- valid⟼⋆ (s ∷ ss) v m with valid⟼ s v m
+-- ... | m₂ , c₂ = valid⟼⋆ ss c₂ m₂
 
-valid⇓ :  ∀ {τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm τ} ->
-              ⟨ s₁ ∥ c₁ ⟩ ⇓ ⟨ s₂ ∥ c₂ ⟩ -> Valid s₁ c₁ -> ValidStore s₁ -> 
-              ValidStore s₂ × Valid s₂ c₂
-valid⇓ (BigStep isV ss) v m = valid⟼⋆ ss v m
+-- valid⇓ :  ∀ {τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm τ} ->
+--               ⟨ s₁ ∥ c₁ ⟩ ⇓ ⟨ s₂ ∥ c₂ ⟩ -> Valid s₁ c₁ -> ValidStore s₁ -> 
+--               ValidStore s₂ × Valid s₂ c₂
+-- valid⇓ (BigStep isV ss) v m = valid⟼⋆ ss v m
 
 valid⇝ :  ∀ {τ ls} {s : Store ls} {c₁ c₂ : CTerm τ} ->
              c₁ ⇝ c₂ -> Valid s c₁ -> Valid s c₂
@@ -175,9 +175,6 @@ valid⇝ (unlabel p) (unlabel .p (Res v)) = Return v
 valid⇝ (unlabelEx p) (unlabel .p (Resₓ v)) = Throw v
 valid⇝ Hole ∙ = ∙
 
-open import Data.List.All
-
-
 valid-readᵐ : ∀ {l ls τ} {m : Memory l} {s : Store ls} -> ValidMemory s m -> (x : τ ∈ᵐ m) -> Valid s (m [ x ])
 valid-readᵐ (x ∷ m₁) Here = Res x
 valid-readᵐ (x ∷ m₁) (There x₁) = valid-readᵐ m₁ x₁
@@ -193,10 +190,6 @@ valid-newᵐ [] v = v ∷ []
 valid-newᵐ (x ∷ m₁) v = x ∷ valid-newᵐ m₁ v
 valid-newᵐ ∙ v = ∙
 
-unique-lemma : ∀ {l ls₁ ls₂} -> Unique l ls₁ -> Unique l ls₂ -> Unique l (ls₁ ++ ls₂)
-unique-lemma [] b = b
-unique-lemma (px ∷ a) b = px ∷ (unique-lemma a b)
-
 data _⊴ᵐ_ {l : Label} :  Memory l -> Memory l ->  Set where
   base : ∀ {m : Memory l} -> [] ⊴ᵐ m
   cons : ∀ {τ} {m₁ m₂ : Memory l} {c₁ c₂ : CTerm τ} -> m₁ ⊴ᵐ m₂ -> (c₁ ∷ m₁) ⊴ᵐ (c₂ ∷ m₂)
@@ -205,66 +198,48 @@ data _⊴_ : ∀ {ls} -> Store ls -> Store ls -> Set where
   base : [] ⊴ []
   cons : ∀ {l ls} {s₁ s₂ : Store ls} {p : Unique l ls} {m₁ : Memory l} {m₂ : Memory l} -> m₁ ⊴ᵐ m₂ -> s₁ ⊴ s₂ -> (m₁ ∷ s₁) ⊴ (m₂ ∷ s₂)
 
-extendValid : ∀ {Δ τ ls} {s₁ s₂ : Store ls} {t : Term Δ τ} -> Valid s₁ t -> s₁ ⊴ s₂ -> Valid s₂ t
-extendValid （） p = （）
-extendValid True p = True
-extendValid False p = False
-extendValid (Var p) p₁ = Var p
-extendValid (App v v₁) p = App (extendValid v p) (extendValid v₁ p)
-extendValid (Abs v) p = Abs (extendValid v p)
-extendValid ξ p = ξ
-extendValid (Mac v) p = Mac (extendValid v p)
-extendValid (Macₓ v) p = Macₓ (extendValid v p)
-extendValid (Res v) p = Res (extendValid v p)
-extendValid (Resₓ v) p = Resₓ (extendValid v p)
-extendValid (Ref r) p = {!!} -- This does not work because r is fixed and parametrixed over s₁ (instead of s₂)
-extendValid (If v Then v₁ Else v₂) p = If extendValid v p Then extendValid v₁ p Else extendValid v₂ p
-extendValid (Return v) p = Return (extendValid v p)
-extendValid (v >>= v₁) p = (extendValid v p) >>= (extendValid v₁ p)
-extendValid (Throw v) p = Throw (extendValid v p)
-extendValid (Catch v v₁) p = Catch (extendValid v p) (extendValid v₁ p)
-extendValid (label p v) p₁ = label p (extendValid v p₁)
-extendValid (unlabel p v) p₁ = unlabel p (extendValid v p₁)
-extendValid (join p v) p₁ = join p (extendValid v p₁)
-extendValid (read p v) p₁ = read p (extendValid v p₁)
-extendValid (write p v v₁) p₁ = write p (extendValid v p₁) (extendValid v₁ p₁)
-extendValid (new p v q) p₁ = {!new  !} -- This does not work because q is fixed and parametrixed over s₁ (instead of s₂)
-extendValid ∙ p = ∙
+-- This does not work!
+-- extendValid : ∀ {Δ τ ls} {s₁ s₂ : Store ls} {t : Term Δ τ} -> Valid s₁ t -> s₁ ⊴ s₂ -> Valid s₂ t
+-- extendValid （） p = （）
+-- extendValid True p = True
+-- extendValid False p = False
+-- extendValid (Var p) p₁ = Var p
+-- extendValid (App v v₁) p = App (extendValid v p) (extendValid v₁ p)
+-- extendValid (Abs v) p = Abs (extendValid v p)
+-- extendValid ξ p = ξ
+-- extendValid (Mac v) p = Mac (extendValid v p)
+-- extendValid (Macₓ v) p = Macₓ (extendValid v p)
+-- extendValid (Res v) p = Res (extendValid v p)
+-- extendValid (Resₓ v) p = Resₓ (extendValid v p)
+-- extendValid (Ref r) p = {!!} -- This does not work because r is fixed and parametrixed over s₁ (instead of s₂)
+-- extendValid (If v Then v₁ Else v₂) p = If extendValid v p Then extendValid v₁ p Else extendValid v₂ p
+-- extendValid (Return v) p = Return (extendValid v p)
+-- extendValid (v >>= v₁) p = (extendValid v p) >>= (extendValid v₁ p)
+-- extendValid (Throw v) p = Throw (extendValid v p)
+-- extendValid (Catch v v₁) p = Catch (extendValid v p) (extendValid v₁ p)
+-- extendValid (label p v) p₁ = label p (extendValid v p₁)
+-- extendValid (unlabel p v) p₁ = unlabel p (extendValid v p₁)
+-- extendValid (join p v) p₁ = join p (extendValid v p₁)
+-- extendValid (read p v) p₁ = read p (extendValid v p₁)
+-- extendValid (write p v v₁) p₁ = write p (extendValid v p₁) (extendValid v₁ p₁)
+-- extendValid (new p v q) p₁ = {!new  !} -- This does not work because q is fixed and parametrixed over s₁ (instead of s₂)
+-- extendValid ∙ p = ∙
 
-extendValid-writeˢ : ∀ {ls l τ₁ τ₂} -> {s₁ : Store ls} {c₁ : CTerm τ₁} {c₂ : CTerm τ₂} -> (q : ⟨ τ₂ , l ⟩∈ˢ s₁) ->
-                       let s₂ = writeˢ c₂ s₁ q in
-                       Valid s₁ c₁ -> Valid s₂ c₁
-extendValid-writeˢ (Here x) v = {!!}
-extendValid-writeˢ {s₁ = m ∷ s} (There q) v = {!extendValid-writeˢ q ?!}
+-- extendValid-writeˢ : ∀ {ls l τ₁ τ₂} -> {s₁ : Store ls} {c₁ : CTerm τ₁} {c₂ : CTerm τ₂} -> (q : ⟨ τ₂ , l ⟩∈ˢ s₁) ->
+--                        let s₂ = writeˢ c₂ s₁ q in
+--                        Valid s₁ c₁ -> Valid s₂ c₁
+-- extendValid-writeˢ (Here x) v = {!!}
+-- extendValid-writeˢ {s₁ = m ∷ s} (There q) v = {!extendValid-writeˢ q ?!}
 
-valid⟼ (Pure x) v m = m , (valid⇝ x v)
-valid⟼ (BindCtx s) (v >>= v₁) m with valid⟼ s v m
-... | a , b = a , (b >>= {!!})
-valid⟼ (CatchCtx s) v m = {!!} 
-valid⟼ (unlabelCtx p s) v m = {!!}
-valid⟼ (join p x) v m = {!!}
-valid⟼ (joinEx p x) v m = {!!}
-valid⟼ (new p r) v m = {!!}
-valid⟼ (writeCtx p s) v m = {!!}
-valid⟼ (write p q) v m = {!!}
-valid⟼ (readCtx p s) v m = {!!}
-valid⟼ (read p q) v m = m , (unlabel p {!!})
--- (Pure s) v m = m , (valid⇝ s v)
+-- valid⟼ (Pure x) v m = m , (valid⇝ x v)
 -- valid⟼ (BindCtx s) (v >>= v₁) m with valid⟼ s v m
--- valid⟼ (BindCtx s) (v >>= v₁) m | m₂ , v₂ = m₂ , (v₂ >>= ?) 
--- valid⟼ (CatchCtx s) (Catch v v₁) m with valid⟼ s v m
--- ... | m₂ , v₂ = m₂ , (Catch v₂ ?)
--- valid⟼ (unlabelCtx p s) (unlabel .p v) m with valid⟼ s v m
--- ... | m₂ , v₂ = m₂ , (unlabel p v₂)
--- valid⟼ (join p bs) (join .p v) m with valid⇓ bs v m
--- valid⟼ (join p bs) (join .p v) m | m₃ , Mac v₂ = m₃ , (Return (Res v₂))
--- valid⟼ (joinEx p bs) (join .p v) m with valid⇓ bs v m
--- valid⟼ (joinEx p bs) (join .p v) m | m₃ , Macₓ v₂ = m₃ , (Return (Resₓ v₂))
--- valid⟼ (new p r) (new .p v) m = ? -- (extendValidMemory (validMemoryNew m (Res v)) snoc-⊆) , Return (Ref (newTypeIx Δ₁))
--- valid⟼ (writeCtx p s) (write .p v v') m with valid⟼ s v m
--- ... | m₂ , v₂ = m₂ , (write p v₂ ?)
--- valid⟼ (write p i) (write .p v v₁) m = ? -- (validMemoryUpdate m i (Res v₁)) , (Return （）)
--- valid⟼ (readCtx p s) (read .p v) m with valid⟼ s v m
--- ... | m₂ , v₂ = m₂ , (read p v₂)
--- valid⟼ (read p i) v m =  ? -- m , unlabel p (lookupValidMemory i m)
--- valid⟼ (Hole x) ∙ ∙ = ∙ , ∙
+-- ... | a , b = a , (b >>= {!!})
+-- valid⟼ (CatchCtx s) v m = {!!} 
+-- valid⟼ (unlabelCtx p s) v m = {!!}
+-- valid⟼ (join p x) v m = {!!}
+-- valid⟼ (joinEx p x) v m = {!!}
+-- valid⟼ (new p r) v m = {!!}
+-- valid⟼ (writeCtx p s) v m = {!!}
+-- valid⟼ (write p q) v m = {!!}
+-- valid⟼ (readCtx p s) v m = {!!}
+-- valid⟼ (read p q) v m = m , (unlabel p {!!})

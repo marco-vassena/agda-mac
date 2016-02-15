@@ -58,6 +58,7 @@ open import Typed.Semantics
 -- progress (new x c) (new .x v) = inj₁ (Step (new x))
 -- progress ∙ v = inj₁ (Step (Pure Hole))
 
+-- Value and Redex are mutually exclusive. A term is either a value or a redex, but not both.
 valueNotRedex : ∀ {τ ls} {s : Store ls} -> (c : CTerm τ) -> IsValue c -> NormalForm s c
 valueNotRedex .（） （） (Step (Pure ()))
 valueNotRedex .True True (Step (Pure ()))
@@ -70,6 +71,7 @@ valueNotRedex .(Res t) (Res t) (Step (Pure ()))
 valueNotRedex .(Resₓ e) (Resₓ e) (Step (Pure ()))
 valueNotRedex .(Ref n) (Ref n) (Step (Pure ()))
 
+-- The pure small step semantics is deterministic.
 determinism⇝ : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> c₁ ⇝ c₃ -> c₂ ≡ c₃
 determinism⇝ (AppL s₁) (AppL s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (AppL ()) Beta
@@ -117,20 +119,23 @@ determinismMixedC (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedC (unlabelEx p) (Pure x) = determinism⇝ (unlabelEx p) x
 determinismMixedC (unlabelEx p) (unlabelCtx .p (Pure ()))
 
+-- The small-step semantics for programs is deterministic.
 determinismC : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₃ ∥ c₃ ⟩ -> c₂ ≡ c₃
 
-
-determinismM : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
+-- Store determinism for the small-step semantics of stores.
+determinismS : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₃ ∥ c₃ ⟩ -> s₂ ≡ s₃
 
+-- Determinism naturally extends to the transitive reflexive closure of the small step semantics.
 determinismC⋆ : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> IsValue c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₃ ∥ c₃ ⟩ -> IsValue c₃ -> c₂ ≡ c₃
 determinismC⋆ [] isV₁ [] isV₂ = refl
 determinismC⋆ [] isV₁ (x ∷ ss₂) isV₂ = ⊥-elim (valueNotRedex _ isV₁ (Step x))
 determinismC⋆ (x ∷ ss₁) isV₁ [] isV₂ = ⊥-elim (valueNotRedex _ isV₂ (Step x))
 determinismC⋆ (s₁ ∷ ss₁) isV₁ (s₂ ∷ ss₂) isV₂
-  rewrite determinismC s₁ s₂ | determinismM s₁ s₂ | determinismC⋆ ss₁ isV₁ ss₂ isV₂ = refl
+  rewrite determinismC s₁ s₂ | determinismS s₁ s₂ | determinismC⋆ ss₁ isV₁ ss₂ isV₂ = refl
+
 
 nonDeterminismC-⊥ :  ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                      ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₃ ∥ c₃ ⟩ -> ¬ (c₂ ≡ c₃) -> ⊥
@@ -142,7 +147,7 @@ nonDeterminismC⋆-⊥ [] isV₁ [] isV₂ ¬p = ¬p refl
 nonDeterminismC⋆-⊥ [] isV₁ (x ∷ ss₂) isV₂ ¬p = ⊥-elim (valueNotRedex _ isV₁ (Step x))
 nonDeterminismC⋆-⊥ (x ∷ ss₁) isV₁ [] isV₂ ¬p = ⊥-elim (valueNotRedex _ isV₂ (Step x))
 nonDeterminismC⋆-⊥ (s₁ ∷ ss₁) isV₁ (s₂ ∷ ss₂) isV₂ ¬p
-  rewrite determinismC s₁ s₂ | determinismM s₁ s₂ = nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ ¬p
+  rewrite determinismC s₁ s₂ | determinismS s₁ s₂ = nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ ¬p
 
 determinismC (Pure s₁) s₂ = determinismMixedC s₁ s₂
 determinismC s₁ (Pure s₂) = P.sym (determinismMixedC s₂ s₁)
@@ -165,61 +170,62 @@ determinismC (readCtx p (Pure ())) (read .p r)
 determinismC (read p i) (readCtx .p (Pure ()))
 determinismC (read p i) (read .p .i) = refl
 
-determinismMixedM : ∀ {ls τ} {s₁ s₂ : Store ls} {c₁ c₂ c₃ : CTerm τ} -> 
+determinismMixedS : ∀ {ls τ} {s₁ s₂ : Store ls} {c₁ c₂ c₃ : CTerm τ} -> 
                    c₁ ⇝ c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₃ ⟩ -> s₁ ≡ s₂
-determinismMixedM (AppL s₁) (Pure x₁) = refl
-determinismMixedM Beta (Pure x₁) = refl
-determinismMixedM (IfCond s₁) (Pure x) = refl
-determinismMixedM IfTrue (Pure x) = refl
-determinismMixedM IfFalse (Pure x) = refl
-determinismMixedM Return (Pure x) = refl
-determinismMixedM Throw (Pure x) = refl
-determinismMixedM Bind (Pure x) = refl
-determinismMixedM Bind (BindCtx (Pure ()))
-determinismMixedM BindEx (Pure x) = refl
-determinismMixedM BindEx (BindCtx (Pure ()))
-determinismMixedM Catch (Pure x) = refl
-determinismMixedM Catch (CatchCtx (Pure ()))
-determinismMixedM CatchEx (Pure x) = refl
-determinismMixedM CatchEx (CatchCtx (Pure ()))
-determinismMixedM (label p) (Pure (label .p)) = refl
-determinismMixedM (unlabel p) (Pure x) = refl
-determinismMixedM (unlabel p) (unlabelCtx .p (Pure ()))
-determinismMixedM (unlabelEx p) (Pure x) = refl
-determinismMixedM (unlabelEx p) (unlabelCtx .p (Pure ()))
-determinismMixedM Hole (Pure Hole) = refl
+determinismMixedS (AppL s₁) (Pure x₁) = refl
+determinismMixedS Beta (Pure x₁) = refl
+determinismMixedS (IfCond s₁) (Pure x) = refl
+determinismMixedS IfTrue (Pure x) = refl
+determinismMixedS IfFalse (Pure x) = refl
+determinismMixedS Return (Pure x) = refl
+determinismMixedS Throw (Pure x) = refl
+determinismMixedS Bind (Pure x) = refl
+determinismMixedS Bind (BindCtx (Pure ()))
+determinismMixedS BindEx (Pure x) = refl
+determinismMixedS BindEx (BindCtx (Pure ()))
+determinismMixedS Catch (Pure x) = refl
+determinismMixedS Catch (CatchCtx (Pure ()))
+determinismMixedS CatchEx (Pure x) = refl
+determinismMixedS CatchEx (CatchCtx (Pure ()))
+determinismMixedS (label p) (Pure (label .p)) = refl
+determinismMixedS (unlabel p) (Pure x) = refl
+determinismMixedS (unlabel p) (unlabelCtx .p (Pure ()))
+determinismMixedS (unlabelEx p) (Pure x) = refl
+determinismMixedS (unlabelEx p) (unlabelCtx .p (Pure ()))
+determinismMixedS Hole (Pure Hole) = refl
 
-determinismM⋆ : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
+determinismS⋆ : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> IsValue c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₃ ∥ c₃ ⟩ -> IsValue c₃ -> s₂ ≡ s₃
-determinismM⋆ [] isV₁ [] isV₂ = refl
-determinismM⋆ [] isV₁ (x ∷ ss₂) isV₂ = ⊥-elim (valueNotRedex _ isV₁ (Step x))
-determinismM⋆ (x ∷ ss₁) isV₁ [] isV₂ = ⊥-elim (valueNotRedex _ isV₂ (Step x))
-determinismM⋆ (s₁ ∷ ss₁) isV₁ (s₂ ∷ ss₂) isV₂
-  rewrite determinismM s₁ s₂ | determinismC s₁ s₂ | determinismM⋆ ss₁ isV₁ ss₂ isV₂ =  refl
+determinismS⋆ [] isV₁ [] isV₂ = refl
+determinismS⋆ [] isV₁ (x ∷ ss₂) isV₂ = ⊥-elim (valueNotRedex _ isV₁ (Step x))
+determinismS⋆ (x ∷ ss₁) isV₁ [] isV₂ = ⊥-elim (valueNotRedex _ isV₂ (Step x))
+determinismS⋆ (s₁ ∷ ss₁) isV₁ (s₂ ∷ ss₂) isV₂
+  rewrite determinismS s₁ s₂ | determinismC s₁ s₂ | determinismS⋆ ss₁ isV₁ ss₂ isV₂ =  refl
 
-determinismM (Pure s₁) s₂ = determinismMixedM  s₁ s₂
-determinismM s₁ (Pure s₂) = sym (determinismMixedM s₂ s₁)
-determinismM (BindCtx s₁) (BindCtx s₂) = determinismM s₁ s₂
-determinismM (CatchCtx s₁) (CatchCtx s₂) = determinismM s₁ s₂
-determinismM (unlabelCtx p s₁) (unlabelCtx .p s₂) = determinismM s₁ s₂
-determinismM (join p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = determinismM⋆ ss₁ isV₁ ss₂ isV₂
-determinismM (join p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
-determinismM (joinEx p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) = determinismM⋆ ss₁ isV₁ ss₂ isV₂
-determinismM (joinEx p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
-determinismM (new p i) (new .p .i) = refl
-determinismM (writeCtx p s₁) (writeCtx .p s₂) = determinismM s₁ s₂
-determinismM (writeCtx p (Pure ())) (write .p r)
-determinismM (write p r) (writeCtx .p (Pure ()))
-determinismM (write p i) (write .p .i) = refl
-determinismM (readCtx p s₁) (readCtx .p s₂) = determinismM s₁ s₂
-determinismM (readCtx p (Pure ())) (read .p r)
-determinismM (read p i) (readCtx .p (Pure ()))
-determinismM (read p i) (read .p .i) = refl
+determinismS (Pure s₁) s₂ = determinismMixedS  s₁ s₂
+determinismS s₁ (Pure s₂) = sym (determinismMixedS s₂ s₁)
+determinismS (BindCtx s₁) (BindCtx s₂) = determinismS s₁ s₂
+determinismS (CatchCtx s₁) (CatchCtx s₂) = determinismS s₁ s₂
+determinismS (unlabelCtx p s₁) (unlabelCtx .p s₂) = determinismS s₁ s₂
+determinismS (join p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = determinismS⋆ ss₁ isV₁ ss₂ isV₂
+determinismS (join p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
+determinismS (joinEx p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) = determinismS⋆ ss₁ isV₁ ss₂ isV₂
+determinismS (joinEx p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
+determinismS (new p i) (new .p .i) = refl
+determinismS (writeCtx p s₁) (writeCtx .p s₂) = determinismS s₁ s₂
+determinismS (writeCtx p (Pure ())) (write .p r)
+determinismS (write p r) (writeCtx .p (Pure ()))
+determinismS (write p i) (write .p .i) = refl
+determinismS (readCtx p s₁) (readCtx .p s₂) = determinismS s₁ s₂
+determinismS (readCtx p (Pure ())) (read .p r)
+determinismS (read p i) (readCtx .p (Pure ()))
+determinismS (read p i) (read .p .i) = refl
 
+-- The general statement of determinism.
 determinism :  ∀ {τ ls} {p₁ p₂ p₃ : Program τ ls} ->
                  p₁ ⟼ p₂ -> p₁ ⟼ p₃ -> p₂ ≡ p₃
 determinism {p₁ = ⟨ s₁ ∥ c₁ ⟩} {⟨ s₂ ∥ c₂ ⟩} {⟨ s₃ ∥ c₃ ⟩} st₁ st₂
-  rewrite determinismM st₁ st₂ | determinismC st₁ st₂ = refl 
+  rewrite determinismS st₁ st₂ | determinismC st₁ st₂ = refl 
 
 preservation : ∀ {ls} {s₁ s₂ : Store ls} {τ : Ty} {c₁ c₂ : CTerm τ} -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> τ ≡ τ
 preservation s = refl
