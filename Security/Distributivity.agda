@@ -79,12 +79,12 @@ open import Data.List as L hiding (drop ; _∷ʳ_)
 ε-dist⇝ {Exception} lₐ IfTrue = IfTrue
 ε-dist⇝ {Exception} lₐ IfFalse = IfFalse
 ε-dist⇝ {Exception} lₐ Hole = Hole
-ε-dist⇝ {Ref lᵈ τ} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-dist⇝ {Ref lᵈ τ} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
-ε-dist⇝ {Ref lᵈ τ} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
-ε-dist⇝ {Ref lᵈ τ} lₐ IfTrue = IfTrue
-ε-dist⇝ {Ref lᵈ τ} lₐ IfFalse = IfFalse
-ε-dist⇝ {Ref lᵈ τ} lₐ Hole = Hole
+ε-dist⇝ {MRef τ} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
+ε-dist⇝ {MRef τ} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
+ε-dist⇝ {MRef τ} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
+ε-dist⇝ {MRef τ} lₐ IfTrue = IfTrue
+ε-dist⇝ {MRef τ} lₐ IfFalse = IfFalse
+ε-dist⇝ {MRef τ} lₐ Hole = Hole
 
 
 ε-Mac-dist : ∀ {lᵈ τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac lᵈ τ)} (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) ->
@@ -166,8 +166,10 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 εˢ-≡ lₐ ¬p (new {s = s} p q) = εˢ-new-≡ (lemma p ¬p) s q
 εˢ-≡ lₐ ¬p (writeCtx p (Pure x)) = refl
 εˢ-≡ lₐ ¬p (write {s = s} p q) = εˢ-write-≡ (lemma p ¬p) s q
+εˢ-≡ lₐ ¬p (writeEx p) = refl
 εˢ-≡ lₐ ¬p (readCtx p (Pure x)) = refl
 εˢ-≡ lₐ ¬p (read p q) = refl
+εˢ-≡ lₐ ¬p (readEx p) = refl
 
 -- Erasing a memory and then reading from it is the same as first reading from the original memory and then erasing the result. 
 readᵐ-≡ : ∀ {l lₐ τ} -> l ⊑ lₐ -> (m : Memory l) (x : τ ∈ᵐ m)  -> _[_] (εᵐ lₐ m) (ε-∈ᵐ lₐ x) ≡ ε lₐ (_[_] m x)
@@ -244,13 +246,26 @@ newˢ-≡ lₐ t (m ∷ s) (There q) | no ¬p rewrite newˢ-≡ lₐ t s q = ref
 ε-Mac-dist lₐ (yes p) (joinEx {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (joinEx p₂ bs) | yes p = joinEx p₂ (ε-Mac-distₓ⇓ lₐ p bs)
 ε-Mac-dist lₐ (yes p) (joinEx p₁ (BigStep x ss)) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = join p₁ (BigStep (Mac ∙) [])
-ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) rewrite newˢ-≡ lₐ t s q = new p (ε-∈ˢ lₐ q)
+ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) with h ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p₂ q) | yes p rewrite newˢ-≡ lₐ t s q = new p₂ (ε-∈ˢ lₐ q)
+ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p q) | no ¬p rewrite newˢ-≡ lₐ t s q = {!new p ?!}
 ε-Mac-dist lₐ (yes p) (readCtx p₁ s) = readCtx p₁ (εᵖ-dist lₐ s)
-ε-Mac-dist {ls = ls} lₐ (yes p') (read {l = l} {s = s} p q) rewrite sym (readˢ-≡ lₐ s q) = read p (ε-∈ˢ lₐ q)
+ε-Mac-dist {ls = ls} lₐ (yes p') (read {l = l} {s = s} p q) with l ⊑? lₐ
+ε-Mac-dist lₐ (yes p') (read {s = s} p₁ q) | yes p rewrite sym (readˢ-≡ lₐ s q) = read p₁ (ε-∈ˢ lₐ q)
+ε-Mac-dist lₐ (yes p') (read p q) | no ¬p = {!read p (ε-∈ˢ lₐ q)!} 
+ε-Mac-dist lₐ (yes p₁) (readEx {l = l} {h = h} p) with l ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (readEx p₂) | yes p = readEx p₂
+ε-Mac-dist lₐ (yes p₁) (readEx p) | no ¬p = ⊥-elim (¬p (trans-⊑ p p₁))
 ε-Mac-dist lₐ (yes p₁) (writeCtx {h = h} p s) with h ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (writeCtx p₂ s) | yes p = writeCtx p₂ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p₁) (writeCtx p s) | no ¬p = writeCtx p (εᵖ-dist lₐ s) 
-ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p q) rewrite writeˢ-≡ lₐ t q = write p (ε-∈ˢ lₐ q)
+ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p q) with h ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (write {c = t} p₂ q) | yes p rewrite writeˢ-≡ lₐ t q = write p₂ (ε-∈ˢ lₐ q)
+ε-Mac-dist lₐ (yes p₁) (write p q) | no ¬p = {!write p ?!} 
+ε-Mac-dist lₐ (yes p₁) (writeEx {h = h} p) with h ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (writeEx p₂) | yes p = writeEx p₂
+ε-Mac-dist lₐ (yes p₁) (writeEx p) | no ¬p = {!write p ?!}
+
 ε-Mac-dist {c₁ = c₁} {c₂ = c₂} lₐ (no ¬p) s
   rewrite ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p | εˢ-≡ lₐ ¬p s = Pure Hole
 
@@ -260,4 +275,4 @@ newˢ-≡ lₐ t (m ∷ s) (There q) | no ¬p rewrite newˢ-≡ lₐ t s q = ref
 εᵖ-dist {Mac lᵈ τ} {p₁ = ⟨ s₁ ∥ c₁ ⟩} {p₂ = ⟨ s₂ ∥ c₂ ⟩} lₐ s = ε-Mac-dist lₐ (lᵈ ⊑? lₐ) s
 εᵖ-dist {Labeled l τ} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
 εᵖ-dist {Exception} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s) 
-εᵖ-dist {Ref lᵈ τ} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
+εᵖ-dist {MRef τ} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)

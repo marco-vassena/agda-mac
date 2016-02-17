@@ -24,7 +24,7 @@ wken (Resₓ t) p = Resₓ (wken t p)
 wken (label x t) p = label x (wken t p)
 wken (unlabel x t) p = unlabel x (wken t p)
 wken (join x t) p = join x (wken t p)
-wken (Ref x) p = Ref x
+wken (MRef x) p = MRef x
 wken (read x t) p = read x (wken t p)
 wken (write x t t₁) p = write x (wken t p) (wken t₁ p)
 wken (new x t r) p = new x (wken t p) r
@@ -60,7 +60,7 @@ tm-subst Δ₁ Δ₂ v (Resₓ t) = Resₓ (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (label x t) = label x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (unlabel x t) = unlabel x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (join x t) = join x (tm-subst Δ₁ Δ₂ v t)
-tm-subst Δ₁ Δ₂ v (Ref x) = Ref x
+tm-subst Δ₁ Δ₂ v (MRef x) = MRef x
 tm-subst Δ₁ Δ₂ v (read x t) = read x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (write x t t₁) = write x (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
 tm-subst Δ₁ Δ₂ v (new x t r) = new x (tm-subst Δ₁ Δ₂ v t) r
@@ -155,21 +155,27 @@ mutual
     -- In this rule we don't actually compute the proper reference but we just assume that is there and points
     -- to a fresh location. Unfortunately computing the reference in the rule makes the types too complex for reasoning.
     new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (r : ⟨ α , h ⟩∈ˢ s ) ->
-               ⟨ s ∥ new p t r ⟩ ⟼ ⟨ newˢ s r t ∥ Return (Ref r) ⟩
+               ⟨ s ∥ new p t r ⟩ ⟼ ⟨ newˢ s r t ∥ Return (Res (MRef r)) ⟩
 
     writeCtx :  ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
                   (p : l ⊑ h) -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
                   ⟨ s₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ s₂ ∥ write p c₂ c₃  ⟩
 
     write : ∀ {l h α} {s : Store ls} {c : CTerm α} -> (p : l ⊑ h) (q : ⟨ α , h ⟩∈ˢ s) ->
-              ⟨ s ∥ write p (Ref q) c ⟩ ⟼ ⟨ writeˢ c s q ∥ Return （） ⟩
+              ⟨ s ∥ write p (Res (MRef q)) c ⟩ ⟼ ⟨ writeˢ c s q ∥ Return （） ⟩
+
+    writeEx : ∀ {l h α} {s : Store ls} {c : CTerm α} {e : CTerm Exception} -> (p : l ⊑ h) ->
+              ⟨ s ∥ write p (Resₓ e) c ⟩ ⟼ ⟨ s ∥ Return （） ⟩
 
     readCtx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
               ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
               ⟨ s₁ ∥ (read p c₁) ⟩ ⟼ ⟨ s₂ ∥ (read p c₂) ⟩
 
     read : ∀ {l h α} {s : Store ls} -> (p : l ⊑ h) (q : ⟨ α , l ⟩∈ˢ s) ->
-              ⟨ s ∥ (read p (Ref q)) ⟩ ⟼ ⟨ s ∥ unlabel p (readˢ s q) ⟩
+              ⟨ s ∥ (read p (Res (MRef q))) ⟩ ⟼ ⟨ s ∥ unlabel p (readˢ s q) ⟩
+
+    readEx : ∀ {l h α} {s : Store ls} {e : CTerm Exception} -> (p : l ⊑ h) ->
+              ⟨ s ∥ (read {α = α} p (Resₓ e)) ⟩ ⟼ ⟨ s ∥ Throw e ⟩
 
   -- A program is a Redex if it can be reduced further in a certain memory configuration
   data Redex {ls : List Label} {τ : Ty} (s₁ : Store ls) (c₁ : CTerm τ) : Set where

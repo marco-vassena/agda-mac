@@ -69,7 +69,7 @@ valueNotRedex .(Mac t) (Mac t) (Step (Pure ()))
 valueNotRedex .(Macₓ e) (Macₓ e) (Step (Pure ()))
 valueNotRedex .(Res t) (Res t) (Step (Pure ()))
 valueNotRedex .(Resₓ e) (Resₓ e) (Step (Pure ()))
-valueNotRedex .(Ref n) (Ref n) (Step (Pure ()))
+valueNotRedex .(MRef n) (MRef n) (Step (Pure ()))
 
 -- The pure small step semantics is deterministic.
 determinism⇝ : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> c₁ ⇝ c₃ -> c₂ ≡ c₃
@@ -165,10 +165,16 @@ determinismC (writeCtx p s₁) (writeCtx .p s₂) rewrite determinismC s₁ s₂
 determinismC (writeCtx p (Pure ())) (write .p r)
 determinismC (write p r) (writeCtx .p (Pure ()))
 determinismC (write p i) (write .p .i) = refl
+determinismC (writeEx p) (writeEx .p) = refl
+determinismC (writeEx p) (writeCtx .p (Pure ()))
+determinismC (writeCtx p (Pure ())) (writeEx .p)
 determinismC (readCtx p s₁) (readCtx .p s₂) rewrite determinismC s₁ s₂ = refl
 determinismC (readCtx p (Pure ())) (read .p r)
 determinismC (read p i) (readCtx .p (Pure ()))
 determinismC (read p i) (read .p .i) = refl
+determinismC (readEx p) (readEx .p) = refl
+determinismC (readEx p) (readCtx .p (Pure ()))
+determinismC (readCtx p (Pure ())) (readEx .p)
 
 determinismMixedS : ∀ {ls τ} {s₁ s₂ : Store ls} {c₁ c₂ c₃ : CTerm τ} -> 
                    c₁ ⇝ c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₃ ⟩ -> s₁ ≡ s₂
@@ -216,10 +222,16 @@ determinismS (writeCtx p s₁) (writeCtx .p s₂) = determinismS s₁ s₂
 determinismS (writeCtx p (Pure ())) (write .p r)
 determinismS (write p r) (writeCtx .p (Pure ()))
 determinismS (write p i) (write .p .i) = refl
+determinismS (writeEx p) (writeEx .p) = refl
+determinismS (writeEx p) (writeCtx .p (Pure ()))
+determinismS (writeCtx p (Pure ())) (writeEx .p)
 determinismS (readCtx p s₁) (readCtx .p s₂) = determinismS s₁ s₂
 determinismS (readCtx p (Pure ())) (read .p r)
 determinismS (read p i) (readCtx .p (Pure ()))
 determinismS (read p i) (read .p .i) = refl
+determinismS (readEx p) (readEx .p) = refl
+determinismS (readEx p) (readCtx .p (Pure ()))
+determinismS (readCtx p (Pure ())) (readEx .p)
 
 -- The general statement of determinism.
 determinism :  ∀ {τ ls} {p₁ p₂ p₃ : Program τ ls} ->

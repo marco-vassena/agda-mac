@@ -39,7 +39,8 @@ mutual
 
     join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
 
-    Ref : ∀ {{α l}} {ls} {s : Store ls} -> ⟨ α , l ⟩∈ˢ s -> Term Δ (Ref l α)
+    -- We don't want to use labels here now, this should is stored in Res
+    MRef : ∀ {{α l}} {ls} {s : Store ls} -> ⟨ α , l ⟩∈ˢ s -> Term Δ (MRef α)
 
     read : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref l α) -> Term Δ (Mac h α)
 
@@ -158,5 +159,5 @@ data IsValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Macₓ {α = α} e)
   Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsValue (Res t)
   Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Resₓ {α = α} e)
-  Ref : ∀ {l ls} {s : Store ls} {α : Ty} -> (p : ⟨ α , l ⟩∈ˢ s) -> IsValue (Ref p)
+  MRef : ∀ {l ls} {s : Store ls} {α : Ty} -> (p : ⟨ α , l ⟩∈ˢ s) -> IsValue (MRef p)
 
