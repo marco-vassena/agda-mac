@@ -2,7 +2,7 @@ module Typed.Base where
 
 open import Types public
 import Data.List as L
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Data.List.All
 
 mutual 
@@ -39,14 +39,15 @@ mutual
 
     join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
 
-    -- We don't want to use labels here now, this should is stored in Res
-    MRef : ∀ {{α l}} {ls} {s : Store ls} -> ⟨ α , l ⟩∈ˢ s -> Term Δ (MRef α)
+    zero : Term Δ Nat
+
+    suc : Term Δ Nat -> Term Δ Nat
 
     read : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref l α) -> Term Δ (Mac h α)
 
     write : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref h α) -> Term Δ α -> Term Δ (Mac l （）)
 
-    new : ∀ {α l h ls} {s : Store ls} -> l ⊑ h -> Term Δ α -> ⟨ α , h ⟩∈ˢ s -> Term Δ (Mac l (Ref h α))
+    new : ∀ {α l h} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Ref h α))
 
     -- Represent sensitive information that has been erased.
     ∙ : ∀ {{τ}} -> Term Δ τ
@@ -99,14 +100,19 @@ store-unique = aux
 
 --------------------------------------------------------------------------------
 
+data TypedIx {l} (τ : Ty) : CTerm Nat -> Memory l -> Set where
+  Here : ∀ {m} {c : CTerm τ} -> TypedIx τ zero (c ∷ m)
+  There : ∀ {m n τ'} {c : CTerm τ'} -> TypedIx τ n m -> TypedIx τ (suc n) (c ∷ m)
+  ∙ : ∀ {n} -> TypedIx τ n ∙
+
 -- Read from memory
-_[_] : ∀ {τ l} -> (m : Memory l) -> τ ∈ᵐ m  -> CTerm (Labeled l τ)
+_[_] : ∀ {τ l n} -> (m : Memory l) -> TypedIx τ n m -> CTerm (Labeled l τ)
 (c ∷ _) [ Here ] = Res c
 (c ∷ m) [ There i ] = _[_] m i 
 ∙ [ ∙ ] = Res ∙
 
 -- Update something in memory
-_[_]≔_ : ∀ {l τ} -> (m : Memory l) -> τ ∈ᵐ m -> CTerm τ -> Memory l
+_[_]≔_ : ∀ {l τ n} -> (m : Memory l) -> TypedIx τ n m -> CTerm τ -> Memory l
 (_ ∷ m) [ Here ]≔ c = c ∷ m
 (c ∷ m) [ There i ]≔ c₁ = c ∷ (m [ i ]≔ c₁)
 ∙ [ ∙ ]≔ c = ∙
@@ -119,32 +125,28 @@ _∷ʳ_ : ∀ {τ l} -> Memory l -> CTerm τ ->  Memory l
 (x ∷ m) ∷ʳ c = x ∷ (m ∷ʳ c)
 ∙  ∷ʳ c  = ∙
 
--- Allocates something in a store.
--- Note that the actual memory location is ignored by this function and in the semantics we assume
--- that it actually points to a valid fresh position in memory.
-newˢ : ∀ {l ls τ} -> (s : Store ls) -> ⟨ τ , l ⟩∈ˢ s -> (c : CTerm τ) -> Store ls
-newˢ (m ∷ s) (Here x) c = (m ∷ʳ c) ∷ s
-newˢ (x ∷ s) (There q) c = x ∷ newˢ s q c
+getMemory : ∀ {l ls} -> l ∈ ls -> Store ls ->  Memory l
+getMemory Here (x ∷ s) = x
+getMemory (There q) (x ∷ s) = getMemory q s
 
--- Read from the store
-readˢ : ∀ {l ls τ} -> (s : Store ls) -> ⟨ τ , l ⟩∈ˢ s -> CTerm (Labeled l τ)
-readˢ [] ()
-readˢ (m ∷ s) (Here x) = _[_] m x
-readˢ (m ∷ s) (There q) = readˢ s q
+updateMemory : ∀ {l ls} -> l ∈ ls -> Store ls -> Memory l -> Store ls
+updateMemory Here (x ∷ s) m = m ∷ s
+updateMemory (There q) (x ∷ s) m = x ∷ updateMemory q s m
 
--- Write (update) to the store
-writeˢ : ∀ {l ls τ} -> (c : CTerm τ) (s : Store ls) -> ⟨ τ , l ⟩∈ˢ s -> Store ls
-writeˢ c [] ()
-writeˢ c (m ∷ q) (Here x) = (m [ x ]≔ c) ∷ q
-writeˢ c (m ∷ q) (There s) = m ∷ writeˢ c q s
+count : ∀ {l} -> Memory l -> CTerm Nat
+count ∙ = ∙
+count [] = zero
+count (x ∷ m) = suc (count m)
 
--- This function generates a proof for a new allocation in memory.
--- We are not actually using this to generate the reference in the semantics
--- because it makes the types too complicated for reasoning.
-new-∈ᵐ : ∀ {l τ} -> (m : Memory l) (c : CTerm τ) -> τ ∈ᵐ (m ∷ʳ c)
-new-∈ᵐ ∙ c = ∙
-new-∈ᵐ [] c = Here
-new-∈ᵐ (x ∷ m) c = There (new-∈ᵐ m c)
+-- Every piece of information that comes from the memory must be labeled with the same
+-- security level.
+lengthᵐ : ∀ {l} -> Memory l -> CTerm (Labeled l Nat)
+lengthᵐ m = Res (count m)
+
+-- Read from memory
+_[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getMemory q s) -> CTerm (Labeled l τ)
+(m ∷ s) [ Here ][ r ] = m [ r ]
+(x ∷ s) [ There q ][ r ] = s [ q ][ r ]
 
 --------------------------------------------------------------------------------
 
@@ -159,5 +161,6 @@ data IsValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Macₓ {α = α} e)
   Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsValue (Res t)
   Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Resₓ {α = α} e)
-  MRef : ∀ {l ls} {s : Store ls} {α : Ty} -> (p : ⟨ α , l ⟩∈ˢ s) -> IsValue (MRef p)
+  zero : IsValue zero
+  suc : ∀ {n} -> IsValue n -> IsValue (suc n)
 

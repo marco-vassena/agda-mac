@@ -29,12 +29,12 @@ data Ty : Set where
   Mac : Label -> Ty -> Ty
   Labeled : Label -> Ty -> Ty
   Exception : Ty
-  MRef : Ty -> Ty
+  Nat : Ty
   
 infixr 3 _=>_
 
 Ref : Label -> Ty -> Ty
-Ref l τ = Labeled l (MRef τ)
+Ref l τ = Labeled l Nat
 
 -- A context Δ is a list of types contained in an environment
 Context : Set

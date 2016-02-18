@@ -9,7 +9,6 @@ open import Data.List as L hiding (drop)
 
 
 εˢ : ∀ {ls} -> (lₐ : Label) -> Store ls -> Store ls
-ε-∈ˢ : ∀ {l τ ls} {s : Store ls} (lₐ : Label) -> ⟨ τ , l ⟩∈ˢ s -> ⟨ τ , l ⟩∈ˢ (εˢ lₐ s)
 
 -- Erasure function for open terms.
 ε : ∀ {τ Δ} -> Label -> Term Δ τ -> Term Δ τ
@@ -53,9 +52,9 @@ open import Data.List as L hiding (drop)
 ε-Mac lₐ (yes p) (join {l = lᵈ} {h = lʰ} x t) with lʰ ⊑? lₐ
 ε-Mac lₐ (yes p₁) (join x t) | yes p = join x (ε-Mac lₐ (yes p) t)
 ε-Mac lₐ (yes p) (join x t) | no ¬p = join x (Mac ∙)
-ε-Mac lₐ (yes _) (read p r) = read p (ε lₐ r)
+ε-Mac lₐ (yes _) (read {l = l} p r) =  read p (ε lₐ r)
 ε-Mac lₐ (yes _) (write {h = h} p r t) = write p (ε lₐ r) (ε lₐ t)
-ε-Mac lₐ (yes _) (new {h = lʰ} p t r) = new p (ε lₐ t) (ε-∈ˢ lₐ r)
+ε-Mac lₐ (yes _) (new {h = lʰ} p t) = new p (ε lₐ t)
 ε-Mac lₐ (yes p) ∙ = ∙
 ε-Mac lₐ (no ¬p) (Var x) = Var x  -- We don't want to erase variables, because this would prevent substitution of the actually erased term.
 ε-Mac lₐ (no ¬p) t = ∙
@@ -78,34 +77,19 @@ open import Data.List as L hiding (drop)
 -- which would get collapsed.
 ε {Labeled lᵈ τ} lₐ (Resₓ t) | no ¬p = Res ∙
 ε lₐ ξ = ξ
-ε {MRef τ} lₐ (MRef n) = MRef (ε-∈ˢ lₐ n)
+ε {Nat} lₐ zero = zero
+ε {Nat} lₐ (suc n) = suc (ε lₐ n)
 ε lₐ ∙ = ∙
 
--- A memory is erased just by applying the erasure function to every element stored in it. 
-εᵐ : ∀ {l} -> Label -> Memory l -> Memory l
-εᵐ lₐ ∙ = ∙
-εᵐ lₐ [] = []
-εᵐ lₐ (x ∷ m) = (ε lₐ x) ∷ (εᵐ lₐ m)
+εᵐ : ∀ {l} -> (lₐ : Label) -> Dec (l ⊑ lₐ) -> Memory l -> Memory l
+εᵐ lₐ (yes p) ∙ = ∙
+εᵐ lₐ (yes p) [] = []
+εᵐ lₐ (yes p) (x ∷ m) = ε lₐ x ∷ εᵐ lₐ (yes p) m
+εᵐ lₐ (no ¬p) m = ∙
 
 -- A store is erased by erasing visible memory and collapsing sensitive memories.
 εˢ lₐ [] = []
-εˢ lₐ (_∷_ {l = l} m s) with l ⊑? lₐ
-εˢ lₐ (m ∷ s) | yes p = εᵐ lₐ m ∷ εˢ lₐ s 
-εˢ lₐ (m ∷ s) | no ¬p = ∙ ∷ εˢ lₐ s 
-
--- Erasure of references contained in memory.
-ε-∈ᵐ : ∀ {l τ} {m : Memory l} -> (lₐ : Label) -> τ ∈ᵐ m -> τ ∈ᵐ (εᵐ lₐ m)
-ε-∈ᵐ lₐ Here = Here
-ε-∈ᵐ lₐ (There p) = There (ε-∈ᵐ lₐ p)
-ε-∈ᵐ lₐ ∙ = ∙
-
--- Erasure of store references.
-ε-∈ˢ {l = l} lₐ (Here x) with l ⊑? lₐ
-ε-∈ˢ lₐ (Here x) | yes p = Here (ε-∈ᵐ lₐ x)
-ε-∈ˢ lₐ (Here x) | no ¬p = Here ∙
-ε-∈ˢ lₐ (There {l' = l'} q) with l' ⊑? lₐ
-ε-∈ˢ lₐ (There q) | yes p = There (ε-∈ˢ lₐ q)
-ε-∈ˢ lₐ (There q) | no ¬p = There (ε-∈ˢ lₐ q)
+εˢ lₐ (_∷_ {l = l} m s) = εᵐ lₐ (l ⊑? lₐ) m ∷ εˢ lₐ s
 
 -- Programs are erased, by erasing its store and its closed term.
 εᵖ : ∀ {ls τ} -> Label -> Program ls τ -> Program ls τ
@@ -178,12 +162,12 @@ open import Data.List as L hiding (drop)
 ε-Mac-extensional (yes p) (no ¬p) (write p₁ r t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (write p₁ r t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (no ¬p₁) (write p r t) = refl
-ε-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (new {h = lʰ} p₂ t r) with lʰ ⊑? lₐ
-ε-Mac-extensional (yes p₁) (yes p₂) (new p₃ t r) | yes p = refl
-ε-Mac-extensional (yes p) (yes p₁) (new p₂ t r) | no ¬p = refl
-ε-Mac-extensional (yes p) (no ¬p) (new p₁ t r) = ⊥-elim (¬p p)
-ε-Mac-extensional (no ¬p) (yes p) (new p₁ t r) = ⊥-elim (¬p p)
-ε-Mac-extensional (no ¬p) (no ¬p₁) (new p t r) = refl
+ε-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (new {h = lʰ} p₂ t) with lʰ ⊑? lₐ
+ε-Mac-extensional (yes p₁) (yes p₂) (new p₃ t) | yes p = refl
+ε-Mac-extensional (yes p) (yes p₁) (new p₂ t) | no ¬p = refl
+ε-Mac-extensional (yes p) (no ¬p) (new p₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (new p₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (new p t) = refl
 ε-Mac-extensional (yes p) (yes p₁) ∙ = refl
 ε-Mac-extensional (yes p) (no ¬p) ∙ = refl
 ε-Mac-extensional (no ¬p) (yes p) ∙ = refl
@@ -199,7 +183,7 @@ open import Data.List as L hiding (drop)
 ε∙≡∙ {Mac lᵈ τ} lₐ | no ¬p = refl
 ε∙≡∙ {Labeled x τ} lₐ = refl
 ε∙≡∙ {Exception} lₐ = refl
-ε∙≡∙ {MRef τ} lₐ = refl
+ε∙≡∙ {Nat} lₐ = refl
 
 -- Var are left untouched by the erasure function.
 εVar≡Var : ∀ {α Δ} -> (lₐ : Label) (p : α ∈ Δ) -> ε lₐ (Var p) ≡ Var p
@@ -211,7 +195,7 @@ open import Data.List as L hiding (drop)
 εVar≡Var {Mac lᵈ α} lₐ p | no ¬p = refl
 εVar≡Var {Labeled x α} lₐ p = refl
 εVar≡Var {Exception} lₐ p = refl
-εVar≡Var {MRef α} lₐ p = refl
+εVar≡Var {Nat} lₐ p = refl
 
 εVar≡Var' : ∀ {α Δ} -> (lₐ : Label) (p : α ∈ Δ) ->  Var p ≡ ε lₐ (Var p)
 εVar≡Var' lₐ p = sym (εVar≡Var lₐ p)
@@ -257,18 +241,20 @@ open import Data.List as L hiding (drop)
 ε-Mac-wken lₐ (yes p₁) (join x₁ t) p₂ | yes p rewrite ε-Mac-wken lₐ (yes p) t p₂ = refl
 ε-Mac-wken lₐ (yes p) (join x₁ t) p₁ | no ¬p = refl
 ε-Mac-wken lₐ (no ¬p) (join x₁ t) p = refl
-ε-Mac-wken lₐ (yes p) (read x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (yes p) (read {l = l} x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
+-- with l ⊑? lₐ
+-- ε-Mac-wken lₐ (yes p₁) (read x₁ t) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
+-- ε-Mac-wken lₐ (yes p) (read x₁ t) p₁ | no ¬p = refl 
 ε-Mac-wken lₐ (no ¬p) (read x₁ t) p = refl
-ε-Mac-wken lₐ (yes p) (write {h = lʰ} x₁ t t₁) p₁ rewrite ε-wken lₐ t p₁ | ε-wken lₐ t₁ p₁ = refl
--- with lʰ ⊑? lₐ
--- ε-Mac-wken lₐ (yes p₁) (write x₁ t t₁) p₂ | yes p rewrite ε-wken lₐ t p₂ | ε-wken lₐ t₁ p₂ = refl
--- ε-Mac-wken lₐ (yes p) (write x₁ t t₁) p₁ | no ¬p rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (yes p) (write {h = lʰ} x₁ t t₁) p₁ with lʰ ⊑? lₐ
+ε-Mac-wken lₐ (yes p₁) (write x₁ t t₁) p₂ | yes p rewrite ε-wken lₐ t p₂ | ε-wken lₐ t₁ p₂ = refl
+ε-Mac-wken lₐ (yes p) (write x₁ t t₁) p₁ | no ¬p rewrite ε-wken lₐ t p₁ | ε-wken lₐ t₁ p₁ = refl 
 ε-Mac-wken lₐ (no ¬p) (write x₁ t t₁) p = refl
-ε-Mac-wken lₐ (yes p) (new {h = lʰ} x₁ t r) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (yes p) (new {h = lʰ} x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
 -- with lʰ ⊑? lₐ
 -- ε-Mac-wken lₐ (yes p₁) (new x₁ t r) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
 -- ε-Mac-wken lₐ (yes p) (new x₁ t r) p₁ | no ¬p = refl
-ε-Mac-wken lₐ (no ¬p) (new x₁ t r) p = refl
+ε-Mac-wken lₐ (no ¬p) (new x₁ t) p = refl
 ε-Mac-wken lₐ (yes p) ∙ p₁ = refl
 ε-Mac-wken lₐ (no ¬p) ∙ p = refl
 
@@ -317,13 +303,14 @@ open import Data.List as L hiding (drop)
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
 ε-wken {Exception} lₐ ξ p = refl
 ε-wken {Exception} lₐ ∙ p = refl
-ε-wken {MRef α} lₐ (Var x₁) p = refl
-ε-wken {MRef α} lₐ (App t t₁) p
+ε-wken {Nat} lₐ (Var x₁) p = refl
+ε-wken {Nat} lₐ (App t t₁) p
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
-ε-wken {MRef α} lₐ (If t Then t₁ Else t₂) p
+ε-wken {Nat} lₐ (If t Then t₁ Else t₂) p
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
-ε-wken {MRef α} lₐ (MRef x₁) p = refl
-ε-wken {MRef α} lₐ ∙ p = refl
+ε-wken {Nat} lₐ zero p = refl
+ε-wken {Nat} lₐ (suc n) p rewrite ε-wken lₐ n p = refl
+ε-wken {Nat} lₐ ∙ p = refl
 
 ε-subst : ∀ {Δ α β} (lₐ : Label) (x : Term Δ α) (t : Term (α ∷ Δ) β) -> subst (ε lₐ x) (ε lₐ t) ≡ ε lₐ (subst x t)
 ε-subst lₐ x t = ε-tm-subst [] _ x t
@@ -346,7 +333,7 @@ open import Data.List as L hiding (drop)
         ε-var-subst (Mac lᵈ β ∷ Δ₁) Δ₂ t₁ Here | no ¬p = refl
         ε-var-subst (Labeled x₁ β ∷ Δ₁) Δ₂ t₁ Here = refl
         ε-var-subst (Exception ∷ Δ₁) Δ₂ t₁ Here = refl
-        ε-var-subst (MRef β ∷ Δ₁) Δ₂ t₁ Here = refl
+        ε-var-subst (Nat ∷ Δ₁) Δ₂ t₁ Here = refl
         ε-var-subst (x₁ ∷ Δ₁) Δ₂ t₁ (There p)
           rewrite ε-var-subst Δ₁ Δ₂ t₁ p | ε-wken lₐ (var-subst Δ₁ Δ₂ t₁ p) (drop {x₁} refl-⊆ˡ) = refl
 
@@ -409,13 +396,14 @@ open import Data.List as L hiding (drop)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
         ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ ξ = refl
         ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ ∙ = refl
-        ε-tm-subst {τ = MRef τ} Δ₁ Δ₂ x₁ (Var x₃) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₃ = refl
-        ε-tm-subst {τ = MRef τ} Δ₁ Δ₂ x₁ (App t₁ t₂)
+        ε-tm-subst {τ = Nat} Δ₁ Δ₂ x₁ (Var x₃) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₃ = refl
+        ε-tm-subst {τ = Nat} Δ₁ Δ₂ x₁ (App t₁ t₂)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
-        ε-tm-subst {τ = MRef τ} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
+        ε-tm-subst {τ = Nat} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
-        ε-tm-subst {τ = MRef τ} Δ₁ Δ₂ x₁ (MRef x₃) = refl
-        ε-tm-subst {τ = MRef τ} Δ₁ Δ₂ x₂ ∙ = refl
+        ε-tm-subst {τ = Nat} Δ₁ Δ₂ x₁ zero = refl
+        ε-tm-subst {τ = Nat} Δ₁ Δ₂ x₁ (suc n) rewrite ε-tm-subst Δ₁ Δ₂ x₁ n = refl
+        ε-tm-subst {τ = Nat} Δ₁ Δ₂ x₂ ∙ = refl
 
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Var p) x rewrite ε-Mac-var-subst Δ₁ Δ₂ x₁ x p = refl         
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (App t₁ t₂) (yes p)
@@ -439,9 +427,14 @@ open import Data.List as L hiding (drop)
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (yes p₁) | yes p
           rewrite ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₁ (yes p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (yes p) | no ¬p = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write {h = lʰ} x₂ t₁ t₂) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new {h = lʰ} x₂ t₁ r) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read {l = l} x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        -- with l ⊑? lₐ
+        -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (yes p) | no ¬p = refl 
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write {h = lʰ} x₂ t₁ t₂) (yes p) with lʰ ⊑? lₐ
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p) | no ¬p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new {h = lʰ} x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (yes p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (App t₁ t₂) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃) (no ¬p) = refl
@@ -456,7 +449,7 @@ open import Data.List as L hiding (drop)
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (no ¬p) = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁ r) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (no ¬p) = refl
 
 ε-Mac-subst : ∀ {lᵈ Δ α β} (lₐ : Label) (y : Dec (lᵈ ⊑ lₐ)) (x : Term Δ α) (t : Term (α ∷ Δ) (Mac lᵈ β))
@@ -478,5 +471,5 @@ open import Data.List as L hiding (drop)
 ε-Mac-CTerm≡∙ lₐ (join x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (read x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (write x c c₁) x₁ = refl
-ε-Mac-CTerm≡∙ lₐ (new x c r) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (new x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ ∙ x = refl

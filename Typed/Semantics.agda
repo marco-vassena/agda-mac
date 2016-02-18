@@ -1,5 +1,6 @@
 module Typed.Semantics where
 
+open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 open import Typed.Base public
 import Data.List as L
 
@@ -24,10 +25,11 @@ wken (Resₓ t) p = Resₓ (wken t p)
 wken (label x t) p = label x (wken t p)
 wken (unlabel x t) p = unlabel x (wken t p)
 wken (join x t) p = join x (wken t p)
-wken (MRef x) p = MRef x
+wken zero p = zero
+wken (suc n) p = suc (wken n p)
 wken (read x t) p = read x (wken t p)
 wken (write x t t₁) p = write x (wken t p) (wken t₁ p)
-wken (new x t r) p = new x (wken t p) r
+wken (new x t) p = new x (wken t p)
 wken ∙ p = ∙
 
 _↑¹ : ∀ {α β Δ} -> Term Δ α -> Term (β ∷ Δ) α
@@ -60,10 +62,11 @@ tm-subst Δ₁ Δ₂ v (Resₓ t) = Resₓ (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (label x t) = label x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (unlabel x t) = unlabel x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (join x t) = join x (tm-subst Δ₁ Δ₂ v t)
-tm-subst Δ₁ Δ₂ v (MRef x) = MRef x
+tm-subst Δ₁ Δ₂ v zero = zero
+tm-subst Δ₁ Δ₂ v (suc n) = suc (tm-subst Δ₁ Δ₂ v n)
 tm-subst Δ₁ Δ₂ v (read x t) = read x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (write x t t₁) = write x (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
-tm-subst Δ₁ Δ₂ v (new x t r) = new x (tm-subst Δ₁ Δ₂ v t) r
+tm-subst Δ₁ Δ₂ v (new x t) = new x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v ∙ = ∙
 
 subst : ∀ {Δ α β} -> Term Δ α -> Term (α ∷ Δ) β -> Term Δ β
@@ -154,25 +157,27 @@ mutual
 
     -- In this rule we don't actually compute the proper reference but we just assume that is there and points
     -- to a fresh location. Unfortunately computing the reference in the rule makes the types too complex for reasoning.
-    new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (r : ⟨ α , h ⟩∈ˢ s ) ->
-               ⟨ s ∥ new p t r ⟩ ⟼ ⟨ newˢ s r t ∥ Return (Res (MRef r)) ⟩
+    new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
+               let m = getMemory q s in 
+               ⟨ s ∥ new p t ⟩ ⟼ ⟨ updateMemory q s (m ∷ʳ t) ∥ Return (lengthᵐ m) ⟩
 
     writeCtx :  ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
                   (p : l ⊑ h) -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
                   ⟨ s₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ s₂ ∥ write p c₂ c₃  ⟩
 
-    write : ∀ {l h α} {s : Store ls} {c : CTerm α} -> (p : l ⊑ h) (q : ⟨ α , h ⟩∈ˢ s) ->
-              ⟨ s ∥ write p (Res (MRef q)) c ⟩ ⟼ ⟨ writeˢ c s q ∥ Return （） ⟩
+    write : ∀ {l h α} {s : Store ls} {n : CTerm Nat} {c : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
+                 let m = getMemory q s in (r : TypedIx α n m) ->
+              ⟨ s ∥ write p (Res n) c ⟩ ⟼ ⟨ updateMemory q s (m [ r ]≔ c) ∥ Return （） ⟩
 
     writeEx : ∀ {l h α} {s : Store ls} {c : CTerm α} {e : CTerm Exception} -> (p : l ⊑ h) ->
               ⟨ s ∥ write p (Resₓ e) c ⟩ ⟼ ⟨ s ∥ Return （） ⟩
 
     readCtx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
               ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
-              ⟨ s₁ ∥ (read p c₁) ⟩ ⟼ ⟨ s₂ ∥ (read p c₂) ⟩
+              ⟨ s₁ ∥ (read {α = α} p c₁) ⟩ ⟼ ⟨ s₂ ∥ (read p c₂) ⟩
 
-    read : ∀ {l h α} {s : Store ls} -> (p : l ⊑ h) (q : ⟨ α , l ⟩∈ˢ s) ->
-              ⟨ s ∥ (read p (Res (MRef q))) ⟩ ⟼ ⟨ s ∥ unlabel p (readˢ s q) ⟩
+    read : ∀ {l h α n} {s : Store ls} {m : Memory l} -> (p : l ⊑ h) (q : l ∈ ls) -> (r : TypedIx α n (getMemory q s)) ->
+              ⟨ s ∥ (read p (Res n)) ⟩ ⟼ ⟨ s ∥ unlabel p (s [ q ][ r ]) ⟩
 
     readEx : ∀ {l h α} {s : Store ls} {e : CTerm Exception} -> (p : l ⊑ h) ->
               ⟨ s ∥ (read {α = α} p (Resₓ e)) ⟩ ⟼ ⟨ s ∥ Throw e ⟩
