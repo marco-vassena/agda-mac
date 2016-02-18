@@ -31,13 +31,13 @@ mutual
     Mac : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Mac l α)
     Macₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Mac l α)
 
-    Res : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Labeled l α)
-    Resₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Labeled l α)
+    Res : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Res l α)
+    Resₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Res l α)
 
-    label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Labeled h α))
-    unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Mac h α)
+    label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Res h α))
+    unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Mac h α)
 
-    join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
+    join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Res h α))
 
     zero : Term Δ Nat
 
@@ -112,7 +112,7 @@ index-unique ∙ ∙ = refl
 
 
 -- Read from memory
-_[_] : ∀ {τ l n} -> (m : Memory l) -> TypedIx τ n m -> CTerm (Labeled l τ)
+_[_] : ∀ {τ l n} -> (m : Memory l) -> TypedIx τ n m -> CTerm (Res l τ)
 (c ∷ _) [ Here ] = Res c
 (c ∷ m) [ There i ] = _[_] m i 
 ∙ [ ∙ ] = Res ∙
@@ -146,11 +146,11 @@ count (x ∷ m) = suc (count m)
 
 -- Every piece of information that comes from the memory must be labeled with the same
 -- security level.
-lengthᵐ : ∀ {l} -> Memory l -> CTerm (Labeled l Nat)
+lengthᵐ : ∀ {l} -> Memory l -> CTerm (Res l Nat)
 lengthᵐ m = Res (count m)
 
 -- Read from memory in store
-_[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getMemory q s) -> CTerm (Labeled l τ)
+_[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getMemory q s) -> CTerm (Res l τ)
 (m ∷ s) [ Here ][ r ] = m [ r ]
 (x ∷ s) [ There q ][ r ] = s [ q ][ r ]
 

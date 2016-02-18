@@ -67,12 +67,12 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {τ => τ₁} lₐ IfTrue = IfTrue
 ε-dist⇝ {τ => τ₁} lₐ IfFalse = IfFalse
 ε-dist⇝ {τ => τ₁} lₐ Hole = Hole
-ε-dist⇝ {Labeled lᵈ τ} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-dist⇝ {Labeled lᵈ τ} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
-ε-dist⇝ {Labeled lᵈ τ} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
-ε-dist⇝ {Labeled lᵈ τ} lₐ IfTrue = IfTrue
-ε-dist⇝ {Labeled lᵈ τ} lₐ IfFalse = IfFalse
-ε-dist⇝ {Labeled lᵈ τ} lₐ Hole = Hole
+ε-dist⇝ {Res lᵈ τ} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
+ε-dist⇝ {Res lᵈ τ} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ IfTrue = IfTrue
+ε-dist⇝ {Res lᵈ τ} lₐ IfFalse = IfFalse
+ε-dist⇝ {Res lᵈ τ} lₐ Hole = Hole
 ε-dist⇝ {Exception} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
 ε-dist⇝ {Exception} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
 ε-dist⇝ {Exception} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
@@ -354,6 +354,6 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 εᵖ-dist {Bool} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
 εᵖ-dist {τ => τ₁} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
 εᵖ-dist {Mac lᵈ τ} {p₁ = ⟨ s₁ ∥ c₁ ⟩} {p₂ = ⟨ s₂ ∥ c₂ ⟩} lₐ s = ε-Mac-dist lₐ (lᵈ ⊑? lₐ) s
-εᵖ-dist {Labeled l τ} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
+εᵖ-dist {Res l τ} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
 εᵖ-dist {Exception} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s) 
 εᵖ-dist {Nat} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)

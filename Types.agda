@@ -27,14 +27,14 @@ data Ty : Set where
   Bool : Ty
   _=>_ : (τ₁ t₂ : Ty) -> Ty
   Mac : Label -> Ty -> Ty
-  Labeled : Label -> Ty -> Ty
+  Res : Label -> Ty -> Ty
   Exception : Ty
   Nat : Ty
   
 infixr 3 _=>_
 
 Ref : Label -> Ty -> Ty
-Ref l τ = Labeled l Nat
+Ref l τ = Res l Nat
 
 -- A context Δ is a list of types contained in an environment
 Context : Set

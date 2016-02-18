@@ -67,15 +67,15 @@ open import Data.List as L hiding (drop)
 ε lₐ (Abs t) = Abs (ε lₐ t)
 ε lₐ (App f x) = App (ε lₐ f) (ε lₐ x)
 ε lₐ (If t Then t₁ Else t₂) = If (ε lₐ t) Then (ε lₐ t₁) Else (ε lₐ t₂)
-ε {Labeled lᵈ τ} lₐ (Res t) with lᵈ ⊑? lₐ
-ε {Labeled lᵈ τ} lₐ (Res t) | yes p = Res (ε lₐ t)
-ε {Labeled lᵈ τ} lₐ (Res t) | no ¬p = Res ∙
-ε {Labeled lᵈ τ} lₐ (Resₓ t) with lᵈ ⊑? lₐ
-ε {Labeled lᵈ τ} lₐ (Resₓ t) | yes p = Resₓ (ε lₐ t)
+ε {Res lᵈ τ} lₐ (Res t) with lᵈ ⊑? lₐ
+ε {Res lᵈ τ} lₐ (Res t) | yes p = Res (ε lₐ t)
+ε {Res lᵈ τ} lₐ (Res t) | no ¬p = Res ∙
+ε {Res lᵈ τ} lₐ (Resₓ t) with lᵈ ⊑? lₐ
+ε {Res lᵈ τ} lₐ (Resₓ t) | yes p = Resₓ (ε lₐ t)
 -- It is not possible to distinguish between Res and Resₓ when they are sensitive,
 -- because you would need to be in a high computation to unlabel them,
 -- which would get collapsed.
-ε {Labeled lᵈ τ} lₐ (Resₓ t) | no ¬p = Res ∙
+ε {Res lᵈ τ} lₐ (Resₓ t) | no ¬p = Res ∙
 ε lₐ ξ = ξ
 ε {Nat} lₐ zero = zero
 ε {Nat} lₐ (suc n) = suc (ε lₐ n)
@@ -181,7 +181,7 @@ open import Data.List as L hiding (drop)
 ε∙≡∙ {Mac lᵈ τ} lₐ with lᵈ ⊑? lₐ
 ε∙≡∙ {Mac lᵈ τ} lₐ | yes p = refl
 ε∙≡∙ {Mac lᵈ τ} lₐ | no ¬p = refl
-ε∙≡∙ {Labeled x τ} lₐ = refl
+ε∙≡∙ {Res x τ} lₐ = refl
 ε∙≡∙ {Exception} lₐ = refl
 ε∙≡∙ {Nat} lₐ = refl
 
@@ -193,7 +193,7 @@ open import Data.List as L hiding (drop)
 εVar≡Var {Mac lᵈ α} lₐ p with lᵈ ⊑? lₐ
 εVar≡Var {Mac lᵈ α} lₐ p₁ | yes p = refl
 εVar≡Var {Mac lᵈ α} lₐ p | no ¬p = refl
-εVar≡Var {Labeled x α} lₐ p = refl
+εVar≡Var {Res x α} lₐ p = refl
 εVar≡Var {Exception} lₐ p = refl
 εVar≡Var {Nat} lₐ p = refl
 
@@ -282,20 +282,20 @@ open import Data.List as L hiding (drop)
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
 ε-wken {α => α₁} lₐ ∙ p = refl
 ε-wken {Mac lᵈ α} lₐ t p rewrite ε-Mac-wken lₐ (lᵈ ⊑? lₐ) t p = refl
-ε-wken {Labeled x α} lₐ (Var x₁) p = refl
-ε-wken {Labeled x α} lₐ (App t t₁) p
+ε-wken {Res x α} lₐ (Var x₁) p = refl
+ε-wken {Res x α} lₐ (App t t₁) p
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
-ε-wken {Labeled x α} lₐ (If t Then t₁ Else t₂) p
+ε-wken {Res x α} lₐ (If t Then t₁ Else t₂) p
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
-ε-wken {Labeled lᵈ α} lₐ (Res t) p with lᵈ ⊑? lₐ
-ε-wken {Labeled lᵈ α} lₐ (Res t) p₁ | yes p
+ε-wken {Res lᵈ α} lₐ (Res t) p with lᵈ ⊑? lₐ
+ε-wken {Res lᵈ α} lₐ (Res t) p₁ | yes p
   rewrite ε-wken lₐ t p₁ = refl
-ε-wken {Labeled lᵈ α} lₐ (Res t) p | no ¬p = refl
-ε-wken {Labeled lᵈ α} lₐ (Resₓ t) p with lᵈ ⊑? lₐ
-ε-wken {Labeled lᵈ α} lₐ (Resₓ t) p₁ | yes p
+ε-wken {Res lᵈ α} lₐ (Res t) p | no ¬p = refl
+ε-wken {Res lᵈ α} lₐ (Resₓ t) p with lᵈ ⊑? lₐ
+ε-wken {Res lᵈ α} lₐ (Resₓ t) p₁ | yes p
   rewrite ε-wken lₐ t p₁ = refl
-ε-wken {Labeled lᵈ α} lₐ (Resₓ t) p | no ¬p = refl
-ε-wken {Labeled x α} lₐ ∙ p = refl
+ε-wken {Res lᵈ α} lₐ (Resₓ t) p | no ¬p = refl
+ε-wken {Res x α} lₐ ∙ p = refl
 ε-wken {Exception} lₐ (Var x) p = refl
 ε-wken {Exception} lₐ (App t t₁) p
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
@@ -331,7 +331,7 @@ open import Data.List as L hiding (drop)
         ε-var-subst (Mac lᵈ β ∷ Δ₁) Δ₂ t₁ Here with lᵈ ⊑? lₐ
         ε-var-subst (Mac lᵈ β ∷ Δ₁) Δ₂ t₁ Here | yes p = refl
         ε-var-subst (Mac lᵈ β ∷ Δ₁) Δ₂ t₁ Here | no ¬p = refl
-        ε-var-subst (Labeled x₁ β ∷ Δ₁) Δ₂ t₁ Here = refl
+        ε-var-subst (Res x₁ β ∷ Δ₁) Δ₂ t₁ Here = refl
         ε-var-subst (Exception ∷ Δ₁) Δ₂ t₁ Here = refl
         ε-var-subst (Nat ∷ Δ₁) Δ₂ t₁ Here = refl
         ε-var-subst (x₁ ∷ Δ₁) Δ₂ t₁ (There p)
@@ -375,20 +375,20 @@ open import Data.List as L hiding (drop)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
         ε-tm-subst {τ = τ => τ₁} Δ₁ Δ₂ x₁ ∙ = refl
         ε-tm-subst {τ = Mac lᵈ τ} Δ₁ Δ₂ x₂ t₁ = ε-Mac-tm-subst Δ₁ Δ₂ x₂ t₁ (lᵈ ⊑? lₐ)
-        ε-tm-subst {τ = Labeled x₁ τ} Δ₁ Δ₂ x₂ (Var x₃) rewrite ε-var-subst Δ₁ Δ₂ x₂ x₃ = refl
-        ε-tm-subst {τ = Labeled l τ} Δ₁ Δ₂ x₁ (App t₁ t₂)
+        ε-tm-subst {τ = Res x₁ τ} Δ₁ Δ₂ x₂ (Var x₃) rewrite ε-var-subst Δ₁ Δ₂ x₂ x₃ = refl
+        ε-tm-subst {τ = Res l τ} Δ₁ Δ₂ x₁ (App t₁ t₂)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
-        ε-tm-subst {τ = Labeled l τ} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
+        ε-tm-subst {τ = Res l τ} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
-        ε-tm-subst {τ = Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) with lᵈ ⊑? lₐ
-        ε-tm-subst {α} {Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) | yes p
+        ε-tm-subst {τ = Res lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) with lᵈ ⊑? lₐ
+        ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) | yes p
           rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl
-        ε-tm-subst {α} {Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) | no ¬p = refl
-        ε-tm-subst {τ = Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) with lᵈ ⊑? lₐ
-        ε-tm-subst {α} {Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) | yes p
+        ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) | no ¬p = refl
+        ε-tm-subst {τ = Res lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) with lᵈ ⊑? lₐ
+        ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) | yes p
           rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl
-        ε-tm-subst {α} {Labeled lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) | no ¬p = refl
-        ε-tm-subst {τ = Labeled x₁ τ} Δ₁ Δ₂ x₂ ∙ = refl
+        ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) | no ¬p = refl
+        ε-tm-subst {τ = Res x₁ τ} Δ₁ Δ₂ x₂ ∙ = refl
         ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ (Var x₂) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₂ = refl
         ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ (App t₁ t₂)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
