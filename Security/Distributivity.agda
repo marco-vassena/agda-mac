@@ -122,6 +122,11 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 εᵐ-new-≡ ¬p m c | yes p = ⊥-elim (¬p p)
 εᵐ-new-≡ ¬p₁ m c | no ¬p = refl
 
+εᵐ-write-≡ :  ∀ {l lₐ τ n} -> ¬ l ⊑ lₐ -> (m : Memory l) (r : TypedIx τ n m) (c : CTerm τ) -> εᵐ lₐ (l ⊑? lₐ) m ≡ εᵐ lₐ (l ⊑? lₐ) (m [ r ]≔ c)
+εᵐ-write-≡ {l} {lₐ} ¬p m r c with l ⊑? lₐ
+εᵐ-write-≡ ¬p m r c | yes p = ⊥-elim (¬p p)
+εᵐ-write-≡ ¬p₁ m r c | no ¬p = refl 
+
 --- Allocations to high, non-visible memories are canceled by the earsure function, because
 --- high memory are collapsed to ∙.
 εˢ-new-≡ : ∀ {l lₐ ls τ} -> ¬ (l ⊑ lₐ) -> (s : Store ls) (q : l ∈ ls) (c : CTerm τ) ->
@@ -129,6 +134,12 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 εˢ-new-≡ ¬p [] () c
 εˢ-new-≡ ¬p (m ∷ s) Here c rewrite εᵐ-new-≡ ¬p m c = refl
 εˢ-new-≡ ¬p (x ∷ s) (There q) c rewrite εˢ-new-≡ ¬p s q c = refl
+
+εˢ-write-≡ : ∀ {l lₐ ls n τ} -> ¬ (l ⊑ lₐ) -> (s : Store ls) (q : l ∈ ls) (r : TypedIx τ n (getMemory q s)) (c : CTerm τ) ->
+               εˢ lₐ s ≡ εˢ lₐ (s [ q ][ r ]≔ c)
+εˢ-write-≡ ¬p [] () r c
+εˢ-write-≡ ¬p (m ∷ s) Here r c rewrite εᵐ-write-≡ ¬p m r c = refl
+εˢ-write-≡ ¬p (x ∷ s) (There q) r c rewrite εˢ-write-≡ ¬p s q r c = refl               
 
 -- TODO move to types.
 -- TODO better name
@@ -155,8 +166,8 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 εˢ-≡ lₐ ¬p (joinEx p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (lemma p ¬p) ss = refl
 εˢ-≡ lₐ ¬p (new {s = s} p q) = εˢ-new-≡ (lemma p ¬p) s q _
 εˢ-≡ lₐ ¬p (writeCtx p (Pure x)) = refl
-εˢ-≡ lₐ ¬p (write {s = s} p q r) = {!!} -- εˢ-write-≡ (lemma p ¬p) s q
-εˢ-≡ lₐ ¬p (writeEx p) = refl
+εˢ-≡ lₐ ¬p (write {s = s} p q r) = εˢ-write-≡ (lemma p ¬p) s q r _ 
+εˢ-≡ lₐ ¬p (writeEx p q r) = refl
 εˢ-≡ lₐ ¬p (readCtx p (Pure x)) = refl
 εˢ-≡ lₐ ¬p (read p q r) = refl
 εˢ-≡ lₐ ¬p (readEx p) = refl
@@ -263,6 +274,47 @@ readˢ-≡∙ ¬p₁ (m ∷ s) Here r | no ¬p = readᵐ-≡∙ ¬p₁ m r
 readˢ-≡∙ ¬p (x ∷ s) (There q) r = readˢ-≡∙ ¬p s q r
 
 --------------------------------------------------------------------------------
+-- Write lemmas
+--------------------------------------------------------------------------------
+
+writeᵐ-≡ : ∀ {l lₐ τ n} -> (c : CTerm τ) (p : l ⊑ lₐ) (m : Memory l) (r : TypedIx τ n m) -> (εᵐ lₐ (yes p) m [ εᵐ-TypedIx p m r ]≔ ε lₐ c) ≡ εᵐ lₐ (yes p) (m [ r ]≔ c) 
+writeᵐ-≡ c p ._ Here = refl
+writeᵐ-≡ c p ._ (There r) rewrite writeᵐ-≡ c p _ r = refl
+writeᵐ-≡ c p .∙ ∙ = refl
+
+writeˢ-≡ : ∀ {l lₐ ls τ n} -> (c : CTerm τ) (p : l ⊑ lₐ) (q : l ∈ ls) (s : Store ls) (r : TypedIx τ n (getMemory q s)) ->
+           εˢ lₐ (s [ q ][ r ]≔ c) ≡ εˢ lₐ s [ q ][ ε-TypedIx p s q r ]≔ ε lₐ c
+writeˢ-≡ {l} {lₐ}  c p Here (x ∷ s) r with l ⊑? lₐ
+writeˢ-≡ c p₁ Here (m ∷ s) r | yes p rewrite writeᵐ-≡ c p m r = refl
+writeˢ-≡ c p Here (x ∷ s) r | no ¬p = ⊥-elim (¬p p)
+writeˢ-≡ c p (There q) (x ∷ s) r rewrite writeˢ-≡ c p q s r = refl
+
+writeˢ-≡∙ : ∀ {l lₐ ls τ n} -> (c : CTerm τ) (¬p : ¬ l ⊑ lₐ) (q : l ∈ ls) (s : Store ls) (r : TypedIx τ n (getMemory q s)) ->
+           εˢ lₐ (s [ q ][ r ]≔ c) ≡ εˢ lₐ s [ q ][ ε-TypedIx∙ ¬p s q r ]≔ ε lₐ c
+writeˢ-≡∙ {l} {lₐ} c ¬p Here (m ∷ s) r with l ⊑? lₐ
+writeˢ-≡∙ c ¬p Here (m ∷ s) r | yes p = ⊥-elim (¬p p)
+writeˢ-≡∙ c ¬p₁ Here (m ∷ s) r | no ¬p = refl
+writeˢ-≡∙ c ¬p (There q) (x ∷ s) r rewrite writeˢ-≡∙ c ¬p q s r = refl
+
+writeExˢ-≡∙ : ∀ {l lₐ ls τ n} -> (c : CTerm τ) (¬p : ¬ l ⊑ lₐ) (q : l ∈ ls) (s : Store ls) (r : TypedIx τ n (getMemory q s)) ->
+              (εˢ lₐ s) [ q ][ ε-TypedIx∙ ¬p s q r ]≔ ε lₐ c ≡ (εˢ lₐ s)
+writeExˢ-≡∙ {l} {lₐ} c ¬p Here (x ∷ s) r with l ⊑? lₐ
+writeExˢ-≡∙ c ¬p Here (x ∷ s) r | yes p = ⊥-elim (¬p p)
+writeExˢ-≡∙ c ¬p₁ Here (x ∷ s) r | no ¬p = refl
+writeExˢ-≡∙ {lₐ = lₐ} c ¬p (There q) (_∷_ {l = l'} x s) r = cong (_∷_ (εᵐ lₐ (l' ⊑? lₐ) x)) (writeExˢ-≡∙ c ¬p q s r)
+
+
+-- We need to be careful with the rewriting or Agda starts going crazy.
+-- It seems that if we introduce enough indirections everything works fine! :)
+writeEx' :  ∀ {l h lₐ ls τ n} -> (c : CTerm τ) (p : l ⊑ h) (¬p : ¬ h ⊑ lₐ) (q : h ∈ ls) (s : Store ls) (r : TypedIx τ n (getMemory q s)) ->             
+              ⟨ εˢ lₐ s ∥ write p (Res ∙) (ε lₐ c) ⟩ ⟼ ⟨ (εˢ lₐ s) ∥ Return （） ⟩ 
+writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
+  where
+        aux : ⟨ εˢ lₐ s ∥ write p (Res ∙) (ε lₐ c) ⟩ ⟼ ⟨ (εˢ lₐ s) [ q ][ ε-TypedIx∙ ¬p s q r ]≔ ε lₐ c ∥ Return （） ⟩ ->
+              ⟨ εˢ lₐ s ∥ write p (Res ∙) (ε lₐ c) ⟩ ⟼ ⟨ (εˢ lₐ s) ∥ Return （） ⟩ 
+        aux step rewrite writeExˢ-≡∙ c ¬p q s r = step
+        
+--------------------------------------------------------------------------------
 
 ε-Mac-dist lₐ (yes p) (Pure x) = Pure (ε-Mac-dist⇝ lₐ (yes p) x)
 ε-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (ε-Mac-dist lₐ (yes p) s)
@@ -284,34 +336,17 @@ readˢ-≡∙ ¬p (x ∷ s) (There q) r = readˢ-≡∙ ¬p s q r
 ε-Mac-dist lₐ (yes p') (read {s = s} {m = m} p₁ q r) | yes p rewrite readˢ-≡ p s q r = read {m = εᵐ lₐ (yes p) m} p₁ q (ε-TypedIx p s q r)
 ε-Mac-dist lₐ (yes p') (read {s = s} p q r) | no ¬p rewrite readˢ-≡∙ ¬p s q r = read {m = ∙} p q (ε-TypedIx∙ ¬p s q r)
 ε-Mac-dist lₐ (yes p₁) (readEx {l = l} {h = h} p) with l ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (readEx {l = l} p₂) | yes p with l ⊑? lₐ
-ε-Mac-dist lₐ (yes p₂) (readEx p₃) | yes p₁ | yes p = readEx p₃
-ε-Mac-dist lₐ (yes p₁) (readEx p₂) | yes p | no ¬p = ⊥-elim (¬p p)
+ε-Mac-dist lₐ (yes p₁) (readEx p₂) | yes p = readEx p₂
 ε-Mac-dist lₐ (yes p₁) (readEx p) | no ¬p = ⊥-elim (¬p (trans-⊑ p p₁))
 ε-Mac-dist lₐ (yes p₁) (writeCtx {h = h} p s) with h ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (writeCtx p₂ s) | yes p = writeCtx p₂ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p₁) (writeCtx p s) | no ¬p = writeCtx p (εᵖ-dist lₐ s) 
-ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p q r) with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (write p₂ q r) | yes p = {!!}
-ε-Mac-dist lₐ (yes p₁) (write p q r) | no ¬p = {!!}
--- with h ⊑? lₐ
--- ε-Mac-dist lₐ (yes p₁) (write {h = h} {c = t} p₂ q) | yes p with h ⊑? lₐ
--- ε-Mac-dist lₐ (yes p₂) (write {h = h} p₃ q) | yes p₁ | yes p with h ⊑? lₐ
--- ε-Mac-dist lₐ (yes p₃) (write {c = t} p₄ q) | yes p₂ | yes p₁ | yes p rewrite writeˢ-≡ lₐ t q = write p₄ (ε-∈ˢ lₐ q)
--- ε-Mac-dist lₐ (yes p₂) (write p₃ q) | yes p₁ | yes p | no ¬p = ⊥-elim (¬p p₁)
--- ε-Mac-dist lₐ (yes p₁) (write p₂ q) | yes p | no ¬p = ⊥-elim (¬p p)
--- ε-Mac-dist lₐ (yes p₁) (write {h = h} p q) | no ¬p with h ⊑? lₐ
--- ε-Mac-dist lₐ (yes p₁) (write {h = h} p₂ q) | no ¬p | yes p with h ⊑? lₐ
--- ε-Mac-dist lₐ (yes p₂) (write p₃ q) | no ¬p | yes p₁ | yes p = ⊥-elim (¬p p₁)
--- ε-Mac-dist lₐ (yes p₁) (write p₂ q) | no ¬p₁ | yes p | no ¬p = ⊥-elim (¬p₁ p)
--- ε-Mac-dist lₐ (yes p₁) (write p q) | no ¬p₁ | no ¬p = {!write p ?!} 
-ε-Mac-dist lₐ (yes p₁) (writeEx {h = h} p) with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (writeEx {h = h} p₂) | yes p with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₂) (writeEx p₃) | yes p₁ | yes p = writeEx p₃
-ε-Mac-dist lₐ (yes p₁) (writeEx p₂) | yes p | no ¬p = ⊥-elim (¬p p) 
-ε-Mac-dist lₐ (yes p₁) (writeEx {h = h} p) | no ¬p with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (writeEx p₂) | no ¬p | yes p = ⊥-elim (¬p p)
-ε-Mac-dist lₐ (yes p₁) (writeEx p) | no ¬p₁ | no ¬p = {!write p ?!}
+ε-Mac-dist lₐ (yes p₁) (write {h = h} {s = s} {c = c} p q r) with h ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (write {s = s} {c = c} p₂ q r) | yes p rewrite writeˢ-≡ c p q s r = write p₂ q (ε-TypedIx p s q r)
+ε-Mac-dist lₐ (yes p₁) (write {s = s} {c = c} p q r) | no ¬p rewrite writeˢ-≡∙ c ¬p q s r = write p q (ε-TypedIx∙ ¬p s q r)
+ε-Mac-dist lₐ (yes p₁) (writeEx {h = h} {s = s} p q r) with h ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (writeEx {s = s} p₂ q r) | yes p = writeEx p₂ q (ε-TypedIx p s q r)
+ε-Mac-dist lₐ (yes p₁) (writeEx {s = s} {c = c} p q r) | no ¬p = writeEx' c p ¬p q s r
 ε-Mac-dist {c₁ = c₁} {c₂ = c₂} lₐ (no ¬p) s
   rewrite ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p | εˢ-≡ lₐ ¬p s = Pure Hole
 

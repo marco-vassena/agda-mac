@@ -143,10 +143,15 @@ count (x ∷ m) = suc (count m)
 lengthᵐ : ∀ {l} -> Memory l -> CTerm (Labeled l Nat)
 lengthᵐ m = Res (count m)
 
--- Read from memory
+-- Read from memory in store
 _[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getMemory q s) -> CTerm (Labeled l τ)
 (m ∷ s) [ Here ][ r ] = m [ r ]
 (x ∷ s) [ There q ][ r ] = s [ q ][ r ]
+
+-- Write to memory in store
+_[_][_]≔_ : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getMemory q s) -> CTerm τ -> Store ls
+(m ∷ s) [ Here ][ r ]≔ c = (m [ r ]≔ c) ∷ s
+(x ∷ s) [ There q ][ r ]≔ c = x ∷ (s [ q ][ r ]≔ c)
 
 newˢ : ∀ {l ls τ} -> l ∈ ls -> Store ls -> CTerm τ -> Store ls
 newˢ Here (m ∷ s) c = (m ∷ʳ c) ∷ s
