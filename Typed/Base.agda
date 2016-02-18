@@ -148,6 +148,10 @@ _[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getM
 (m ∷ s) [ Here ][ r ] = m [ r ]
 (x ∷ s) [ There q ][ r ] = s [ q ][ r ]
 
+newˢ : ∀ {l ls τ} -> l ∈ ls -> Store ls -> CTerm τ -> Store ls
+newˢ Here (m ∷ s) c = (m ∷ʳ c) ∷ s
+newˢ (There q) (x ∷ s) c = x ∷ newˢ q s c
+
 --------------------------------------------------------------------------------
 
 -- The proof that a certain term is a value

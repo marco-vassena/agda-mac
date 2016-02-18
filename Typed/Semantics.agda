@@ -158,8 +158,7 @@ mutual
     -- In this rule we don't actually compute the proper reference but we just assume that is there and points
     -- to a fresh location. Unfortunately computing the reference in the rule makes the types too complex for reasoning.
     new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
-               let m = getMemory q s in 
-               ⟨ s ∥ new p t ⟩ ⟼ ⟨ updateMemory q s (m ∷ʳ t) ∥ Return (lengthᵐ m) ⟩
+               ⟨ s ∥ new p t ⟩ ⟼ ⟨ newˢ q s t ∥ Return (lengthᵐ (getMemory q s)) ⟩
 
     writeCtx :  ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
                   (p : l ⊑ h) -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
