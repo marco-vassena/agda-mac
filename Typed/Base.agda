@@ -105,6 +105,12 @@ data TypedIx {l} (τ : Ty) : CTerm Nat -> Memory l -> Set where
   There : ∀ {m n τ'} {c : CTerm τ'} -> TypedIx τ n m -> TypedIx τ (suc n) (c ∷ m)
   ∙ : ∀ {n} -> TypedIx τ n ∙
 
+index-unique : ∀ {τ n l} {m : Memory l} -> (i j : TypedIx τ n m) -> i ≡ j
+index-unique Here Here = refl
+index-unique (There i) (There j) rewrite index-unique i j = refl
+index-unique ∙ ∙ = refl
+
+
 -- Read from memory
 _[_] : ∀ {τ l n} -> (m : Memory l) -> TypedIx τ n m -> CTerm (Labeled l τ)
 (c ∷ _) [ Here ] = Res c

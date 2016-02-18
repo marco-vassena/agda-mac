@@ -69,7 +69,8 @@ valueNotRedex .(Mac t) (Mac t) (Step (Pure ()))
 valueNotRedex .(Macₓ e) (Macₓ e) (Step (Pure ()))
 valueNotRedex .(Res t) (Res t) (Step (Pure ()))
 valueNotRedex .(Resₓ e) (Resₓ e) (Step (Pure ()))
-valueNotRedex .(MRef n) (MRef n) (Step (Pure ()))
+valueNotRedex (suc n') (suc n) (Step (Pure ()))
+valueNotRedex .zero zero (Step (Pure ()))
 
 -- The pure small step semantics is deterministic.
 determinism⇝ : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> c₁ ⇝ c₃ -> c₂ ≡ c₃
@@ -160,18 +161,18 @@ determinismC (join p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) 
 determinismC (joinEx p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) with determinismC⋆  ss₁ isV₁ ss₂ isV₂
 determinismC (joinEx p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) | refl = refl
 determinismC (joinEx p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
-determinismC (new p q) (new .p .q) = refl
+determinismC {s₁ = s₁} (new p q₁) (new .p q₂) rewrite store-unique s₁ q₁ q₂ = refl
 determinismC (writeCtx p s₁) (writeCtx .p s₂) rewrite determinismC s₁ s₂ = refl
-determinismC (writeCtx p (Pure ())) (write .p r)
-determinismC (write p r) (writeCtx .p (Pure ()))
-determinismC (write p i) (write .p .i) = refl
-determinismC (writeEx p) (writeEx .p) = refl
-determinismC (writeEx p) (writeCtx .p (Pure ()))
-determinismC (writeCtx p (Pure ())) (writeEx .p)
+determinismC (writeCtx p (Pure ())) (write .p q r)
+determinismC (write p q r) (writeCtx .p (Pure ()))
+determinismC (write p q₁ r₁) (write .p q₂ r₂) = refl
+determinismC (writeEx p q₁ r₁) (writeEx .p q₂ r₂) = refl
+determinismC (writeEx p q₁ r₁) (writeCtx .p (Pure ()))
+determinismC (writeCtx p (Pure ())) (writeEx .p q₁ r₁)
 determinismC (readCtx p s₁) (readCtx .p s₂) rewrite determinismC s₁ s₂ = refl
-determinismC (readCtx p (Pure ())) (read .p r)
-determinismC (read p i) (readCtx .p (Pure ()))
-determinismC (read p i) (read .p .i) = refl
+determinismC (readCtx p (Pure ())) (read .p q r)
+determinismC (read p q i) (readCtx .p (Pure ()))
+determinismC {s₁ = s₁} (read p q₁ r₁) (read .p q₂ r₂) rewrite store-unique s₁ q₁ q₂ | index-unique r₁ r₂ = refl
 determinismC (readEx p) (readEx .p) = refl
 determinismC (readEx p) (readCtx .p (Pure ()))
 determinismC (readCtx p (Pure ())) (readEx .p)
@@ -217,18 +218,18 @@ determinismS (join p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = 
 determinismS (join p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
 determinismS (joinEx p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) = determinismS⋆ ss₁ isV₁ ss₂ isV₂
 determinismS (joinEx p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
-determinismS (new p i) (new .p .i) = refl
+determinismS {s₁ = s} (new p q₁) (new .p q₂) rewrite store-unique s q₁ q₂ = refl
 determinismS (writeCtx p s₁) (writeCtx .p s₂) = determinismS s₁ s₂
-determinismS (writeCtx p (Pure ())) (write .p r)
-determinismS (write p r) (writeCtx .p (Pure ()))
-determinismS (write p i) (write .p .i) = refl
-determinismS (writeEx p) (writeEx .p) = refl
-determinismS (writeEx p) (writeCtx .p (Pure ()))
-determinismS (writeCtx p (Pure ())) (writeEx .p)
+determinismS (writeCtx p (Pure ())) (write .p q r)
+determinismS (write p q r) (writeCtx .p (Pure ()))
+determinismS {s₁ = s} (write p q₁ r₁) (write .p q₂ r₂) rewrite store-unique s q₁ q₂ | index-unique r₁ r₂ = refl
+determinismS (writeEx p q₁ r₁) (writeEx .p q₂ r₂) = refl
+determinismS (writeEx p q r) (writeCtx .p (Pure ()))
+determinismS (writeCtx p (Pure ())) (writeEx .p q r)
 determinismS (readCtx p s₁) (readCtx .p s₂) = determinismS s₁ s₂
-determinismS (readCtx p (Pure ())) (read .p r)
-determinismS (read p i) (readCtx .p (Pure ()))
-determinismS (read p i) (read .p .i) = refl
+determinismS (readCtx p (Pure ())) (read .p q r)
+determinismS (read p q r) (readCtx .p (Pure ()))
+determinismS (read p q₁ r₁) (read .p q₂ r₂) = refl
 determinismS (readEx p) (readEx .p) = refl
 determinismS (readEx p) (readCtx .p (Pure ()))
 determinismS (readCtx p (Pure ())) (readEx .p)
