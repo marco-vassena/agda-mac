@@ -72,6 +72,13 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Res lᵈ τ} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ IfTrue = IfTrue
 ε-dist⇝ {Res lᵈ τ} lₐ IfFalse = IfFalse
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx s) = fmapCtx (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ fmap with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ fmap | yes p = {!fmap!}
+ε-dist⇝ {Res lᵈ τ} lₐ fmap | no ¬p = {!fmap!}
+ε-dist⇝ {Res lᵈ τ} lₐ fmapEx  with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | yes p = fmapEx
+ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | no ¬p = {!fmap!}
 ε-dist⇝ {Res lᵈ τ} lₐ Hole = Hole
 ε-dist⇝ {Exception} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
 ε-dist⇝ {Exception} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta

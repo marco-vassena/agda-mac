@@ -67,6 +67,8 @@ open import Data.List as L hiding (drop)
 ε lₐ (Abs t) = Abs (ε lₐ t)
 ε lₐ (App f x) = App (ε lₐ f) (ε lₐ x)
 ε lₐ (If t Then t₁ Else t₂) = If (ε lₐ t) Then (ε lₐ t₁) Else (ε lₐ t₂)
+
+ε {Res lᵈ τ} lₐ (fmap f x) = fmap (ε lₐ f) (ε lₐ x)
 ε {Res lᵈ τ} lₐ (Res t) with lᵈ ⊑? lₐ
 ε {Res lᵈ τ} lₐ (Res t) | yes p = Res (ε lₐ t)
 ε {Res lᵈ τ} lₐ (Res t) | no ¬p = Res ∙
@@ -287,6 +289,8 @@ open import Data.List as L hiding (drop)
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
 ε-wken {Res x α} lₐ (If t Then t₁ Else t₂) p
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
+ε-wken {Res _ α} lₐ (fmap f x) p
+  rewrite ε-wken lₐ f p | ε-wken lₐ x p = refl
 ε-wken {Res lᵈ α} lₐ (Res t) p with lᵈ ⊑? lₐ
 ε-wken {Res lᵈ α} lₐ (Res t) p₁ | yes p
   rewrite ε-wken lₐ t p₁ = refl
@@ -380,6 +384,8 @@ open import Data.List as L hiding (drop)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
         ε-tm-subst {τ = Res l τ} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
+        ε-tm-subst {τ = Res l τ} Δ₁ Δ₂ x₁ (fmap t₁ t₂)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl          
         ε-tm-subst {τ = Res lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) with lᵈ ⊑? lₐ
         ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) | yes p
           rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl

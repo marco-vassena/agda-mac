@@ -49,6 +49,9 @@ mutual
 
     new : ∀ {α l h} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Ref h α))
 
+    -- Res l α is a functor
+    fmap : ∀ {l α β} -> Term Δ (α => β) -> Term Δ (Res l α) -> Term Δ (Res l β)
+
     -- Represent sensitive information that has been erased.
     ∙ : ∀ {{τ}} -> Term Δ τ
 
