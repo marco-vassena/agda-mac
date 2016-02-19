@@ -94,6 +94,20 @@ determinism⇝ CatchEx CatchEx = refl
 determinism⇝ (label p) (label .p) = refl
 determinism⇝ (unlabel p) (unlabel .p) = refl
 determinism⇝ (unlabelEx p) (unlabelEx .p) = refl
+determinism⇝ (relabelCtx p s₁) (relabelCtx .p s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (relabelCtx p ()) (relabel .p)
+determinism⇝ (relabelCtx p ()) (relabelEx .p)
+determinism⇝ (relabel p) (relabelCtx .p ())
+determinism⇝ (relabel p) (relabel .p) = refl
+determinism⇝ (relabelEx p) (relabelCtx .p ())
+determinism⇝ (relabelEx p) (relabelEx .p) = refl
+determinism⇝ (relabelCtx∙ p s₁) (relabelCtx∙ .p s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (relabelCtx∙ p ()) (relabel∙ .p)
+determinism⇝ (relabelCtx∙ p ()) (relabelEx∙ .p)
+determinism⇝ (relabel∙ p) (relabelCtx∙ .p ())
+determinism⇝ (relabel∙ p) (relabel∙ .p) = refl
+determinism⇝ (relabelEx∙ p) (relabelCtx∙ .p ())
+determinism⇝ (relabelEx∙ p) (relabelEx∙ .p) = refl
 determinism⇝ Hole Hole = refl
 
 determinismMixedC : ∀ {ls τ} {s₁ s₂ : Store ls} {c₁ c₂ c₃ : CTerm τ} -> 
@@ -119,6 +133,12 @@ determinismMixedC (unlabel p) (Pure x) = determinism⇝ (unlabel p) x
 determinismMixedC (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedC (unlabelEx p) (Pure x) = determinism⇝ (unlabelEx p) x
 determinismMixedC (unlabelEx p) (unlabelCtx .p (Pure ()))
+determinismMixedC (relabelCtx p s₂) (Pure x) = determinism⇝ (relabelCtx p s₂) x
+determinismMixedC (relabel p) (Pure s₂) = determinism⇝ (relabel p) s₂ 
+determinismMixedC (relabelEx p) (Pure s₂) = determinism⇝ (relabelEx p) s₂
+determinismMixedC (relabelCtx∙ p s₁) (Pure s₂) = determinism⇝ (relabelCtx∙ p s₁) s₂
+determinismMixedC (relabel∙ p) (Pure s₂) = determinism⇝ (relabel∙ p) s₂
+determinismMixedC (relabelEx∙ p) (Pure s₂) = determinism⇝ (relabelEx∙ p) s₂
 
 -- The small-step semantics for programs is deterministic.
 determinismC : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
@@ -200,6 +220,12 @@ determinismMixedS (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedS (unlabelEx p) (Pure x) = refl
 determinismMixedS (unlabelEx p) (unlabelCtx .p (Pure ()))
 determinismMixedS Hole (Pure Hole) = refl
+determinismMixedS (relabelCtx p s₁) (Pure s₂) = refl
+determinismMixedS (relabel p) (Pure s₂) = refl
+determinismMixedS (relabelEx p) (Pure s₂) = refl 
+determinismMixedS (relabelCtx∙ p s₁) (Pure s₂) = refl
+determinismMixedS (relabel∙ p) (Pure s₂) = refl
+determinismMixedS (relabelEx∙ p) (Pure s₂) = refl
 
 determinismS⋆ : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> IsValue c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₃ ∥ c₃ ⟩ -> IsValue c₃ -> s₂ ≡ s₃
