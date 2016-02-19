@@ -72,13 +72,36 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Res lᵈ τ} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ IfTrue = IfTrue
 ε-dist⇝ {Res lᵈ τ} lₐ IfFalse = IfFalse
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) = relabelCtx p (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel {l = l} p) with l ⊑? lₐ | lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel p₂) | yes p | yes p₁ = relabel p₂
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel p₁) | yes p | no ¬p = {!!} -- ⊥-elim (¬p (trans-⊑ {!!} p))
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel p₁) | no ¬p | yes p = {!!}
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel p) | no ¬p | no ¬p₁ = relabel p
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p) = {!!}
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p₁ s) | yes p = relabelCtx p₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) | no ¬p = relabelCtx∙ p (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel {l = l} p) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel {l = l} p₁) | yes p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel p₂) | yes p₁ | yes p = relabel p₂
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel p₁) | yes p | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel {l = l} p) | no ¬p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel p₁) | no ¬p | yes p = relabel∙ p₁
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel p) | no ¬p₁ | no ¬p = relabel∙ p
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx {l = l} p₁) | yes p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p₂) | yes p₁ | yes p = relabelEx p₂
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p₁) | yes p | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx {l = l} p) | no ¬p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p₁) | no ¬p | yes p = relabelEx∙ p₁
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p) | no ¬p₁ | no ¬p = relabel∙ p
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx∙ p s) = relabelCtx∙ p (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ {l = l} p₁) | yes p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p₂) | yes p₁ | yes p rewrite ε∙≡∙ {τ} {[]} lₐ = relabel∙ p₂
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p₁) | yes p | no ¬p rewrite ε∙≡∙ {τ} {[]} lₐ = relabel∙ p₁
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ {l = l} p) | no ¬p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p₁) | no ¬p | yes p = relabel∙ p₁
+ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p) | no ¬p₁ | no ¬p = relabel∙ p
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ {l = l} p) with lᵈ ⊑? lₐ | l ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ p₂) | yes p | yes p₁ rewrite ε∙≡∙ {τ} {[]} lₐ = relabelEx∙ p₂
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ p₁) | yes p | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ p₁) | no ¬p | yes p = relabelEx∙ p₁
+ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ p) | no ¬p | no ¬p₁ = relabel∙ p
 ε-dist⇝ {Res lᵈ τ} lₐ Hole = Hole
 ε-dist⇝ {Exception} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
 ε-dist⇝ {Exception} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta

@@ -22,9 +22,10 @@ wken (Mac t) p = Mac (wken t p)
 wken (Macₓ t) p = Macₓ (wken t p)
 wken (Res t) p = Res (wken t p)
 wken (Resₓ t) p = Resₓ (wken t p)
+wken (relabel x c) p = relabel x (wken c p)
+wken (relabel∙ x c) p = relabel∙ x (wken c p)
 wken (label x t) p = label x (wken t p)
 wken (unlabel x t) p = unlabel x (wken t p)
-wken (relabel x c) p = relabel x (wken c p)
 wken (join x t) p = join x (wken t p)
 wken zero p = zero
 wken (suc n) p = suc (wken n p)
@@ -60,9 +61,10 @@ tm-subst Δ₁ Δ₂ v (Mac t) = Mac (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (Macₓ t) = Macₓ (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (Res t) = Res (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (Resₓ t) = Resₓ (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (relabel p t) = relabel p (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (relabel∙ p t) = relabel∙ p (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (label x t) = label x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (unlabel x t) = unlabel x (tm-subst Δ₁ Δ₂ v t)
-tm-subst Δ₁ Δ₂ v (relabel p t) = relabel p (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (join x t) = join x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v zero = zero
 tm-subst Δ₁ Δ₂ v (suc n) = suc (tm-subst Δ₁ Δ₂ v n)
@@ -115,10 +117,15 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   relabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> relabel {α = α} p (Resₓ e) ⇝ Resₓ e
 
+  relabelCtx∙ : ∀ {l h α} {c₁ c₂ : CTerm (Res l α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> relabel∙ p c₁ ⇝ relabel∙ p c₂
+  
+  relabel∙ : ∀ {l h α} {c : CTerm α} -> (p : l ⊑ h) -> relabel∙ p (Res c) ⇝ Res ∙ 
+
+  relabelEx∙ : ∀ {l h α} {c : CTerm Exception} -> (p : l ⊑ h) -> relabel∙ {α = α} p (Resₓ c) ⇝ Res ∙ 
+
 
   -- Bullet reduces to itself. We need this rule because ∙ is not a value.
   Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
-
 
 
 -- A program is made of a labeled store and a closed term
