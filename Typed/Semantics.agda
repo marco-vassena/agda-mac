@@ -74,53 +74,59 @@ tm-subst Δ₁ Δ₂ v ∙ = ∙
 subst : ∀ {Δ α β} -> Term Δ α -> Term (α ∷ Δ) β -> Term Δ β
 subst {Δ} v t = tm-subst [] Δ v t
 
+mutual
 
-data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
+  data _⇩_  {τ : Ty} (t₁ t₂ : CTerm τ) : Set where
+    BigStep : t₁ ⇝⋆ t₂ -> IsValue t₂ -> t₁ ⇩ t₂
 
-  -- Reduces the function in an application
-  AppL : ∀ {α β} {c₁ c₂ : CTerm (α => β)} {x : CTerm α} -> c₁ ⇝ c₂ -> App c₁ x ⇝ App c₂ x
+  data _⇝⋆_ {τ : Ty} : CTerm τ -> CTerm τ -> Set where
+    [] : ∀ {t : CTerm τ} -> t ⇝⋆ t
+    _∷_ : ∀ {t₁ t₂ t₃ : CTerm τ} -> t₁ ⇝ t₂ -> t₂ ⇝⋆ t₃ -> t₁ ⇝⋆ t₃
+    
+  data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
-  -- Pushes a term in the environment
-  Beta : ∀ {α β} {t : Term (α ∷ []) β} {x : CTerm α} -> App (Abs t) x ⇝ subst x t
-  
-  IfCond : ∀ {τ} {c c' : CTerm Bool} {t e : CTerm τ} -> c ⇝ c' ->
-             (If c Then t Else e) ⇝ (If c' Then t Else e)
+    -- Reduces the function in an application
+    AppL : ∀ {α β} {c₁ c₂ : CTerm (α => β)} {x : CTerm α} -> c₁ ⇝ c₂ -> App c₁ x ⇝ App c₂ x
 
-  IfTrue : ∀ {τ} {t e : CTerm τ} -> (If True Then t Else e) ⇝ t
+    -- Pushes a term in the environment
+    Beta : ∀ {α β} {t : Term (α ∷ []) β} {x : CTerm α} -> App (Abs t) x ⇝ subst x t
 
-  IfFalse : ∀ {τ} {t e : CTerm τ} -> (If False Then t Else e) ⇝ e
+    IfCond : ∀ {τ} {c c' : CTerm Bool} {t e : CTerm τ} -> c ⇝ c' ->
+               (If c Then t Else e) ⇝ (If c' Then t Else e)
 
-  Return : ∀ {τ} {l : Label} {t : CTerm τ} -> Return t ⇝ Mac t
+    IfTrue : ∀ {τ} {t e : CTerm τ} -> (If True Then t Else e) ⇝ t
 
-  Throw : ∀ {l : Label}  {α : Ty} {e : CTerm Exception} -> Throw {{l}} {{α}} e ⇝ Macₓ e 
+    IfFalse : ∀ {τ} {t e : CTerm τ} -> (If False Then t Else e) ⇝ e
 
-  Bind : ∀ {l α β} {t : CTerm α} {k : CTerm (α => Mac l β)} -> (Mac t >>= k) ⇝ App k t
+    Return : ∀ {τ} {l : Label} {t : CTerm τ} -> Return t ⇝ Mac t
 
-  BindEx : ∀ {l α β} {e : CTerm Exception} {k : CTerm (α => Mac l β)} -> (Macₓ e >>= k) ⇝ Throw e
+    Throw : ∀ {l : Label}  {α : Ty} {e : CTerm Exception} -> Throw {{l}} {{α}} e ⇝ Macₓ e 
 
-  Catch : ∀ {l : Label} {α : Ty} {t : CTerm α} {h : CTerm (Exception => Mac l α)} ->
-            Catch (Mac t) h ⇝ (Return t)
+    Bind : ∀ {l α β} {t : CTerm α} {k : CTerm (α => Mac l β)} -> (Mac t >>= k) ⇝ App k t
 
-  CatchEx : ∀ {l : Label} {α : Ty} {e : CTerm Exception} {h : CTerm (Exception => Mac l α)} ->
-              Catch (Macₓ e) h ⇝ App h e
+    BindEx : ∀ {l α β} {e : CTerm Exception} {k : CTerm (α => Mac l β)} -> (Macₓ e >>= k) ⇝ Throw e
 
-  label : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> label p t ⇝ Return (Res t)
+    Catch : ∀ {l : Label} {α : Ty} {t : CTerm α} {h : CTerm (Exception => Mac l α)} ->
+              Catch (Mac t) h ⇝ (Return t)
 
-  unlabel : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> unlabel p (Res t) ⇝ Return t
+    CatchEx : ∀ {l : Label} {α : Ty} {e : CTerm Exception} {h : CTerm (Exception => Mac l α)} ->
+                Catch (Macₓ e) h ⇝ App h e
 
-  unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
+    label : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> label p t ⇝ Return (Res t)
 
-  -- To make Res a secure functor we need a more strict semantics.
-  fmapCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> fmap f₁ x ⇝ fmap f₂ x
+    unlabel : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> unlabel p (Res t) ⇝ Return t
 
-  fmapCtx₂ : ∀ {l α β} {t : Term (α ∷ []) β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap (Abs t) x₁ ⇝ fmap (Abs t) x₂
+    unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
 
-  fmap : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap (Abs t) (Res x) ⇝ (Res (subst x t))
+    -- To make Res a secure functor we need a more strict semantics.
+    fmapCtx : ∀ {l α β} {f : CTerm (α => β)} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap f x₁ ⇝ fmap f x₂
 
-  fmapEx : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap (Abs t) (Resₓ {{l}} e) ⇝ (Resₓ e)
+    fmap : ∀ {l α β} {f : CTerm (α => β)} {t : Term (α ∷ []) β} {x : CTerm α} -> f ⇩ (Abs t) -> fmap f (Res x) ⇝ (Res (subst x t))
 
-  -- Bullet reduces to itself. We need this rule because ∙ is not a value.
-  Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
+    fmapEx : ∀ {l α β} {f : CTerm (α => β)} {e : CTerm Exception} -> fmap f (Resₓ {{l}} e) ⇝ (Resₓ e)
+
+    -- Bullet reduces to itself. We need this rule because ∙ is not a value.
+    Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
 
 
 
