@@ -110,11 +110,14 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
 
-  fmapCtx : ∀ {l α β} {f : CTerm (α => β)} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap f x₁ ⇝ fmap f x₂
+  -- To make Res a secure functor we need a more strict semantics.
+  fmapCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> fmap f₁ x ⇝ fmap f₂ x
 
-  fmap : ∀ {l α β} {f : CTerm (α => β)} {x : CTerm α} -> fmap f (Res x) ⇝ (Res (App f x))
+  fmapCtx₂ : ∀ {l α β} {t : Term (α ∷ []) β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap (Abs t) x₁ ⇝ fmap (Abs t) x₂
 
-  fmapEx : ∀ {l α β} {f : CTerm (α => β)} {e : CTerm Exception} -> fmap f (Resₓ {{l}} e) ⇝ (Resₓ e)
+  fmap : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap (Abs t) (Res x) ⇝ (Res (subst x t))
+
+  fmapEx : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap (Abs t) (Resₓ {{l}} e) ⇝ (Resₓ e)
 
   -- Bullet reduces to itself. We need this rule because ∙ is not a value.
   Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
