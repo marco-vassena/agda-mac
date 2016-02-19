@@ -72,8 +72,31 @@ valueNotRedex .(Resₓ e) (Resₓ e) (Step (Pure ()))
 valueNotRedex (suc n') (suc n) (Step (Pure ()))
 valueNotRedex .zero zero (Step (Pure ()))
 
+data PureRedex {τ : Ty} (t : CTerm τ) : Set where
+  Step : ∀ {t' : CTerm τ} -> t ⇝ t' -> PureRedex t
+
+valueNotRedex⇝ : ∀ {τ} {c₁ : CTerm τ} -> IsValue c₁ -> ¬ (PureRedex c₁)
+valueNotRedex⇝ （） (Step ())
+valueNotRedex⇝ True (Step ())
+valueNotRedex⇝ False (Step ())
+valueNotRedex⇝ (Abs t) (Step ())
+valueNotRedex⇝ ξ (Step ())
+valueNotRedex⇝ (Mac t) (Step ())
+valueNotRedex⇝ (Macₓ e) (Step ())
+valueNotRedex⇝ (Res t) (Step ())
+valueNotRedex⇝ (Resₓ e) (Step ())
+valueNotRedex⇝ zero (Step ())
+valueNotRedex⇝ (suc isV) (Step ())
+
 -- The pure small step semantics is deterministic.
 determinism⇝ : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> c₁ ⇝ c₃ -> c₂ ≡ c₃
+
+determinism⇝⋆ : ∀ {τ} {t₁ t₂ t₃ : CTerm τ} -> t₁ ⇝⋆ t₂ -> IsValue t₂ -> t₁ ⇝⋆ t₃ -> IsValue t₃ -> t₂ ≡ t₃
+determinism⇝⋆ [] isV₂ [] isV₃ = refl
+determinism⇝⋆ [] isV₂ (x ∷ ss₂) isV₃ = ⊥-elim (valueNotRedex⇝ isV₂ (Step x))
+determinism⇝⋆ (x ∷ ss₁) isV₂ [] isV₃ = ⊥-elim (valueNotRedex⇝ isV₃ (Step x))
+determinism⇝⋆ (s₁ ∷ ss₁) isV₂ (s₂ ∷ ss₂) isV₃ rewrite determinism⇝ s₁ s₂ | determinism⇝⋆ ss₁ isV₂ ss₂ isV₃ = refl
+
 determinism⇝ (AppL s₁) (AppL s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (AppL ()) Beta
 determinism⇝ Beta (AppL ())
@@ -94,6 +117,14 @@ determinism⇝ CatchEx CatchEx = refl
 determinism⇝ (label p) (label .p) = refl
 determinism⇝ (unlabel p) (unlabel .p) = refl
 determinism⇝ (unlabelEx p) (unlabelEx .p) = refl
+determinism⇝ (fmapCtx s₁) (fmapCtx s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (fmap x₁) (fmapCtx ())
+determinism⇝ fmapEx (fmapCtx ())
+determinism⇝ (fmapCtx ()) (fmap bs)
+determinism⇝ (fmap (BigStep ss₁ (Abs t))) (fmap (BigStep ss₂ (Abs t₁))) with determinism⇝⋆ ss₁ (Abs t) ss₂ (Abs t₁)
+determinism⇝ (fmap (BigStep ss₁ (Abs t))) (fmap (BigStep ss₂ (Abs .t))) | refl = refl
+determinism⇝ (fmapCtx ()) fmapEx
+determinism⇝ fmapEx fmapEx = refl
 determinism⇝ Hole Hole = refl
 
 determinismMixedC : ∀ {ls τ} {s₁ s₂ : Store ls} {c₁ c₂ c₃ : CTerm τ} -> 
@@ -119,6 +150,15 @@ determinismMixedC (unlabel p) (Pure x) = determinism⇝ (unlabel p) x
 determinismMixedC (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedC (unlabelEx p) (Pure x) = determinism⇝ (unlabelEx p) x
 determinismMixedC (unlabelEx p) (unlabelCtx .p (Pure ()))
+determinismMixedC (fmapCtx s₁) (Pure (fmapCtx s₂)) rewrite determinism⇝ s₁ s₂ = refl
+determinismMixedC (fmapCtx ()) (Pure (fmap bs))
+determinismMixedC (fmapCtx ()) (Pure fmapEx)
+determinismMixedC (fmap bs) (Pure (fmapCtx ()))
+determinismMixedC (fmap (BigStep ss₁ isV₂)) (Pure (fmap (BigStep ss₂ isV₃))) with determinism⇝⋆ ss₁ isV₂ ss₂ isV₃
+determinismMixedC (fmap (BigStep ss₁ isV₂)) (Pure (fmap (BigStep ss₂ isV₃))) | refl = refl
+determinismMixedC fmapEx (Pure (fmapCtx ()))
+determinismMixedC fmapEx (Pure fmapEx) = refl
+
 
 -- The small-step semantics for programs is deterministic.
 determinismC : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
@@ -200,6 +240,9 @@ determinismMixedS (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedS (unlabelEx p) (Pure x) = refl
 determinismMixedS (unlabelEx p) (unlabelCtx .p (Pure ()))
 determinismMixedS Hole (Pure Hole) = refl
+determinismMixedS (fmapCtx s₂) (Pure x) = refl
+determinismMixedS (fmap bs) (Pure x₁) = refl
+determinismMixedS fmapEx (Pure x) = refl
 
 determinismS⋆ : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> IsValue c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₃ ∥ c₃ ⟩ -> IsValue c₃ -> s₂ ≡ s₃
