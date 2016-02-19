@@ -24,6 +24,7 @@ wken (Res t) p = Res (wken t p)
 wken (Resₓ t) p = Resₓ (wken t p)
 wken (label x t) p = label x (wken t p)
 wken (unlabel x t) p = unlabel x (wken t p)
+wken (relabel x c) p = relabel x (wken c p)
 wken (join x t) p = join x (wken t p)
 wken zero p = zero
 wken (suc n) p = suc (wken n p)
@@ -61,6 +62,7 @@ tm-subst Δ₁ Δ₂ v (Res t) = Res (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (Resₓ t) = Resₓ (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (label x t) = label x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (unlabel x t) = unlabel x (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (relabel p t) = relabel p (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (join x t) = join x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v zero = zero
 tm-subst Δ₁ Δ₂ v (suc n) = suc (tm-subst Δ₁ Δ₂ v n)
@@ -71,7 +73,6 @@ tm-subst Δ₁ Δ₂ v ∙ = ∙
 
 subst : ∀ {Δ α β} -> Term Δ α -> Term (α ∷ Δ) β -> Term Δ β
 subst {Δ} v t = tm-subst [] Δ v t
-
 
 data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
@@ -107,6 +108,13 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   unlabel : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> unlabel p (Res t) ⇝ Return t
 
   unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
+
+  relabelCtx : ∀ {l h α} {c₁ c₂ : CTerm (Res l α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> relabel p c₁ ⇝ relabel p c₂
+
+  relabel : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> relabel p (Res t) ⇝ Res t
+
+  relabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> relabel {α = α} p (Resₓ e) ⇝ Resₓ e
+
 
   -- Bullet reduces to itself. We need this rule because ∙ is not a value.
   Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
