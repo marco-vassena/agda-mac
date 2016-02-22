@@ -33,6 +33,7 @@ wken (read x t) p = read x (wken t p)
 wken (write x t t₁) p = write x (wken t p) (wken t₁ p)
 wken (new x t) p = new x (wken t p)
 wken (fmap f x) p = fmap (wken f p) (wken x p)
+wken (fmap∙ f x) p = fmap∙ (wken f p) (wken x p)
 wken ∙ p = ∙
 
 _↑¹ : ∀ {α β Δ} -> Term Δ α -> Term (β ∷ Δ) α
@@ -73,6 +74,7 @@ tm-subst Δ₁ Δ₂ v (read x t) = read x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (write x t t₁) = write x (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
 tm-subst Δ₁ Δ₂ v (new x t) = new x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (fmap f x) = fmap (tm-subst Δ₁ Δ₂ v f) (tm-subst Δ₁ Δ₂ v x)
+tm-subst Δ₁ Δ₂ v (fmap∙ f x) = fmap∙ (tm-subst Δ₁ Δ₂ v f) (tm-subst Δ₁ Δ₂ v x)
 tm-subst Δ₁ Δ₂ v ∙ = ∙
 
 subst : ∀ {Δ α β} -> Term Δ α -> Term (α ∷ Δ) β -> Term Δ β
@@ -80,13 +82,6 @@ subst {Δ} v t = tm-subst [] Δ v t
 
 mutual
 
-  data _⇩_  {τ : Ty} (t₁ t₂ : CTerm τ) : Set where
-    BigStep : t₁ ⇝⋆ t₂ -> IsValue t₂ -> t₁ ⇩ t₂
-
-  data _⇝⋆_ {τ : Ty} : CTerm τ -> CTerm τ -> Set where
-    [] : ∀ {t : CTerm τ} -> t ⇝⋆ t
-    _∷_ : ∀ {t₁ t₂ t₃ : CTerm τ} -> t₁ ⇝ t₂ -> t₂ ⇝⋆ t₃ -> t₁ ⇝⋆ t₃
-    
   data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
     -- Reduces the function in an application
@@ -123,11 +118,20 @@ mutual
     unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
 
     -- To make Res a secure functor we need a more strict semantics.
-    fmapCtx : ∀ {l α β} {f : CTerm (α => β)} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap f x₁ ⇝ fmap f x₂
+    fmapCtx₁ : ∀ {l α β} {f : CTerm (α => β)} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap f x₁ ⇝ fmap f x₂
 
-    fmap : ∀ {l α β} {f : CTerm (α => β)} {t : Term (α ∷ []) β} {x : CTerm α} -> f ⇩ (Abs t) -> fmap f (Res x) ⇝ (Res (subst x t))
+    fmapCtx₂ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm α} -> f₁ ⇝ f₂ -> fmap f₁ (Res x) ⇝ fmap f₂ (Res x)
+
+    fmap : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap (Abs t) (Res x) ⇝ (Res (subst x t))
 
     fmapEx : ∀ {l α β} {f : CTerm (α => β)} {e : CTerm Exception} -> fmap f (Resₓ {{l}} e) ⇝ (Resₓ e)
+
+    -- Not sure if this is enough
+    fmap∙ : ∀ {l α β} {f : CTerm (α => β)} {x : CTerm (Res l α)} -> fmap∙ f x ⇝ (Res ∙)
+
+    fmapCtx₁∙ : ∀ {l α β} {f : CTerm (α => β)} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap∙ f x₁ ⇝ fmap∙ f x₂
+
+    fmapCtx₂∙ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm α} -> f₁ ⇝ f₂ -> fmap∙ f₁ (Res x) ⇝ fmap∙ f₂ (Res x)    
 
     -- Bullet reduces to itself. We need this rule because ∙ is not a value.
     Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙

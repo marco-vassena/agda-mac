@@ -69,7 +69,8 @@ open import Data.List as L hiding (drop)
 ε lₐ (If t Then t₁ Else t₂) = If (ε lₐ t) Then (ε lₐ t₁) Else (ε lₐ t₂)
 ε {Res lᵈ τ} lₐ (fmap f x) with lᵈ ⊑? lₐ
 ε {Res lᵈ τ} lₐ (fmap f x) | yes p = fmap (ε lₐ f) (ε lₐ x)
-ε {Res lᵈ τ} lₐ (fmap f x) | no ¬p = fmap (Abs ∙) (ε lₐ x)
+ε {Res lᵈ τ} lₐ (fmap f x) | no ¬p = fmap∙ (ε lₐ f) (ε lₐ x)
+ε {Res lᵈ τ} lₐ (fmap∙ f x) = fmap∙ (ε lₐ f) (ε lₐ x)
 ε {Res lᵈ τ} lₐ (Res t) with lᵈ ⊑? lₐ
 ε {Res lᵈ τ} lₐ (Res t) | yes p = Res (ε lₐ t)
 ε {Res lᵈ τ} lₐ (Res t) | no ¬p = Res ∙
@@ -300,7 +301,8 @@ open import Data.List as L hiding (drop)
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
 ε-wken {Res lᵈ α} lₐ (fmap f x) p with lᵈ ⊑? lₐ
 ε-wken {Res lᵈ α} lₐ (fmap f x) p₁ | yes p rewrite ε-wken lₐ f p₁ | ε-wken lₐ x p₁ = refl
-ε-wken {Res lᵈ α} lₐ (fmap f x) p | no ¬p rewrite ε-wken lₐ x p = refl
+ε-wken {Res lᵈ α} lₐ (fmap f x) p | no ¬p rewrite ε-wken lₐ f p | ε-wken lₐ x p = refl
+ε-wken {Res lᵈ α} lₐ (fmap∙ f x) p rewrite ε-wken lₐ f p | ε-wken lₐ x p = refl
 ε-wken {Res lᵈ α} lₐ (Res t) p with lᵈ ⊑? lₐ
 ε-wken {Res lᵈ α} lₐ (Res t) p₁ | yes p
   rewrite ε-wken lₐ t p₁ = refl
@@ -401,7 +403,8 @@ open import Data.List as L hiding (drop)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
         ε-tm-subst {τ = Res l τ} Δ₁ Δ₂ x₁ (fmap t₁ t₂) with l ⊑? lₐ
         ε-tm-subst {α} {Res l τ} Δ₁ Δ₂ x₁ (fmap t₁ t₂) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
-        ε-tm-subst {α} {Res l τ} Δ₁ Δ₂ x₁ (fmap t₁ t₂) | no ¬p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-tm-subst {α} {Res l τ} Δ₁ Δ₂ x₁ (fmap t₁ t₂) | no ¬p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
+        ε-tm-subst {α} {Res l τ} Δ₁ Δ₂ x₁ (fmap∙ t₁ t₂) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
         ε-tm-subst {τ = Res lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) with lᵈ ⊑? lₐ
         ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) | yes p
           rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl

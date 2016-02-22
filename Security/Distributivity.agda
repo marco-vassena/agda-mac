@@ -45,10 +45,6 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-Mac-dist⇝ lₐ (yes p) Hole = Hole
 ε-Mac-dist⇝ {c₁ = c₁} {c₂} lₐ (no ¬p) s rewrite ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p = Hole
 
-ε-dist⇝⋆ : ∀ {τ} {t₁ t₂ : CTerm τ} -> (lₐ : Label) -> t₁ ⇝⋆ t₂ -> ε lₐ t₁ ⇝⋆ ε lₐ t₂
-ε-dist⇝⋆ lₐ [] = []
-ε-dist⇝⋆ lₐ (x ∷ ss) = (ε-dist⇝ lₐ x) ∷ (ε-dist⇝⋆ lₐ ss)
-
 -- This proof is repetitive because, even though the erasure
 -- function is defined with a default case for all non Mac lᵈ τ types
 -- reasoning requires to explicitly pattern match on each of them.
@@ -76,23 +72,33 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Res lᵈ τ} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ IfTrue = IfTrue
 ε-dist⇝ {Res lᵈ τ} lₐ IfFalse = IfFalse
-ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx s) with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx s) | yes p = fmapCtx (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx s) | no ¬p = fmapCtx (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ τ} lₐ (fmap bs) with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (fmap bs) | yes p with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (fmap {t = t} {x = x} (BigStep ss isV)) | yes p₁ | yes p rewrite sym (ε-subst lₐ x t) = fmap (BigStep (ε-dist⇝⋆ lₐ ss) (Abs (ε lₐ t)))
-ε-dist⇝ {Res lᵈ τ} lₐ (fmap bs) | yes p | no ¬p = ⊥-elim (¬p p)
-ε-dist⇝ {Res lᵈ τ} lₐ (fmap bs) | no ¬p with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (fmap bs) | no ¬p | yes p = ⊥-elim (¬p p)
-ε-dist⇝ {Res lᵈ τ} lₐ (fmap bs) | no ¬p₁ | no ¬p = fmap (BigStep [] (Abs ∙))
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | yes p = fmapCtx₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | no ¬p = fmapCtx₁∙ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | yes p₁ | yes p = fmapCtx₂ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | yes p | no ¬p = ⊥-elim (¬p p) 
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | no ¬p₁ | no ¬p = fmapCtx₂∙ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ fmap with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ fmap | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (fmap {t = t} {x = x}) | yes p₁ | yes p rewrite sym (ε-subst lₐ x t) = fmap
+ε-dist⇝ {Res lᵈ τ} lₐ fmap | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ fmap | no ¬p = fmap∙
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx  with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | yes p with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | yes p₁ | yes p = fmapEx
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | yes p | no ¬p = ⊥-elim (¬p p)
-ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | no ¬p with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | no ¬p | yes p = ⊥-elim (¬p p)
-ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | no ¬p₁ | no ¬p = fmap (BigStep [] (Abs ∙))
+ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | no ¬p = fmap∙
+ε-dist⇝ {Res lᵈ τ} lₐ fmap∙ with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ fmap∙ | yes p rewrite ε∙≡∙ {τ} {[]} lₐ = fmap∙
+ε-dist⇝ {Res lᵈ τ} lₐ fmap∙ | no ¬p = fmap∙
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁∙ s) = fmapCtx₁∙ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂∙ s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂∙ s) | yes p = fmapCtx₂∙ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂∙ s) | no ¬p = fmapCtx₂∙ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p₁ s) | yes p = relabelCtx p₁ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) | no ¬p = relabelCtx∙ p (ε-dist⇝ lₐ s)

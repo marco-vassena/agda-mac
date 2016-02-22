@@ -58,6 +58,8 @@ mutual
     -- Res l α is a functor
     fmap : ∀ {l α β} -> Term Δ (α => β) -> Term Δ (Res l α) -> Term Δ (Res l β)
 
+    -- This is used to avoid a context sensitive erasure in fmap
+    fmap∙  : ∀ {l α β} -> Term Δ (α => β) -> Term Δ (Res l α) -> Term Δ (Res l β)
     -- Represent sensitive information that has been erased.
     ∙ : ∀ {{τ}} -> Term Δ τ
 
