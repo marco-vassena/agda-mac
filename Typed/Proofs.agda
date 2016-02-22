@@ -91,12 +91,6 @@ valueNotRedex⇝ (suc isV) (Step ())
 -- The pure small step semantics is deterministic.
 determinism⇝ : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> c₁ ⇝ c₃ -> c₂ ≡ c₃
 
-determinism⇝⋆ : ∀ {τ} {t₁ t₂ t₃ : CTerm τ} -> t₁ ⇝⋆ t₂ -> IsValue t₂ -> t₁ ⇝⋆ t₃ -> IsValue t₃ -> t₂ ≡ t₃
-determinism⇝⋆ [] isV₂ [] isV₃ = refl
-determinism⇝⋆ [] isV₂ (x ∷ ss₂) isV₃ = ⊥-elim (valueNotRedex⇝ isV₂ (Step x))
-determinism⇝⋆ (x ∷ ss₁) isV₂ [] isV₃ = ⊥-elim (valueNotRedex⇝ isV₃ (Step x))
-determinism⇝⋆ (s₁ ∷ ss₁) isV₂ (s₂ ∷ ss₂) isV₃ rewrite determinism⇝ s₁ s₂ | determinism⇝⋆ ss₁ isV₂ ss₂ isV₃ = refl
-
 determinism⇝ (AppL s₁) (AppL s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (AppL ()) Beta
 determinism⇝ Beta (AppL ())
@@ -117,14 +111,27 @@ determinism⇝ CatchEx CatchEx = refl
 determinism⇝ (label p) (label .p) = refl
 determinism⇝ (unlabel p) (unlabel .p) = refl
 determinism⇝ (unlabelEx p) (unlabelEx .p) = refl
-determinism⇝ (fmapCtx s₁) (fmapCtx s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (fmap x₁) (fmapCtx ())
-determinism⇝ fmapEx (fmapCtx ())
-determinism⇝ (fmapCtx ()) (fmap bs)
-determinism⇝ (fmap (BigStep ss₁ (Abs t))) (fmap (BigStep ss₂ (Abs t₁))) with determinism⇝⋆ ss₁ (Abs t) ss₂ (Abs t₁)
-determinism⇝ (fmap (BigStep ss₁ (Abs t))) (fmap (BigStep ss₂ (Abs .t))) | refl = refl
-determinism⇝ (fmapCtx ()) fmapEx
+determinism⇝ (fmapCtx₁ s₁) (fmapCtx₁ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (fmapCtx₂ s₁) (fmapCtx₂ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (fmapCtx₁ ()) (fmapCtx₂ s₂) 
+determinism⇝ (fmapCtx₂ s₁) (fmapCtx₁ ()) 
+determinism⇝ fmap (fmapCtx₁ ())
+determinism⇝ fmap (fmapCtx₂ ())
+determinism⇝ fmap fmap = refl
+determinism⇝ fmapEx (fmapCtx₁ ())
 determinism⇝ fmapEx fmapEx = refl
+determinism⇝ (fmapCtx₁ ()) fmap
+determinism⇝ (fmapCtx₂ ()) fmap
+determinism⇝ (fmapCtx₁ ()) fmapEx
+determinism⇝ (fmapCtx₁∙ ()) (fmapCtx₂∙ s₂)
+determinism⇝ (fmapCtx₂∙ s₁) (fmapCtx₁∙ ())
+determinism⇝ (fmapCtx₁∙ s₁) (fmapCtx₁∙ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (fmapCtx₂∙ s₁) (fmapCtx₂∙ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ fmap∙ fmap∙ = refl
+determinism⇝ fmap∙ (fmapCtx₁∙ ())
+determinism⇝ fmap∙ (fmapCtx₂∙ ())
+determinism⇝ (fmapCtx₁∙ ()) fmap∙
+determinism⇝ (fmapCtx₂∙ ()) fmap∙
 determinism⇝ (relabelCtx p s₁) (relabelCtx .p s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (relabelCtx p ()) (relabel .p)
 determinism⇝ (relabelCtx p ()) (relabelEx .p)
@@ -164,14 +171,14 @@ determinismMixedC (unlabel p) (Pure x) = determinism⇝ (unlabel p) x
 determinismMixedC (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedC (unlabelEx p) (Pure x) = determinism⇝ (unlabelEx p) x
 determinismMixedC (unlabelEx p) (unlabelCtx .p (Pure ()))
-determinismMixedC (fmapCtx s₁) (Pure (fmapCtx s₂)) rewrite determinism⇝ s₁ s₂ = refl
-determinismMixedC (fmapCtx ()) (Pure (fmap bs))
-determinismMixedC (fmapCtx ()) (Pure fmapEx)
-determinismMixedC (fmap bs) (Pure (fmapCtx ()))
-determinismMixedC (fmap (BigStep ss₁ isV₂)) (Pure (fmap (BigStep ss₂ isV₃))) with determinism⇝⋆ ss₁ isV₂ ss₂ isV₃
-determinismMixedC (fmap (BigStep ss₁ isV₂)) (Pure (fmap (BigStep ss₂ isV₃))) | refl = refl
-determinismMixedC fmapEx (Pure (fmapCtx ()))
-determinismMixedC fmapEx (Pure fmapEx) = refl
+determinismMixedC (fmapCtx₁ s₁) (Pure s₂) = determinism⇝ (fmapCtx₁ s₁) s₂
+determinismMixedC (fmapCtx₂ s₁) (Pure s₂) = determinism⇝ (fmapCtx₂ s₁) s₂
+determinismMixedC fmap (Pure s₂) = determinism⇝ fmap s₂
+determinismMixedC fmapEx (Pure s₂) = determinism⇝ fmapEx s₂
+determinismMixedC (fmapCtx₁∙ s₁) (Pure s₂) = determinism⇝ (fmapCtx₁∙ s₁) s₂
+determinismMixedC (fmapCtx₂∙ s₁) (Pure s₂) = determinism⇝ (fmapCtx₂∙ s₁) s₂
+determinismMixedC fmap∙ (Pure s₂) = determinism⇝ fmap∙ s₂
+-- determinismMixedC fmapEx∙ (Pure s₂) = determinism⇝ fmapEx∙ s₂
 determinismMixedC (relabelCtx p s₂) (Pure x) = determinism⇝ (relabelCtx p s₂) x
 determinismMixedC (relabel p) (Pure s₂) = determinism⇝ (relabel p) s₂ 
 determinismMixedC (relabelEx p) (Pure s₂) = determinism⇝ (relabelEx p) s₂
@@ -259,15 +266,19 @@ determinismMixedS (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedS (unlabelEx p) (Pure x) = refl
 determinismMixedS (unlabelEx p) (unlabelCtx .p (Pure ()))
 determinismMixedS Hole (Pure Hole) = refl
-determinismMixedS (fmapCtx s₂) (Pure x) = refl
-determinismMixedS (fmap bs) (Pure x₁) = refl
-determinismMixedS fmapEx (Pure x) = refl
 determinismMixedS (relabelCtx p s₁) (Pure s₂) = refl
 determinismMixedS (relabel p) (Pure s₂) = refl
 determinismMixedS (relabelEx p) (Pure s₂) = refl 
 determinismMixedS (relabelCtx∙ p s₁) (Pure s₂) = refl
 determinismMixedS (relabel∙ p) (Pure s₂) = refl
 determinismMixedS (relabelEx∙ p) (Pure s₂) = refl
+determinismMixedS fmap (Pure x₁) = refl
+determinismMixedS fmapEx (Pure x) = refl
+determinismMixedS (fmapCtx₁ s₁) (Pure s₂) = refl
+determinismMixedS (fmapCtx₂ s₁) (Pure s₂) = refl
+determinismMixedS fmap∙  (Pure s₂) = refl
+determinismMixedS (fmapCtx₁∙ s₁) (Pure s₂) = refl
+determinismMixedS (fmapCtx₂∙ s₁) (Pure s₂) = refl
 
 determinismS⋆ : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> IsValue c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₃ ∥ c₃ ⟩ -> IsValue c₃ -> s₂ ≡ s₃
