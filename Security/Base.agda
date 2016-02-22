@@ -79,6 +79,14 @@ open import Data.List as L hiding (drop)
 -- because you would need to be in a high computation to unlabel them,
 -- which would get collapsed.
 ε {Res lᵈ τ} lₐ (Resₓ t) | no ¬p = Res ∙
+ε {Res lᵈ τ} lₐ (relabel p t) with lᵈ ⊑? lₐ
+ε {Res lᵈ τ} lₐ (relabel p₁ t) | yes p = relabel p₁ (ε lₐ t)
+ε {Res lᵈ τ} lₐ (relabel p t) | no ¬p = relabel∙ p (ε lₐ t)
+ε {Res lᵈ τ} lₐ (relabel∙ p t) = relabel∙ p (ε lₐ t)
+-- I don't think we need to distinguish here
+-- with lᵈ ⊑? lₐ
+-- ε {Res lᵈ τ} lₐ (relabel∙ p₁ t) | yes p = relabel p₁ (ε lₐ t)
+-- ε {Res lᵈ τ} lₐ (relabel∙ p t) | no ¬p = relabel∙ p (ε lₐ t)
 ε lₐ ξ = ξ
 ε {Nat} lₐ zero = zero
 ε {Nat} lₐ (suc n) = suc (ε lₐ n)
@@ -301,6 +309,10 @@ open import Data.List as L hiding (drop)
 ε-wken {Res lᵈ α} lₐ (Resₓ t) p₁ | yes p
   rewrite ε-wken lₐ t p₁ = refl
 ε-wken {Res lᵈ α} lₐ (Resₓ t) p | no ¬p = refl
+ε-wken {Res lᵈ α} lₐ (relabel x t) p with lᵈ ⊑? lₐ
+ε-wken {Res lᵈ α} lₐ (relabel x t) p₁ | yes p rewrite ε-wken lₐ t p₁ = refl
+ε-wken {Res lᵈ α} lₐ (relabel x t) p | no ¬p rewrite ε-wken lₐ t p = refl
+ε-wken {Res lᵈ α} lₐ (relabel∙ x t) p rewrite ε-wken lₐ t p = refl
 ε-wken {Res x α} lₐ ∙ p = refl
 ε-wken {Exception} lₐ (Var x) p = refl
 ε-wken {Exception} lₐ (App t t₁) p
@@ -326,6 +338,7 @@ open import Data.List as L hiding (drop)
 
         ε-Mac-tm-subst : ∀ {lᵈ α  τ} (Δ₁ Δ₂ : Context) (x : Term Δ₂ α) (t : Term (Δ₁ ++ L.[ α ] ++ Δ₂) (Mac lᵈ τ)) (p : Dec (lᵈ ⊑ lₐ)) ->
                          tm-subst Δ₁ Δ₂ (ε lₐ x) (ε-Mac lₐ p t) ≡ ε-Mac lₐ p (tm-subst Δ₁ Δ₂ x t)
+
 
         ε-var-subst : ∀ {α β} (Δ₁ Δ₂ : Context) (x : Term Δ₂ α) -> (p : β ∈ (Δ₁ ++ L.[ α ] ++ Δ₂)) ->
                       var-subst Δ₁ Δ₂ (ε lₐ x) p ≡ ε lₐ (var-subst Δ₁ Δ₂ x p)
@@ -397,6 +410,13 @@ open import Data.List as L hiding (drop)
         ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) | yes p
           rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl
         ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (Resₓ t₁) | no ¬p = refl
+        ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (relabel x t) with lᵈ ⊑? lₐ
+        ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (relabel x₁ t₁) | yes p
+          rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl
+        ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (relabel x₁ t₁) | no ¬p
+          rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl
+        ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (relabel∙ x t)
+          rewrite ε-tm-subst Δ₁ Δ₂ x₂ t = refl
         ε-tm-subst {τ = Res x₁ τ} Δ₁ Δ₂ x₂ ∙ = refl
         ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ (Var x₂) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₂ = refl
         ε-tm-subst {τ = Exception} Δ₁ Δ₂ x₁ (App t₁ t₂)

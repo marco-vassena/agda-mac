@@ -34,6 +34,12 @@ mutual
     Res : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Res l α)
     Resₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Res l α)
 
+    -- It is fine to strenghten the level of a labeled resource
+    relabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Res h α)
+
+    -- This is used to avoid a context sensitive erasure in relabel
+    relabel∙  : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Res h α)
+
     label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Res h α))
     unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Mac h α)
 
