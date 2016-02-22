@@ -118,23 +118,23 @@ mutual
     unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
 
     -- To make Res a secure functor we need a more strict semantics.
-    fmapCtx₁ : ∀ {l α β} {f : CTerm (α => β)} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap f x₁ ⇝ fmap f x₂
+    -- In particular to have distributivity we need a strict function application, but interestingly
+    -- we need strictness in the function also for Resₓ.
+    fmapCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm α} -> f₁ ⇝ f₂ -> fmap f₁ (Res x) ⇝ fmap f₂ (Res x)
 
-    fmapCtx₂ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm α} -> f₁ ⇝ f₂ -> fmap f₁ (Res x) ⇝ fmap f₂ (Res x)
+    fmapCtx₂ : ∀ {l α β} {t : Term (α ∷ []) β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap (Abs t) x₁ ⇝ fmap (Abs t) x₂
 
     fmap : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap (Abs t) (Res x) ⇝ (Res (subst x t))
 
-    fmapEx : ∀ {l α β} {f : CTerm (α => β)} {e : CTerm Exception} -> fmap f (Resₓ {{l}} e) ⇝ (Resₓ e)
+    fmapEx : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap (Abs t) (Resₓ {{l}} e) ⇝ (Resₓ e)
 
-    fmapCtx₁∙ : ∀ {l α β} {f : CTerm (α => β)} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap∙ f x₁ ⇝ fmap∙ f x₂
+    fmapCtx₁∙ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> fmap∙ f₁ x ⇝ fmap∙ f₂ x    
 
-    fmapCtx₂∙ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm α} -> f₁ ⇝ f₂ -> fmap∙ f₁ (Res x) ⇝ fmap∙ f₂ (Res x)    
-
---    fmapCtx₃∙ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm Exception} -> f₁ ⇝ f₂ -> fmap∙ f₁ (Resₓ x) ⇝ fmap∙ f₂ (Resₓ x)
+    fmapCtx₂∙ : ∀ {l α β} {t : Term (α ∷ [])  β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap∙ (Abs t) x₁ ⇝ fmap∙ (Abs t) x₂
 
     fmap∙ : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap∙ (Abs t) (Res x) ⇝ (Res ∙)
 
---    fmapEx∙ : ∀ {l α β} {f : CTerm (α => β)} {- {t : Term (α ∷ []) β} -} {e : CTerm Exception} -> fmap∙ f (Resₓ {{l}} e) ⇝ (Res ∙)
+    fmapEx∙ : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap∙ (Abs t) (Resₓ {{l}} e) ⇝ (Res ∙)
 
     -- Bullet reduces to itself. We need this rule because ∙ is not a value.
     Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙

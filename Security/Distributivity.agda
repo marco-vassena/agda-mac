@@ -73,15 +73,19 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Res lᵈ τ} lₐ IfTrue = IfTrue
 ε-dist⇝ {Res lᵈ τ} lₐ IfFalse = IfFalse
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | yes p = fmapCtx₁ (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | no ¬p = {!!} -- fmapCtx₁∙ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | yes p₁ | yes p = fmapCtx₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁ s) | no ¬p₁ | no ¬p = fmapCtx₁∙ (ε-dist⇝ lₐ s) 
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | yes p with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | yes p₁ | yes p = fmapCtx₂ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | yes p | no ¬p = ⊥-elim (¬p p) 
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | no ¬p with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | no ¬p | yes p = ⊥-elim (¬p p)
-ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | no ¬p₁ | no ¬p = {!!} -- fmapCtx₂∙ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂ s) | no ¬p₁ | no ¬p = fmapCtx₂∙ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ fmap with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ fmap | yes p with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ (fmap {t = t} {x = x}) | yes p₁ | yes p rewrite sym (ε-subst lₐ x t) = fmap
@@ -95,7 +99,7 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | yes p | no ¬p = ⊥-elim (¬p p)
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | no ¬p with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | no ¬p | yes p = ⊥-elim (¬p p)
-ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | no ¬p₁ | no ¬p = {!fmap∙!} -- fmap∙
+ε-dist⇝ {Res lᵈ τ} lₐ fmapEx | no ¬p₁ | no ¬p = fmap∙
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₁∙ s) = fmapCtx₁∙ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂∙ s) with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ (fmapCtx₂∙ s) | yes p = fmapCtx₂∙ (ε-dist⇝ lₐ s)
@@ -104,7 +108,8 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Res lᵈ τ} lₐ fmap∙ | yes p rewrite ε∙≡∙ {τ} {[]} lₐ = fmap∙
 ε-dist⇝ {Res lᵈ τ} lₐ fmap∙ | no ¬p = fmap∙
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx∙ with lᵈ ⊑? lₐ
-... | r = {!!}
+ε-dist⇝ {Res lᵈ τ} lₐ fmapEx∙ | yes p rewrite ε∙≡∙ {τ} {[]} lₐ = fmapEx∙
+ε-dist⇝ {Res lᵈ τ} lₐ fmapEx∙ | no ¬p = fmap∙
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p₁ s) | yes p = relabelCtx p₁ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) | no ¬p = relabelCtx∙ p (ε-dist⇝ lₐ s)

@@ -111,27 +111,32 @@ determinism⇝ CatchEx CatchEx = refl
 determinism⇝ (label p) (label .p) = refl
 determinism⇝ (unlabel p) (unlabel .p) = refl
 determinism⇝ (unlabelEx p) (unlabelEx .p) = refl
-determinism⇝ (fmapCtx₁ s₁) (fmapCtx₁ s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (fmapCtx₂ s₁) (fmapCtx₂ s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (fmapCtx₁ ()) (fmapCtx₂ s₂) 
-determinism⇝ (fmapCtx₂ s₁) (fmapCtx₁ ()) 
 determinism⇝ fmap (fmapCtx₁ ())
 determinism⇝ fmap (fmapCtx₂ ())
 determinism⇝ fmap fmap = refl
-determinism⇝ fmapEx (fmapCtx₁ ())
+determinism⇝ fmapEx (fmapCtx₂ ())
 determinism⇝ fmapEx fmapEx = refl
+determinism⇝ (fmapCtx₁ s₁) (fmapCtx₁ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (fmapCtx₁ ()) (fmapCtx₂ s₂)
 determinism⇝ (fmapCtx₁ ()) fmap
+determinism⇝ (fmapCtx₂ ()) (fmapCtx₁ s₂)
+determinism⇝ (fmapCtx₂ s₁) (fmapCtx₂ s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (fmapCtx₂ ()) fmap
-determinism⇝ (fmapCtx₁ ()) fmapEx
-determinism⇝ (fmapCtx₁∙ ()) (fmapCtx₂∙ s₂)
-determinism⇝ (fmapCtx₂∙ s₁) (fmapCtx₁∙ ())
-determinism⇝ (fmapCtx₁∙ s₁) (fmapCtx₁∙ s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (fmapCtx₂∙ s₁) (fmapCtx₂∙ s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ fmap∙ fmap∙ = refl
+determinism⇝ (fmapCtx₂ ()) fmapEx
 determinism⇝ fmap∙ (fmapCtx₁∙ ())
 determinism⇝ fmap∙ (fmapCtx₂∙ ())
+determinism⇝ fmap∙ fmap∙ = refl
+determinism⇝ fmapEx∙ (fmapCtx₁∙ ())
+determinism⇝ fmapEx∙ (fmapCtx₂∙ ())
+determinism⇝ fmapEx∙ fmapEx∙ = refl
+determinism⇝ (fmapCtx₁∙ s₁) (fmapCtx₁∙ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (fmapCtx₁∙ ()) (fmapCtx₂∙ s₂)
 determinism⇝ (fmapCtx₁∙ ()) fmap∙
+determinism⇝ (fmapCtx₁∙ ()) fmapEx∙
+determinism⇝ (fmapCtx₂∙ s₁) (fmapCtx₁∙ ())
+determinism⇝ (fmapCtx₂∙ s₁) (fmapCtx₂∙ s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (fmapCtx₂∙ ()) fmap∙
+determinism⇝ (fmapCtx₂∙ ()) fmapEx∙
 determinism⇝ (relabelCtx p s₁) (relabelCtx .p s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (relabelCtx p ()) (relabel .p)
 determinism⇝ (relabelCtx p ()) (relabelEx .p)
@@ -171,14 +176,14 @@ determinismMixedC (unlabel p) (Pure x) = determinism⇝ (unlabel p) x
 determinismMixedC (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedC (unlabelEx p) (Pure x) = determinism⇝ (unlabelEx p) x
 determinismMixedC (unlabelEx p) (unlabelCtx .p (Pure ()))
-determinismMixedC (fmapCtx₁ s₁) (Pure s₂) = determinism⇝ (fmapCtx₁ s₁) s₂
-determinismMixedC (fmapCtx₂ s₁) (Pure s₂) = determinism⇝ (fmapCtx₂ s₁) s₂
 determinismMixedC fmap (Pure s₂) = determinism⇝ fmap s₂
 determinismMixedC fmapEx (Pure s₂) = determinism⇝ fmapEx s₂
+determinismMixedC (fmapCtx₁ s₁) (Pure s₂) = determinism⇝ (fmapCtx₁ s₁) s₂
+determinismMixedC (fmapCtx₂ s₁) (Pure s₂) = determinism⇝ (fmapCtx₂ s₁) s₂
+determinismMixedC fmap∙ (Pure s₂) = determinism⇝ fmap∙ s₂
+determinismMixedC fmapEx∙ (Pure s₂) = determinism⇝ fmapEx∙ s₂
 determinismMixedC (fmapCtx₁∙ s₁) (Pure s₂) = determinism⇝ (fmapCtx₁∙ s₁) s₂
 determinismMixedC (fmapCtx₂∙ s₁) (Pure s₂) = determinism⇝ (fmapCtx₂∙ s₁) s₂
-determinismMixedC fmap∙ (Pure s₂) = determinism⇝ fmap∙ s₂
--- determinismMixedC fmapEx∙ (Pure s₂) = determinism⇝ fmapEx∙ s₂
 determinismMixedC (relabelCtx p s₂) (Pure x) = determinism⇝ (relabelCtx p s₂) x
 determinismMixedC (relabel p) (Pure s₂) = determinism⇝ (relabel p) s₂ 
 determinismMixedC (relabelEx p) (Pure s₂) = determinism⇝ (relabelEx p) s₂
@@ -272,11 +277,12 @@ determinismMixedS (relabelEx p) (Pure s₂) = refl
 determinismMixedS (relabelCtx∙ p s₁) (Pure s₂) = refl
 determinismMixedS (relabel∙ p) (Pure s₂) = refl
 determinismMixedS (relabelEx∙ p) (Pure s₂) = refl
-determinismMixedS fmap (Pure x₁) = refl
-determinismMixedS fmapEx (Pure x) = refl
+determinismMixedS fmap (Pure s₂) = refl
+determinismMixedS fmapEx (Pure s₂) = refl
 determinismMixedS (fmapCtx₁ s₁) (Pure s₂) = refl
 determinismMixedS (fmapCtx₂ s₁) (Pure s₂) = refl
-determinismMixedS fmap∙  (Pure s₂) = refl
+determinismMixedS fmap∙ (Pure s₂) = refl
+determinismMixedS fmapEx∙ (Pure s₂) = refl
 determinismMixedS (fmapCtx₁∙ s₁) (Pure s₂) = refl
 determinismMixedS (fmapCtx₂∙ s₁) (Pure s₂) = refl
 
