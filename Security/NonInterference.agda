@@ -7,16 +7,10 @@ open import Security.Distributivity hiding (εˢ-≡)
 open import Relation.Binary.PropositionalEquality
 open import Data.Sum
 
---------------------------------------------------------------------------------
--- Move to Base
-
-term-≡ : ∀ {ls τ} {p₁ p₂ : Program ls τ} -> p₁ ≡ p₂ -> term p₁ ≡ term p₂
-term-≡ refl = refl
-
-store-≡ : ∀ {ls τ} {p₁ p₂ : Program ls τ} -> p₁ ≡ p₂ -> store p₁ ≡ store p₂
-store-≡ refl = refl
+open Program
 
 --------------------------------------------------------------------------------
+-- Store low-equivalnce
 
 data _≈ˢ_ {{lₐ : Label}} {ls : List Label} (s₁ s₂ : Store ls) : Set where
   εˢ-≡ : εˢ lₐ s₁ ≡ εˢ lₐ s₂ -> s₁ ≈ˢ s₂
@@ -30,6 +24,9 @@ sym-≈ˢ (εˢ-≡ x) = εˢ-≡ (sym x)
 trans-≈ˢ : ∀ {l ls} {s₁ s₂ s₃ : Store ls} -> s₁ ≈ˢ s₂ -> s₂ ≈ˢ s₃ -> s₁ ≈ˢ s₃
 trans-≈ˢ (εˢ-≡ x) (εˢ-≡ x₁) = εˢ-≡ (trans x x₁)
 
+--------------------------------------------------------------------------------
+-- Term low-equivalence
+
 data _≈_ {{lₐ : Label}} {τ : Ty} (t₁ t₂ : CTerm τ) : Set where
   ε-≡ : ε lₐ t₁ ≡ ε lₐ t₂ -> t₁ ≈ t₂
 
@@ -42,8 +39,9 @@ sym-≈ (ε-≡ x) = ε-≡ (sym x)
 trans-≈ : ∀ {l τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ≈ c₂ -> c₂ ≈ c₃ -> c₁ ≈ c₃
 trans-≈ (ε-≡ x) (ε-≡ x₁) = ε-≡ (trans x x₁)
 
-
+--------------------------------------------------------------------------------
 -- Program Low Equivalence
+
 -- It is convenient for reasoning to define directly the equivalence of two programs as the low-equivalence
 -- of their stores and terms. This is still equivalent to εᵖ lₐ p₁ ≡ εᵖ lₐ p₂
 data _≈ᵖ_ {{l : Label}} {ls : List Label} {τ : Ty} (p₁ p₂ : Program ls τ) : Set where
@@ -59,7 +57,6 @@ trans-≈ᵖ : ∀ {l τ ls} {p₁ p₂ p₃ : Program ls τ} -> p₁ ≈ᵖ p�
 trans-≈ᵖ (εᵖ-≡ x₁ y₁) (εᵖ-≡ x₂ y₂) = εᵖ-≡ (trans-≈ˢ x₁ x₂) (trans-≈ y₁ y₂)
 
 -- My definition of l-equivalence for programs corresponds to the equivalence of the erasure of two programs 
-
 unlift-≈ᵖ : ∀ {lₐ ls τ} {p₁ p₂ : Program ls τ} -> p₁ ≈ᵖ p₂ -> εᵖ lₐ p₁ ≡ εᵖ  lₐ p₂
 unlift-≈ᵖ {p₁ = ⟨ x ∥ x₁ ⟩} {⟨ x₂ ∥ x₃ ⟩} (εᵖ-≡ (εˢ-≡ eq₁) (ε-≡ eq₂)) rewrite eq₁ | eq₂ = refl
 

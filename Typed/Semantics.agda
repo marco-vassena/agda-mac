@@ -153,18 +153,18 @@ mutual
 
 
 -- A program is made of a labeled store and a closed term
-data Program (ls : List Label) (τ : Ty) : Set where
-  ⟨_∥_⟩ : Store ls -> CTerm τ -> Program ls τ
+record Program (ls : List Label) (τ : Ty) : Set where
+  constructor ⟨_∥_⟩
+  field store : Store ls
+  field term : CTerm τ
 
--- TODO define as record?
+open Program
 
-term : ∀ {τ ls} -> Program ls τ -> CTerm τ
-term ⟨ s ∥ t ⟩ = t
+term-≡ : ∀ {ls τ} {p₁ p₂ : Program ls τ} -> p₁ ≡ p₂ -> term p₁ ≡ term p₂
+term-≡ refl = refl
 
-store : ∀ {τ ls} -> Program ls τ -> Store ls
-store ⟨ s ∥ t ⟩ = s
-
-
+store-≡ : ∀ {ls τ} {p₁ p₂ : Program ls τ} -> p₁ ≡ p₂ -> store p₁ ≡ store p₂
+store-≡ refl = refl
 
 mutual
   infixr 1 _⟼_
