@@ -69,7 +69,7 @@ valueNotRedex .(Mac t) (Mac t) (Step (Pure ()))
 valueNotRedex .(Macₓ e) (Macₓ e) (Step (Pure ()))
 valueNotRedex .(Res t) (Res t) (Step (Pure ()))
 valueNotRedex .(Resₓ e) (Resₓ e) (Step (Pure ()))
-valueNotRedex (suc n') (suc n) (Step (Pure ()))
+valueNotRedex (suc .n) (suc n) (Step (Pure ()))
 valueNotRedex .zero zero (Step (Pure ()))
 
 data PureRedex {τ : Ty} (t : CTerm τ) : Set where

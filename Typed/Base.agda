@@ -188,5 +188,5 @@ data IsValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsValue (Res t)
   Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Resₓ {α = α} e)
   zero : IsValue zero
-  suc : ∀ {n} -> IsValue n -> IsValue (suc n)
+  suc : (n : Term Δ Nat) -> IsValue (suc n)
 
