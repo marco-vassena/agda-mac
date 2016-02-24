@@ -425,3 +425,9 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 εᵖ-dist {Res l τ} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
 εᵖ-dist {Exception} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s) 
 εᵖ-dist {Nat} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
+
+
+εᵖ-dist⋆ : ∀ {τ ls} {p₁ : Program ls τ} {p₂ : Program ls τ} ->
+            (lₐ : Label) -> p₁ ⟼⋆ p₂ -> εᵖ lₐ p₁ ⟼⋆ εᵖ lₐ p₂
+εᵖ-dist⋆ lₐ [] = []
+εᵖ-dist⋆ lₐ (x ∷ ss) = (εᵖ-dist lₐ x) ∷ (εᵖ-dist⋆ lₐ ss)            

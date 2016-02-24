@@ -156,6 +156,15 @@ mutual
 data Program (ls : List Label) (τ : Ty) : Set where
   ⟨_∥_⟩ : Store ls -> CTerm τ -> Program ls τ
 
+-- TODO define as record?
+
+term : ∀ {τ ls} -> Program ls τ -> CTerm τ
+term ⟨ s ∥ t ⟩ = t
+
+store : ∀ {τ ls} -> Program ls τ -> Store ls
+store ⟨ s ∥ t ⟩ = s
+
+
 
 mutual
   infixr 1 _⟼_
@@ -233,3 +242,7 @@ mutual
   -- A closed term is in normal form for a given store configuration if it cannot be reduced further
   NormalForm : ∀ {ls τ} -> Store ls -> CTerm τ -> Set
   NormalForm s₁ c = ¬ Redex s₁ c
+
+
+Terminated : ∀ {ls τ} -> Program ls τ -> Set
+Terminated ⟨ s ∥ t ⟩ = NormalForm s t
