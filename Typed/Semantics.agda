@@ -4,76 +4,74 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 open import Typed.Base public
 import Data.List as L
 
-mutual
+data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
-  data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
+  -- Reduces the function in an application
+  AppL : ∀ {α β} {c₁ c₂ : CTerm (α => β)} {x : CTerm α} -> c₁ ⇝ c₂ -> App c₁ x ⇝ App c₂ x
 
-    -- Reduces the function in an application
-    AppL : ∀ {α β} {c₁ c₂ : CTerm (α => β)} {x : CTerm α} -> c₁ ⇝ c₂ -> App c₁ x ⇝ App c₂ x
+  -- Pushes a term in the environment
+  Beta : ∀ {α β} {t : Term (α ∷ []) β} {x : CTerm α} -> App (Abs t) x ⇝ subst x t
 
-    -- Pushes a term in the environment
-    Beta : ∀ {α β} {t : Term (α ∷ []) β} {x : CTerm α} -> App (Abs t) x ⇝ subst x t
+  IfCond : ∀ {τ} {c c' : CTerm Bool} {t e : CTerm τ} -> c ⇝ c' ->
+             (If c Then t Else e) ⇝ (If c' Then t Else e)
 
-    IfCond : ∀ {τ} {c c' : CTerm Bool} {t e : CTerm τ} -> c ⇝ c' ->
-               (If c Then t Else e) ⇝ (If c' Then t Else e)
+  IfTrue : ∀ {τ} {t e : CTerm τ} -> (If True Then t Else e) ⇝ t
 
-    IfTrue : ∀ {τ} {t e : CTerm τ} -> (If True Then t Else e) ⇝ t
+  IfFalse : ∀ {τ} {t e : CTerm τ} -> (If False Then t Else e) ⇝ e
 
-    IfFalse : ∀ {τ} {t e : CTerm τ} -> (If False Then t Else e) ⇝ e
+  Return : ∀ {τ} {l : Label} {t : CTerm τ} -> Return t ⇝ Mac t
 
-    Return : ∀ {τ} {l : Label} {t : CTerm τ} -> Return t ⇝ Mac t
+  Throw : ∀ {l : Label}  {α : Ty} {e : CTerm Exception} -> Throw {{l}} {{α}} e ⇝ Macₓ e 
 
-    Throw : ∀ {l : Label}  {α : Ty} {e : CTerm Exception} -> Throw {{l}} {{α}} e ⇝ Macₓ e 
+  Bind : ∀ {l α β} {t : CTerm α} {k : CTerm (α => Mac l β)} -> (Mac t >>= k) ⇝ App k t
 
-    Bind : ∀ {l α β} {t : CTerm α} {k : CTerm (α => Mac l β)} -> (Mac t >>= k) ⇝ App k t
+  BindEx : ∀ {l α β} {e : CTerm Exception} {k : CTerm (α => Mac l β)} -> (Macₓ e >>= k) ⇝ Throw e
 
-    BindEx : ∀ {l α β} {e : CTerm Exception} {k : CTerm (α => Mac l β)} -> (Macₓ e >>= k) ⇝ Throw e
+  Catch : ∀ {l : Label} {α : Ty} {t : CTerm α} {h : CTerm (Exception => Mac l α)} ->
+            Catch (Mac t) h ⇝ (Return t)
 
-    Catch : ∀ {l : Label} {α : Ty} {t : CTerm α} {h : CTerm (Exception => Mac l α)} ->
-              Catch (Mac t) h ⇝ (Return t)
+  CatchEx : ∀ {l : Label} {α : Ty} {e : CTerm Exception} {h : CTerm (Exception => Mac l α)} ->
+              Catch (Macₓ e) h ⇝ App h e
 
-    CatchEx : ∀ {l : Label} {α : Ty} {e : CTerm Exception} {h : CTerm (Exception => Mac l α)} ->
-                Catch (Macₓ e) h ⇝ App h e
+  label : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> label p t ⇝ Return (Res t)
 
-    label : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> label p t ⇝ Return (Res t)
+  unlabel : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> unlabel p (Res t) ⇝ Return t
 
-    unlabel : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> unlabel p (Res t) ⇝ Return t
+  unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
 
-    unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
+  -- To make Res a secure functor we need a more strict semantics.
+  -- In particular to have distributivity we need a strict function application, but interestingly
+  -- we need strictness in the function also for Resₓ.
+  fmapCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm α} -> f₁ ⇝ f₂ -> fmap f₁ (Res x) ⇝ fmap f₂ (Res x)
 
-    -- To make Res a secure functor we need a more strict semantics.
-    -- In particular to have distributivity we need a strict function application, but interestingly
-    -- we need strictness in the function also for Resₓ.
-    fmapCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm α} -> f₁ ⇝ f₂ -> fmap f₁ (Res x) ⇝ fmap f₂ (Res x)
+  fmapCtx₂ : ∀ {l α β} {t : Term (α ∷ []) β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap (Abs t) x₁ ⇝ fmap (Abs t) x₂
 
-    fmapCtx₂ : ∀ {l α β} {t : Term (α ∷ []) β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap (Abs t) x₁ ⇝ fmap (Abs t) x₂
+  fmap : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap (Abs t) (Res x) ⇝ (Res (subst x t))
 
-    fmap : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap (Abs t) (Res x) ⇝ (Res (subst x t))
+  fmapEx : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap (Abs t) (Resₓ {{l}} e) ⇝ (Resₓ e)
 
-    fmapEx : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap (Abs t) (Resₓ {{l}} e) ⇝ (Resₓ e)
+  fmapCtx₁∙ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> fmap∙ f₁ x ⇝ fmap∙ f₂ x    
 
-    fmapCtx₁∙ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> fmap∙ f₁ x ⇝ fmap∙ f₂ x    
+  fmapCtx₂∙ : ∀ {l α β} {t : Term (α ∷ [])  β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap∙ (Abs t) x₁ ⇝ fmap∙ (Abs t) x₂
 
-    fmapCtx₂∙ : ∀ {l α β} {t : Term (α ∷ [])  β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap∙ (Abs t) x₁ ⇝ fmap∙ (Abs t) x₂
+  fmap∙ : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap∙ (Abs t) (Res x) ⇝ (Res ∙)
 
-    fmap∙ : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap∙ (Abs t) (Res x) ⇝ (Res ∙)
+  fmapEx∙ : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap∙ (Abs t) (Resₓ {{l}} e) ⇝ (Res ∙)
 
-    fmapEx∙ : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap∙ (Abs t) (Resₓ {{l}} e) ⇝ (Res ∙)
+  -- Bullet reduces to itself. We need this rule because ∙ is not a value.
+  Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
 
-    -- Bullet reduces to itself. We need this rule because ∙ is not a value.
-    Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
+  relabelCtx : ∀ {l h α} {c₁ c₂ : CTerm (Res l α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> relabel p c₁ ⇝ relabel p c₂
 
-    relabelCtx : ∀ {l h α} {c₁ c₂ : CTerm (Res l α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> relabel p c₁ ⇝ relabel p c₂
-  
-    relabel : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> relabel p (Res t) ⇝ Res t
+  relabel : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> relabel p (Res t) ⇝ Res t
 
-    relabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> relabel {α = α} p (Resₓ e) ⇝ Resₓ e
+  relabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> relabel {α = α} p (Resₓ e) ⇝ Resₓ e
 
-    relabelCtx∙ : ∀ {l h α} {c₁ c₂ : CTerm (Res l α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> relabel∙ p c₁ ⇝ relabel∙ p c₂
-  
-    relabel∙ : ∀ {l h α} {c : CTerm α} -> (p : l ⊑ h) -> relabel∙ p (Res c) ⇝ Res ∙ 
+  relabelCtx∙ : ∀ {l h α} {c₁ c₂ : CTerm (Res l α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> relabel∙ p c₁ ⇝ relabel∙ p c₂
 
-    relabelEx∙ : ∀ {l h α} {c : CTerm Exception} -> (p : l ⊑ h) -> relabel∙ {α = α} p (Resₓ c) ⇝ Res ∙ 
+  relabel∙ : ∀ {l h α} {c : CTerm α} -> (p : l ⊑ h) -> relabel∙ p (Res c) ⇝ Res ∙ 
+
+  relabelEx∙ : ∀ {l h α} {c : CTerm Exception} -> (p : l ⊑ h) -> relabel∙ {α = α} p (Resₓ c) ⇝ Res ∙ 
 
 mutual
   infixr 1 _⟼_
@@ -152,6 +150,33 @@ mutual
   NormalForm : ∀ {ls τ} -> Store ls -> CTerm τ -> Set
   NormalForm s₁ c = ¬ Redex s₁ c
 
+
+-- TODO move to Typed.Base
+Thread : List Label -> Label -> Set
+Thread ls l = Program ls (Mac l （）)
+
+data Pool : List Label -> Set where
+  [] : Pool []
+  _◅_ : ∀ {l ls₁ ls₂} -> Thread ls₁ l -> Pool ls₂ -> Pool (l ∷ ls₂)
+
+-- The global configuration is a thread pool  paired with some shared split memory Σ
+-- ls₁ is in general differnt from ls otherwise we would need to change the shape of Σ
+-- We can have a second implicit list of labels for Store
+data Global (ls : List Label) : Set where
+  ⟪_,_⟫ : ∀ {ls₁} -> Store ls₁ ->  Pool ls -> Global ls
+  
+pool : ∀ {ls} -> Global ls -> Pool ls
+pool ⟪ Σ , ts ⟫ = ts
+
+-- Enqueue
+_▻_ : ∀ {l ls' ls} -> Pool ls -> Thread ls' l -> Pool (ls L.∷ʳ l)
+[] ▻ t = t ◅ []
+(x ◅ ts) ▻ t = x ◅ (ts ▻ t) 
+
+-- Semantics for threadpools
+-- Not sure if it is a proble to keep the same context for all stores (thread-specific and shared)
+data _↪_ {ls : List Label} : ∀ {ls₁ ls₂} -> Global ls₁ -> Global ls₂ -> Set where
+  step : ∀ {l ls'} {t₁ t₂ : Thread ls l} {ts : Pool ls'} {Σ : Store ls} -> t₁ ⟼ t₂ -> ⟪ Σ  , t₁ ◅ ts ⟫ ↪ ⟪ Σ , ts ▻ t₂ ⟫
 
 Terminated : ∀ {ls τ} -> Program ls τ -> Set
 Terminated ⟨ s ∥ t ⟩ = NormalForm s t
