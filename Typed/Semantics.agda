@@ -141,6 +141,8 @@ mutual
     readEx : ∀ {l h α} {s : Store ls} {e : CTerm Exception} -> (p : l ⊑ h) ->
               ⟨ s ∥ (read {α = α} p (Resₓ e)) ⟩ ⟼ ⟨ s ∥ Throw e ⟩
 
+    fork : ∀ {l h} {σ : Store ls} -> (p : l ⊑ h) (t : CTerm (Mac h （）)) ->  ⟨ σ ∥ fork p t ⟩ ⟼ ⟨ σ ∥ (Return （）) ⟩
+
   -- A program is a Redex if it can be reduced further in a certain memory configuration
   data Redex {ls : List Label} {τ : Ty} (s₁ : Store ls) (c₁ : CTerm τ) : Set where
     Step : {s₂ : Store ls} {c₂ : CTerm τ} -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> Redex s₁ c₁
@@ -150,33 +152,51 @@ mutual
   NormalForm : ∀ {ls τ} -> Store ls -> CTerm τ -> Set
   NormalForm s₁ c = ¬ Redex s₁ c
 
+--------------------------------------------------------------------------------
 
 -- TODO move to Typed.Base
-Thread : List Label -> Label -> Set
-Thread ls l = Program ls (Mac l （）)
+Thread : Label -> Set
+Thread l = CTerm (Mac l （）)
 
-data Pool : List Label -> Set where
-  [] : Pool []
-  _◅_ : ∀ {l ls₁ ls₂} -> Thread ls₁ l -> Pool ls₂ -> Pool (l ∷ ls₂)
+-- Events triggered
+data Event : Set where
+  ∅ : Event
+  fork : ∀ {l} -> Thread l -> Event
+
+event : ∀ {ls τ} {p₁ p₂ : Program ls τ} -> p₁ ⟼ p₂ -> Event
+event (fork p t) = fork t
+event _ = ∅
+
+data _↑_ {ls : List Label} {τ : Ty} {p₁ p₂ : Program ls τ} (s : p₁ ⟼ p₂) : Event -> Set where
+  _,_ : s ↑ (event s)
+
+
+data Pool : Set where
+  [] : Pool
+  _◅_ : ∀ {l} -> Thread l -> Pool -> Pool
 
 -- The global configuration is a thread pool  paired with some shared split memory Σ
--- ls₁ is in general differnt from ls otherwise we would need to change the shape of Σ
--- We can have a second implicit list of labels for Store
-data Global (ls : List Label) : Set where
-  ⟪_,_⟫ : ∀ {ls₁} -> Store ls₁ ->  Pool ls -> Global ls
+data Global : Set where
+  ⟪_,_⟫ : ∀ {ls} -> (Σ : Store ls) -> (ts : Pool) -> Global
   
-pool : ∀ {ls} -> Global ls -> Pool ls
+pool : Global -> Pool
 pool ⟪ Σ , ts ⟫ = ts
 
 -- Enqueue
-_▻_ : ∀ {l ls' ls} -> Pool ls -> Thread ls' l -> Pool (ls L.∷ʳ l)
+_▻_ : ∀ {l} -> Pool -> Thread l -> Pool
 [] ▻ t = t ◅ []
 (x ◅ ts) ▻ t = x ◅ (ts ▻ t) 
 
--- Semantics for threadpools
--- Not sure if it is a proble to keep the same context for all stores (thread-specific and shared)
-data _↪_ {ls : List Label} : ∀ {ls₁ ls₂} -> Global ls₁ -> Global ls₂ -> Set where
-  step : ∀ {l ls'} {t₁ t₂ : Thread ls l} {ts : Pool ls'} {Σ : Store ls} -> t₁ ⟼ t₂ -> ⟪ Σ  , t₁ ◅ ts ⟫ ↪ ⟪ Σ , ts ▻ t₂ ⟫
+infixl 3 _▻_
 
-Terminated : ∀ {ls τ} -> Program ls τ -> Set
-Terminated ⟨ s ∥ t ⟩ = NormalForm s t
+-- Semantics for threadpools
+data _↪_ {ls : List Label} : Global -> Global -> Set where
+  -- Sequential stop
+  step : ∀ {l} {t₁ t₂ : Thread l} {ts : Pool} {Σ₁ Σ₂ : Store ls} {s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩} ->
+         s ↑ ∅ -> ⟪ Σ₁  , t₁ ◅ ts ⟫ ↪ ⟪ Σ₂ , ts ▻ t₂ ⟫
+
+  fork : ∀ {l h} {Σ₁ Σ₂ : Store ls} {s : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool} {s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩} ->
+         s ↑ (fork tⁿ) -> ⟪ Σ₁ , t₁ ◅ ts ⟫ ↪ ⟪ Σ₂ , (ts ▻ t₂ ▻ t₂) ⟫
+
+  -- In the paper Σ changes in this rule. Why is that?
+  exit : ∀ {l} {Σ : Store ls} {ts : Pool} {t : Thread l} -> IsValue t ->  ⟪ Σ , t ◅ ts ⟫ ↪ ⟪ Σ , ts ⟫
