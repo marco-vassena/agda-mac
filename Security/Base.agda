@@ -55,6 +55,10 @@ open import Data.List as L hiding (drop)
 ε-Mac lₐ (yes _) (read {l = l} p r) =  read p (ε lₐ r)
 ε-Mac lₐ (yes _) (write {h = h} p r t) = write p (ε lₐ r) (ε lₐ t)
 ε-Mac lₐ (yes _) (new {h = lʰ} p t) = new p (ε lₐ t)
+ε-Mac lₐ (yes _) (fork {h = h} x t) = fork x (ε-Mac lₐ (h ⊑? lₐ) t)
+ε-Mac lₐ (yes _) (newMVar {α = α} x) = newMVar {α = α} x
+ε-Mac lₐ (yes _) (takeMVar t) = takeMVar (ε lₐ t)
+ε-Mac lₐ (yes _) (putMVar t₁ t₂) = putMVar (ε lₐ t₁) (ε lₐ t₂)
 ε-Mac lₐ (yes p) ∙ = ∙
 ε-Mac lₐ (no ¬p) (Var x) = Var x  -- We don't want to erase variables, because this would prevent substitution of the actually erased term.
 ε-Mac lₐ (no ¬p) t = ∙
@@ -180,6 +184,22 @@ open import Data.List as L hiding (drop)
 ε-Mac-extensional (yes p) (no ¬p) (new p₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (new p₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (no ¬p₁) (new p t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (fork x t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (fork x t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (fork x t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (fork x t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (newMVar t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (newMVar t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (newMVar t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (newMVar t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (takeMVar t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (takeMVar t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (takeMVar t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (takeMVar t) = refl 
+ε-Mac-extensional (yes p) (yes p₁) (putMVar t₁ t₂) = refl
+ε-Mac-extensional (yes p) (no ¬p) (putMVar t₁ t₂) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (putMVar t₁ t₂) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (putMVar t₁ t₂) = refl 
 ε-Mac-extensional (yes p) (yes p₁) ∙ = refl
 ε-Mac-extensional (yes p) (no ¬p) ∙ = refl
 ε-Mac-extensional (no ¬p) (yes p) ∙ = refl
@@ -267,6 +287,17 @@ open import Data.List as L hiding (drop)
 -- ε-Mac-wken lₐ (yes p₁) (new x₁ t r) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
 -- ε-Mac-wken lₐ (yes p) (new x₁ t r) p₁ | no ¬p = refl
 ε-Mac-wken lₐ (no ¬p) (new x₁ t) p = refl
+ε-Mac-wken lₐ (yes p) (fork {h = h} x t) p₁
+  rewrite ε-Mac-wken lₐ (h ⊑? lₐ) t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (fork x t) p = refl
+ε-Mac-wken lₐ (yes p) (newMVar x) p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (newMVar x) p = refl 
+ε-Mac-wken lₐ (yes p) (takeMVar t) p₁
+  rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (takeMVar t) p = refl
+ε-Mac-wken lₐ (yes p) (putMVar t₁ t₂) p₁
+  rewrite ε-wken lₐ t₁ p₁ | ε-wken lₐ t₂ p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (putMVar t₁ t₂) p = refl
 ε-Mac-wken lₐ (yes p) ∙ p₁ = refl
 ε-Mac-wken lₐ (no ¬p) ∙ p = refl
 
@@ -467,6 +498,11 @@ open import Data.List as L hiding (drop)
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (yes p) | no ¬p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new {h = lʰ} x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (fork x t) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (newMVar {α = α} x) (yes p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (takeMVar t) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (putMVar t₁ t₂) (yes p) rewrite
+            ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (yes p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (App t₁ t₂) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃) (no ¬p) = refl
@@ -482,6 +518,10 @@ open import Data.List as L hiding (drop)
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (fork x t) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (newMVar {α = α} x) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (takeMVar t) (no ¬p) = refl 
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (putMVar t₁ t₂) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ ∙ (no ¬p) = refl
 
 ε-Mac-subst : ∀ {lᵈ Δ α β} (lₐ : Label) (y : Dec (lᵈ ⊑ lₐ)) (x : Term Δ α) (t : Term (α ∷ Δ) (Mac lᵈ β))
@@ -504,4 +544,8 @@ open import Data.List as L hiding (drop)
 ε-Mac-CTerm≡∙ lₐ (read x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (write x c c₁) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (new x c) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (fork x t) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (newMVar {α = α} x) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (takeMVar t) x₁ = refl 
+ε-Mac-CTerm≡∙ lₐ (putMVar t₁ t₂) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ ∙ x = refl

@@ -36,6 +36,10 @@ infixr 3 _=>_
 Ref : Label -> Ty -> Ty
 Ref l τ = Res l Nat
 
+-- I will represents MVar also using integers like references
+MVar : Label -> Ty -> Ty
+MVar l τ = Res l Nat
+
 -- A context Δ is a list of types contained in an environment
 Context : Set
 Context = List Ty

@@ -46,13 +46,10 @@ mutual
     join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Res h α))
 
     zero : Term Δ Nat
-
     suc : Term Δ Nat -> Term Δ Nat
 
     read : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref l α) -> Term Δ (Mac h α)
-
     write : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref h α) -> Term Δ α -> Term Δ (Mac l （）)
-
     new : ∀ {α l h} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Ref h α))
 
     -- Res l α is a functor
@@ -60,6 +57,19 @@ mutual
 
     -- This is used to avoid a context sensitive erasure in fmap
     fmap∙  : ∀ {l α β} -> Term Δ (α => β) -> Term Δ (Res l α) -> Term Δ (Res l β)
+
+    -- Concurrency
+    fork : ∀ {l h} -> l ⊑ h -> Term Δ (Mac h  （）) -> Term Δ (Mac l  （）)
+
+    -- Synchronization primitives
+
+    -- Creates a new empty MVar
+    newMVar : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac l (MVar h α))
+
+    -- I will simplify directly the constraints l ⊑ h and h ⊑ l unifying the two labels
+    takeMVar : ∀ {l α} -> Term Δ (MVar l α) -> Term Δ (Mac l α)
+    putMVar : ∀ {l α} -> Term Δ (MVar l α) -> Term Δ α -> Term Δ (Mac l （）)
+
     -- Represent sensitive information that has been erased.
     ∙ : ∀ {{τ}} -> Term Δ τ
 
@@ -223,6 +233,10 @@ wken (write x t t₁) p = write x (wken t p) (wken t₁ p)
 wken (new x t) p = new x (wken t p)
 wken (fmap f x) p = fmap (wken f p) (wken x p)
 wken (fmap∙ f x) p = fmap∙ (wken f p) (wken x p)
+wken (fork x t) p = fork x (wken t p)
+wken (newMVar {α = α} x) p = newMVar {α = α} x
+wken (takeMVar t) p = takeMVar (wken t p)
+wken (putMVar t₁ t₂) p = putMVar (wken t₁ p) (wken t₂ p)
 wken ∙ p = ∙
 
 _↑¹ : ∀ {α β Δ} -> Term Δ α -> Term (β ∷ Δ) α
@@ -264,6 +278,10 @@ tm-subst Δ₁ Δ₂ v (write x t t₁) = write x (tm-subst Δ₁ Δ₂ v t) (tm
 tm-subst Δ₁ Δ₂ v (new x t) = new x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (fmap f x) = fmap (tm-subst Δ₁ Δ₂ v f) (tm-subst Δ₁ Δ₂ v x)
 tm-subst Δ₁ Δ₂ v (fmap∙ f x) = fmap∙ (tm-subst Δ₁ Δ₂ v f) (tm-subst Δ₁ Δ₂ v x)
+tm-subst Δ₁ Δ₂ v (fork x t) = fork x (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (newMVar {α = α} x) = newMVar {α = α} x
+tm-subst Δ₁ Δ₂ v (takeMVar t) = takeMVar (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (putMVar t₁ t₂) = putMVar (tm-subst Δ₁ Δ₂ v t₁) (tm-subst Δ₁ Δ₂ v t₂)
 tm-subst Δ₁ Δ₂ v ∙ = ∙
 
 subst : ∀ {Δ α β} -> Term Δ α -> Term (α ∷ Δ) β -> Term Δ β
