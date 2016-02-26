@@ -75,21 +75,6 @@ mutual
 
     relabelEx∙ : ∀ {l h α} {c : CTerm Exception} -> (p : l ⊑ h) -> relabel∙ {α = α} p (Resₓ c) ⇝ Res ∙ 
 
-
--- A program is made of a labeled store and a closed term
-record Program (ls : List Label) (τ : Ty) : Set where
-  constructor ⟨_∥_⟩
-  field store : Store ls
-  field term : CTerm τ
-
-open Program
-
-term-≡ : ∀ {ls τ} {p₁ p₂ : Program ls τ} -> p₁ ≡ p₂ -> term p₁ ≡ term p₂
-term-≡ refl = refl
-
-store-≡ : ∀ {ls τ} {p₁ p₂ : Program ls τ} -> p₁ ≡ p₂ -> store p₁ ≡ store p₂
-store-≡ refl = refl
-
 mutual
   infixr 1 _⟼_
 
