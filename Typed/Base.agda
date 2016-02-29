@@ -130,17 +130,25 @@ index-unique Here Here = refl
 index-unique (There i) (There j) rewrite index-unique i j = refl
 index-unique ∙ ∙ = refl
 
+liftRes : ∀ {p τ l} -> Cell τ p -> Cell (Res l τ) p
+liftRes ⟪ x ⟫ = ⟪ (Res x) ⟫
+liftRes ⊞ = ⊞
+liftRes ⟦ x ⟧ = ⟦ (Res x) ⟧
+
+-- TODO : better name / symbol
+get : ∀ {τ} -> Cell τ P -> CTerm τ
+get ⟪ x ⟫ = x
 
 -- Read from memory
-_[_] : ∀ {τ l n} -> (m : Memory l) -> TypedIx τ P n m -> CTerm (Res l τ)
-(⟪ c ⟫ ∷ m) [ Here ] = Res c
+_[_] : ∀ {τ l n p} -> (m : Memory l) -> TypedIx τ p n m -> Cell (Res l τ) p
+(c ∷ m) [ Here ] = liftRes c
 (c ∷ m) [ There i ] = _[_] m i 
-∙ [ ∙ ] = Res ∙
+_[_] {p = P} ∙ ∙ = ⟪ (Res ∙) ⟫
+_[_] {p = M} ∙ ∙ = ⟦ (Res ∙) ⟧ -- ⊞ is also an option, I think we can choose
 
 -- Update something in memory
--- TODO should we work directly with Cell p ?
-_[_]≔_ : ∀ {l τ n} -> (m : Memory l) -> TypedIx τ P n m -> CTerm τ -> Memory l
-(_ ∷ m) [ Here ]≔ c = ⟪ c ⟫ ∷ m
+_[_]≔_ : ∀ {p l τ n} -> (m : Memory l) -> TypedIx τ p n m -> Cell τ p -> Memory l
+(_ ∷ m) [ Here ]≔ c = c ∷ m
 (c ∷ m) [ There i ]≔ c₁ = c ∷ (m [ i ]≔ c₁)
 ∙ [ ∙ ]≔ c = ∙
 
@@ -171,17 +179,20 @@ lengthᵐ : ∀ {l} -> Memory l -> CTerm (Res l Nat)
 lengthᵐ m = Res (count m)
 
 -- Read from memory in store
-_[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ P n (getMemory q s) -> CTerm (Res l τ)
+_[_][_] : ∀ {p τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ p n (getMemory q s) -> Cell (Res l τ) p
 (m ∷ s) [ Here ][ r ] = m [ r ]
 (x ∷ s) [ There q ][ r ] = s [ q ][ r ]
 
+_[_][_]ᴾ : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ P n (getMemory q s) -> CTerm (Res l τ)
+s [ q ][ r ]ᴾ = get (s [ q ][ r ])
+
 -- Write to memory in store
-_[_][_]≔_ : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ P n (getMemory q s) -> CTerm τ -> Store ls
+_[_][_]≔_ : ∀ {τ ls l n p} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ p n (getMemory q s) -> Cell τ p -> Store ls
 (m ∷ s) [ Here ][ r ]≔ c = (m [ r ]≔ c) ∷ s
 (x ∷ s) [ There q ][ r ]≔ c = x ∷ (s [ q ][ r ]≔ c)
 
-newˢ : ∀ {l ls τ} -> l ∈ ls -> Store ls -> CTerm τ -> Store ls
-newˢ Here (m ∷ s) c = (m ∷ʳ ⟪ c ⟫) ∷ s
+newˢ : ∀ {p l ls τ} -> l ∈ ls -> Store ls -> Cell τ p -> Store ls
+newˢ Here (m ∷ s) c = (m ∷ʳ c) ∷ s
 newˢ (There q) (x ∷ s) c = x ∷ newˢ q s c
 
 --------------------------------------------------------------------------------
