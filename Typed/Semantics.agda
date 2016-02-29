@@ -141,7 +141,30 @@ mutual
     readEx : ∀ {l h α} {s : Store ls} {e : CTerm Exception} -> (p : l ⊑ h) ->
               ⟨ s ∥ (read {α = α} p (Resₓ e)) ⟩ ⟼ ⟨ s ∥ Throw e ⟩
 
-    fork : ∀ {l h} {σ : Store ls} -> (p : l ⊑ h) (t : CTerm (Mac h （）)) ->  ⟨ σ ∥ fork p t ⟩ ⟼ ⟨ σ ∥ (Return （）) ⟩
+    fork : ∀ {l h} {Σ : Store ls} -> (p : l ⊑ h) (t : CTerm (Mac h （）)) ->  ⟨ Σ ∥ fork p t ⟩ ⟼ ⟨ Σ ∥ (Return （）) ⟩
+
+    -- This is repeating the new rule. If we actually separate Mac from IO we can reuse that as it actually happens
+    newMVar : ∀ {l h τ} {Σ : Store ls} -> (p : l ⊑ h) (q : h ∈ ls) -> ⟨ Σ ∥ newMVar {α = τ} p ⟩ ⟼ ⟨ newˢ {τ = τ} q Σ ⊞ ∥ (Return (lengthᵐ (getMemory q Σ))) ⟩
+
+    putMVarCtx :  ∀ {l α} {Σ₁ Σ₂ : Store ls} {c₁ c₂ : CTerm (MVar l α)} {c₃ : CTerm α} ->
+                  ⟨ Σ₁ ∥ c₁ ⟩ ⟼ ⟨ Σ₂ ∥ c₂ ⟩ ->
+                  ⟨ Σ₁ ∥ putMVar c₁ c₃ ⟩ ⟼ ⟨ Σ₂ ∥ putMVar c₂ c₃  ⟩
+
+    putMVar : ∀ {l τ n} {Σ : Store ls} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ n (getMemory q Σ)) ->
+              -- The check for non emptyness is a read operation!!!
+              Σ [ q ][ r ] ≡ ⊞ -> ⟨ Σ ∥ putMVar (Res n) t ⟩ ⟼ ⟨ Σ [ q ][ r ]≔ t ∥ Return （） ⟩
+              
+    putMVarEx : ∀ {l τ} {Σ : Store ls} {e : CTerm Exception} {t : CTerm τ} -> ⟨ Σ ∥ putMVar {l = l} (Resₓ e) t ⟩ ⟼ ⟨ Σ ∥ Throw e ⟩
+
+    takeMVarCtx :  ∀ {l α} {Σ₁ Σ₂ : Store ls} {c₁ c₂ : CTerm (MVar l α)} ->
+                  ⟨ Σ₁ ∥ c₁ ⟩ ⟼ ⟨ Σ₂ ∥ c₂ ⟩ ->
+                  ⟨ Σ₁ ∥ takeMVar {α = α} c₁ ⟩ ⟼ ⟨ Σ₂ ∥ takeMVar c₂ ⟩
+
+    takeMVar : ∀ {l τ n} {Σ : Store ls} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ n (getMemory q Σ)) ->
+              -- The check for non emptyness is a read operation!!!
+              ¬ (Σ [ q ][ r ] ≡ ⊞) -> ⟨ Σ ∥ takeMVar {α = τ}  (Res n) ⟩ ⟼ ⟨ Σ ∥  unlabel refl-⊑ (Σ [ q ][ r ]) ⟩
+              
+    takeMVarEx : ∀ {l τ} {Σ : Store ls} {e : CTerm Exception} {t : CTerm τ} -> ⟨ Σ ∥ takeMVar {α = τ} (Resₓ e) ⟩ ⟼ ⟨ Σ ∥ Throw e ⟩
 
   -- A program is a Redex if it can be reduced further in a certain memory configuration
   data Redex {ls : List Label} {τ : Ty} (s₁ : Store ls) (c₁ : CTerm τ) : Set where
@@ -189,6 +212,14 @@ _▻_ : ∀ {l} -> Pool -> Thread l -> Pool
 
 infixl 3 _▻_
 
+-- The proof that a term is blocked
+data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set where
+  onPut : ∀ {l n τ} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ n (getMemory q Σ)) ->
+              ¬ (Σ [ q ][ r ] ≡ ⊞) -> Blocked Σ (putMVar (Res n) t)
+  onTake : ∀ {l n τ} (q : l ∈ ls) (r : TypedIx τ n (getMemory q Σ)) ->
+              Σ [ q ][ r ] ≡ ⊞ -> Blocked Σ (takeMVar {α = τ} (Res n))
+
+
 -- Semantics for threadpools
 data _↪_ {ls : List Label} : Global -> Global -> Set where
   -- Sequential stop
@@ -197,6 +228,9 @@ data _↪_ {ls : List Label} : Global -> Global -> Set where
 
   fork : ∀ {l h} {Σ₁ Σ₂ : Store ls} {s : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool} {s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩} ->
          s ↑ (fork tⁿ) -> ⟪ Σ₁ , t₁ ◅ ts ⟫ ↪ ⟪ Σ₂ , (ts ▻ t₂ ▻ t₂) ⟫
+
+  -- Skip a blocked thread
+  skip : ∀ {l} {Σ : Store ls} {t : Thread l} {ts : Pool} -> Blocked Σ t -> ⟪ Σ , t ◅ ts ⟫ ↪ ⟪ Σ , ts ▻ t ⟫ 
 
   -- In the paper Σ changes in this rule. Why is that?
   exit : ∀ {l} {Σ : Store ls} {ts : Pool} {t : Thread l} -> IsValue t ->  ⟪ Σ , t ◅ ts ⟫ ↪ ⟪ Σ , ts ⟫

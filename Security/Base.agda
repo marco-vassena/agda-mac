@@ -111,7 +111,6 @@ open import Data.List as L hiding (drop)
 εᵖ : ∀ {ls τ} -> Label -> Program ls τ -> Program ls τ
 εᵖ lₐ ⟨ s ∥ c ⟩ = ⟨ εˢ lₐ s ∥ ε lₐ c ⟩
 
--- TODO remove?
 ε-Mac-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Mac lᵈ τ)) -> ε-Mac lₐ x t ≡ ε-Mac lₐ y t
 ε-Mac-extensional (yes p) (yes p₁) (Var x₁) = refl
 ε-Mac-extensional (yes p) (no ¬p) (Var x₁) = ⊥-elim (¬p p)

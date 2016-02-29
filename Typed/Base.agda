@@ -62,7 +62,6 @@ mutual
     fork : ∀ {l h} -> l ⊑ h -> Term Δ (Mac h  （）) -> Term Δ (Mac l  （）)
 
     -- Synchronization primitives
-
     -- Creates a new empty MVar
     newMVar : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac l (MVar h α))
 
@@ -77,28 +76,28 @@ mutual
   CTerm : Ty -> Set
   CTerm τ = Term [] τ
 
+  data CellType : Set where
+    P : CellType -- Plain memory cell
+    M : CellType -- Mutable memory cell (empty / full)
+
+  -- A memory cell of a certain type
+  data Cell (τ : Ty) : CellType -> Set where
+    ⟪_⟫  : CTerm τ -> Cell τ P
+    ⊞ : Cell τ M
+    ⟦_⟧ : CTerm τ -> Cell τ M
+
   -- A memory is a list of closed terms.
   -- The label l represents the sensitivity level of the terms contained in the memory.
   data Memory (l : Label) : Set where
     ∙ : Memory l  
     [] : Memory l
-    _∷_ : ∀ {τ} -> CTerm τ -> Memory l -> Memory l
+    _∷_ : ∀ {c τ} -> Cell τ c -> Memory l -> Memory l
 
   -- A store contains several memories divided by level.
   -- Furthermore it requires each level to be unique.
   data Store : (List Label) -> Set where
     [] : Store []
     _∷_ : ∀ {l ls} {{u : Unique l ls}} -> Memory l -> Store ls -> Store (l ∷ ls)
-
-  -- The proof that a term of a certain type is present in memory.
-  data _∈ᵐ_ {l : Label} (τ : Ty) : Memory l -> Set where
-    Here : ∀ {m} {c : CTerm τ} -> τ ∈ᵐ (c ∷ m)
-    There : ∀ {m τ'} {c : CTerm τ'} -> τ ∈ᵐ m -> τ ∈ᵐ (c ∷ m)
-    ∙ : τ ∈ᵐ ∙
-
-  data ⟨_,_⟩∈ˢ_ (τ : Ty) (l : Label) : ∀ {ls} -> Store ls -> Set where
-    Here : ∀ {ls} {p : Unique l ls} {m : Memory l} {s : Store ls} -> τ ∈ᵐ m -> ⟨ τ , l ⟩∈ˢ (m ∷ s)
-    There : ∀ {l' ls} {p : Unique l' ls} {m : Memory l'} {s : Store ls} -> ⟨ τ , l ⟩∈ˢ s -> ⟨ τ , l ⟩∈ˢ (m ∷ s)
 
   -- Type synonym that ensures no duplicates in a list.
   Unique : Label -> List Label -> Set
@@ -121,33 +120,34 @@ store-unique = aux
 
 --------------------------------------------------------------------------------
 
-data TypedIx {l} (τ : Ty) : CTerm Nat -> Memory l -> Set where
-  Here : ∀ {m} {c : CTerm τ} -> TypedIx τ zero (c ∷ m)
-  There : ∀ {m n τ'} {c : CTerm τ'} -> TypedIx τ n m -> TypedIx τ (suc n) (c ∷ m)
-  ∙ : ∀ {n} -> TypedIx τ n ∙
+data TypedIx {l} (τ : Ty) : CellType -> CTerm Nat -> Memory l -> Set where
+  Here : ∀ {m p} {c : Cell τ p} -> TypedIx τ p zero (c ∷ m)
+  There : ∀ {m n p p' τ'} {c : Cell τ' p'} -> TypedIx τ p n m -> TypedIx τ p (suc n) (c ∷ m)
+  ∙ : ∀ {n p} -> TypedIx τ p n ∙
 
-index-unique : ∀ {τ n l} {m : Memory l} -> (i j : TypedIx τ n m) -> i ≡ j
+index-unique : ∀ {τ n p l} {m : Memory l} -> (i j : TypedIx τ p n m) -> i ≡ j
 index-unique Here Here = refl
 index-unique (There i) (There j) rewrite index-unique i j = refl
 index-unique ∙ ∙ = refl
 
 
 -- Read from memory
-_[_] : ∀ {τ l n} -> (m : Memory l) -> TypedIx τ n m -> CTerm (Res l τ)
-(c ∷ _) [ Here ] = Res c
+_[_] : ∀ {τ l n} -> (m : Memory l) -> TypedIx τ P n m -> CTerm (Res l τ)
+(⟪ c ⟫ ∷ m) [ Here ] = Res c
 (c ∷ m) [ There i ] = _[_] m i 
 ∙ [ ∙ ] = Res ∙
 
 -- Update something in memory
-_[_]≔_ : ∀ {l τ n} -> (m : Memory l) -> TypedIx τ n m -> CTerm τ -> Memory l
-(_ ∷ m) [ Here ]≔ c = c ∷ m
+-- TODO should we work directly with Cell p ?
+_[_]≔_ : ∀ {l τ n} -> (m : Memory l) -> TypedIx τ P n m -> CTerm τ -> Memory l
+(_ ∷ m) [ Here ]≔ c = ⟪ c ⟫ ∷ m
 (c ∷ m) [ There i ]≔ c₁ = c ∷ (m [ i ]≔ c₁)
 ∙ [ ∙ ]≔ c = ∙
 
 infixr 2 _[_]≔_
 
 -- Snoc for memory
-_∷ʳ_ : ∀ {τ l} -> Memory l -> CTerm τ ->  Memory l 
+_∷ʳ_ : ∀ {τ l p} -> Memory l -> Cell p τ ->  Memory l 
 [] ∷ʳ c = c ∷ []
 (x ∷ m) ∷ʳ c = x ∷ (m ∷ʳ c)
 ∙  ∷ʳ c  = ∙
@@ -171,17 +171,17 @@ lengthᵐ : ∀ {l} -> Memory l -> CTerm (Res l Nat)
 lengthᵐ m = Res (count m)
 
 -- Read from memory in store
-_[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getMemory q s) -> CTerm (Res l τ)
+_[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ P n (getMemory q s) -> CTerm (Res l τ)
 (m ∷ s) [ Here ][ r ] = m [ r ]
 (x ∷ s) [ There q ][ r ] = s [ q ][ r ]
 
 -- Write to memory in store
-_[_][_]≔_ : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getMemory q s) -> CTerm τ -> Store ls
+_[_][_]≔_ : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ P n (getMemory q s) -> CTerm τ -> Store ls
 (m ∷ s) [ Here ][ r ]≔ c = (m [ r ]≔ c) ∷ s
 (x ∷ s) [ There q ][ r ]≔ c = x ∷ (s [ q ][ r ]≔ c)
 
 newˢ : ∀ {l ls τ} -> l ∈ ls -> Store ls -> CTerm τ -> Store ls
-newˢ Here (m ∷ s) c = (m ∷ʳ c) ∷ s
+newˢ Here (m ∷ s) c = (m ∷ʳ ⟪ c ⟫) ∷ s
 newˢ (There q) (x ∷ s) c = x ∷ newˢ q s c
 
 --------------------------------------------------------------------------------
