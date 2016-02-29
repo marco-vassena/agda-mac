@@ -113,14 +113,14 @@ mutual
     -- In this rule we don't actually compute the proper reference but we just assume that is there and points
     -- to a fresh location. Unfortunately computing the reference in the rule makes the types too complex for reasoning.
     new : ∀ {l h α} {s : Store ls} {t : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) ->
-               ⟨ s ∥ new p t ⟩ ⟼ ⟨ newˢ q s ⟪ t ⟫ ∥ Return (lengthᵐ (getMemory q s)) ⟩
+               ⟨ s ∥ new p t ⟩ ⟼ ⟨ newˢ q s ⟦ t ⟧ ∥ Return (lengthᵐ (getMemory q s)) ⟩
 
     writeCtx :  ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref h α)} {c₃ : CTerm α} ->
                   (p : l ⊑ h) -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
                   ⟨ s₁ ∥ write p c₁ c₃ ⟩ ⟼ ⟨ s₂ ∥ write p c₂ c₃  ⟩
 
-    write : ∀ {l h α} {s : Store ls} {n : CTerm Nat} {c : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) (r : TypedIx α P n (getMemory q s)) ->
-              ⟨ s ∥ write p (Res n) c ⟩ ⟼ ⟨ s [ q ][ r ]≔ ⟪ c ⟫ ∥ Return （） ⟩
+    write : ∀ {l h α} {s : Store ls} {n : CTerm Nat} {c : CTerm α} -> (p : l ⊑ h) (q : h ∈ ls) (r : TypedIx α F n (getMemory q s)) ->
+              ⟨ s ∥ write p (Res n) c ⟩ ⟼ ⟨ s [ q ][ r ]≔ ⟦ c ⟧ ∥ Return （） ⟩
 
     -- We need the proof h ∈ ls in distributivity, when erased the exception is silently ignored, the write rule applies.
     -- The write is harmless because Memory h is collpased to ∙, but to perform that operation I still need the proof h ∈ ls and  TypedIx τ n (getMemory q s)
@@ -128,15 +128,15 @@ mutual
     -- One thing is that rewriting fails. The second problem is that not only the second store would be rewritten as s [ q ][ r ]≔ c, but also the first
     -- thus preventing to apply the rule write.
     writeEx : ∀ {l h α n} {s : Store ls} {c : CTerm α} {e : CTerm Exception} ->
-              (p : l ⊑ h) (q : h ∈ ls) (r : TypedIx α P n (getMemory q s)) ->
+              (p : l ⊑ h) (q : h ∈ ls) (r : TypedIx α F n (getMemory q s)) ->
               ⟨ s ∥ write p (Resₓ e) c ⟩ ⟼ ⟨ s ∥ Return （） ⟩
 
     readCtx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Ref l α)} -> (p : l ⊑ h) ->
               ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
               ⟨ s₁ ∥ (read {α = α} p c₁) ⟩ ⟼ ⟨ s₂ ∥ (read p c₂) ⟩
 
-    read : ∀ {l h α n} {s : Store ls} {m : Memory l} -> (p : l ⊑ h) (q : l ∈ ls) -> (r : TypedIx α P n (getMemory q s)) ->
-              ⟨ s ∥ (read p (Res n)) ⟩ ⟼ ⟨ s ∥ unlabel p (s [ q ][ r ]ᴾ) ⟩
+    read : ∀ {l h α n} {s : Store ls} {m : Memory l} -> (p : l ⊑ h) (q : l ∈ ls) -> (r : TypedIx α F n (getMemory q s)) ->
+              ⟨ s ∥ (read p (Res n)) ⟩ ⟼ ⟨ s ∥ unlabel p (s [ q ][ r ]) ⟩
 
     readEx : ∀ {l h α} {s : Store ls} {e : CTerm Exception} -> (p : l ⊑ h) ->
               ⟨ s ∥ (read {α = α} p (Resₓ e)) ⟩ ⟼ ⟨ s ∥ Throw e ⟩
@@ -150,19 +150,19 @@ mutual
                   ⟨ Σ₁ ∥ c₁ ⟩ ⟼ ⟨ Σ₂ ∥ c₂ ⟩ ->
                   ⟨ Σ₁ ∥ putMVar c₁ c₃ ⟩ ⟼ ⟨ Σ₂ ∥ putMVar c₂ c₃  ⟩
 
-    putMVar : ∀ {l τ n} {Σ : Store ls} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ M n (getMemory q Σ)) ->
-              -- The check for non emptyness is a read operation!!!
-              Σ [ q ][ r ] ≡ ⊞ -> ⟨ Σ ∥ putMVar (Res n) t ⟩ ⟼ ⟨ Σ [ q ][ r ]≔ ⟦ t ⟧ ∥ Return （） ⟩
+    -- Deciding whether r points to E or F is a read operation!!!
+    putMVar : ∀ {l τ n} {Σ : Store ls} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ E n (getMemory q Σ)) ->
+               ⟨ Σ ∥ putMVar (Res n) t ⟩ ⟼ ⟨ Σ [ q ][ r ]≔ ⟦ t ⟧ ∥ Return （） ⟩
               
     putMVarEx : ∀ {l τ} {Σ : Store ls} {e : CTerm Exception} {t : CTerm τ} -> ⟨ Σ ∥ putMVar {l = l} (Resₓ e) t ⟩ ⟼ ⟨ Σ ∥ Throw e ⟩
 
     takeMVarCtx :  ∀ {l α} {Σ₁ Σ₂ : Store ls} {c₁ c₂ : CTerm (MVar l α)} ->
                   ⟨ Σ₁ ∥ c₁ ⟩ ⟼ ⟨ Σ₂ ∥ c₂ ⟩ ->
                   ⟨ Σ₁ ∥ takeMVar {α = α} c₁ ⟩ ⟼ ⟨ Σ₂ ∥ takeMVar c₂ ⟩
-
-    takeMVar : ∀ {l τ n} {Σ : Store ls} {t : CTerm (Res l τ)} -> (q : l ∈ ls) (r : TypedIx τ M n (getMemory q Σ)) ->
-              -- The check for non emptyness is a read operation!!!
-              (Σ [ q ][ r ] ≡ ⟦ t ⟧) -> ⟨ Σ ∥ takeMVar {α = τ}  (Res n) ⟩ ⟼ ⟨ Σ ∥  unlabel refl-⊑ t ⟩
+                  
+    -- Deciding whether r points to E or F is a read operation!!!
+    takeMVar : ∀ {l τ n} {Σ : Store ls} {t : CTerm (Res l τ)} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) ->
+               ⟨ Σ ∥ takeMVar {α = τ}  (Res n) ⟩ ⟼ ⟨ Σ ∥  unlabel refl-⊑ (Σ [ q ][ r ]) ⟩
               
     takeMVarEx : ∀ {l τ} {Σ : Store ls} {e : CTerm Exception} {t : CTerm τ} -> ⟨ Σ ∥ takeMVar {α = τ} (Resₓ e) ⟩ ⟼ ⟨ Σ ∥ Throw e ⟩
 
@@ -214,10 +214,8 @@ infixl 3 _▻_
 
 -- The proof that a term is blocked
 data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set where
-  onPut : ∀ {l n τ} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ M n (getMemory q Σ)) ->
-              ¬ (Σ [ q ][ r ] ≡ ⊞) -> Blocked Σ (putMVar (Res n) t)
-  onTake : ∀ {l n τ} (q : l ∈ ls) (r : TypedIx τ M n (getMemory q Σ)) ->
-              Σ [ q ][ r ] ≡ ⊞ -> Blocked Σ (takeMVar {α = τ} (Res n))
+  onPut : ∀ {l n τ} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) -> Blocked Σ (putMVar (Res n) t)
+  onTake : ∀ {l n τ} (q : l ∈ ls) (r : TypedIx τ E n (getMemory q Σ)) -> Blocked Σ (takeMVar {α = τ} (Res n))
 
 
 -- Semantics for threadpools

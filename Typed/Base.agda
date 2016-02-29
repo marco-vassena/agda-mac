@@ -76,15 +76,14 @@ mutual
   CTerm : Ty -> Set
   CTerm τ = Term [] τ
 
-  data CellType : Set where
-    P : CellType -- Plain memory cell
-    M : CellType -- Mutable memory cell (empty / full)
+  data Status : Set where
+    F : Status -- Full memory cell
+    E : Status -- Empty memory cell
 
   -- A memory cell of a certain type
-  data Cell (τ : Ty) : CellType -> Set where
-    ⟪_⟫  : CTerm τ -> Cell τ P
-    ⊞ : Cell τ M
-    ⟦_⟧ : CTerm τ -> Cell τ M
+  data Cell (τ : Ty) : Status -> Set where
+    ⊞ : Cell τ E
+    ⟦_⟧ : CTerm τ -> Cell τ F
 
   -- A memory is a list of closed terms.
   -- The label l represents the sensitivity level of the terms contained in the memory.
@@ -120,7 +119,7 @@ store-unique = aux
 
 --------------------------------------------------------------------------------
 
-data TypedIx {l} (τ : Ty) : CellType -> CTerm Nat -> Memory l -> Set where
+data TypedIx {l} (τ : Ty) : Status -> CTerm Nat -> Memory l -> Set where
   Here : ∀ {m p} {c : Cell τ p} -> TypedIx τ p zero (c ∷ m)
   There : ∀ {m n p p' τ'} {c : Cell τ' p'} -> TypedIx τ p n m -> TypedIx τ p (suc n) (c ∷ m)
   ∙ : ∀ {n p} -> TypedIx τ p n ∙
@@ -131,23 +130,22 @@ index-unique (There i) (There j) rewrite index-unique i j = refl
 index-unique ∙ ∙ = refl
 
 liftRes : ∀ {p τ l} -> Cell τ p -> Cell (Res l τ) p
-liftRes ⟪ x ⟫ = ⟪ (Res x) ⟫
 liftRes ⊞ = ⊞
 liftRes ⟦ x ⟧ = ⟦ (Res x) ⟧
 
 -- TODO : better name / symbol
-get : ∀ {τ} -> Cell τ P -> CTerm τ
-get ⟪ x ⟫ = x
+get : ∀ {τ} -> Cell τ F -> CTerm τ
+get ⟦ x ⟧ = x
 
 -- Read from memory
 _[_] : ∀ {τ l n p} -> (m : Memory l) -> TypedIx τ p n m -> Cell (Res l τ) p
 (c ∷ m) [ Here ] = liftRes c
 (c ∷ m) [ There i ] = _[_] m i 
-_[_] {p = P} ∙ ∙ = ⟪ (Res ∙) ⟫
-_[_] {p = M} ∙ ∙ = ⟦ (Res ∙) ⟧ -- ⊞ is also an option, I think we can choose
+_[_] {p = E} ∙ ∙ = ⊞
+_[_] {p = F} ∙ ∙ = ⟦ (Res ∙) ⟧
 
 -- Update something in memory
-_[_]≔_ : ∀ {p l τ n} -> (m : Memory l) -> TypedIx τ p n m -> Cell τ p -> Memory l
+_[_]≔_ : ∀ {p₁ p₂ l τ n} -> (m : Memory l) -> TypedIx τ p₁ n m -> Cell τ p₂ -> Memory l
 (_ ∷ m) [ Here ]≔ c = c ∷ m
 (c ∷ m) [ There i ]≔ c₁ = c ∷ (m [ i ]≔ c₁)
 ∙ [ ∙ ]≔ c = ∙
@@ -179,15 +177,15 @@ lengthᵐ : ∀ {l} -> Memory l -> CTerm (Res l Nat)
 lengthᵐ m = Res (count m)
 
 -- Read from memory in store
-_[_][_] : ∀ {p τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ p n (getMemory q s) -> Cell (Res l τ) p
-(m ∷ s) [ Here ][ r ] = m [ r ]
-(x ∷ s) [ There q ][ r ] = s [ q ][ r ]
+_[_][_]ᶜ : ∀ {p τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ p n (getMemory q s) -> Cell (Res l τ) p
+(m ∷ s) [ Here ][ r ]ᶜ = m [ r ]
+(x ∷ s) [ There q ][ r ]ᶜ = s [ q ][ r ]ᶜ
 
-_[_][_]ᴾ : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ P n (getMemory q s) -> CTerm (Res l τ)
-s [ q ][ r ]ᴾ = get (s [ q ][ r ])
+_[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ F n (getMemory q s) -> CTerm (Res l τ)
+s [ q ][ r ] = get (s [ q ][ r ]ᶜ)
 
--- Write to memory in store
-_[_][_]≔_ : ∀ {τ ls l n p} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ p n (getMemory q s) -> Cell τ p -> Store ls
+-- Write a cell to memory in store.
+_[_][_]≔_ : ∀ {τ ls l n p₁ p₂} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ p₁ n (getMemory q s) -> Cell τ p₂ -> Store ls
 (m ∷ s) [ Here ][ r ]≔ c = (m [ r ]≔ c) ∷ s
 (x ∷ s) [ There q ][ r ]≔ c = x ∷ (s [ q ][ r ]≔ c)
 
