@@ -185,26 +185,26 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 
 --------------------------------------------------------------------------------
 
-εᵐ-new-≡ : ∀ {l lₐ τ} -> ¬ l ⊑ lₐ -> (m : Memory l) (c : CTerm τ) -> εᵐ lₐ (l ⊑? lₐ) m ≡ εᵐ lₐ (l ⊑? lₐ) (m ∷ʳ c)
+εᵐ-new-≡ : ∀ {l lₐ τ p} -> ¬ l ⊑ lₐ -> (m : Memory l) (c : Cell τ p) -> εᵐ lₐ (l ⊑? lₐ) m ≡ εᵐ lₐ (l ⊑? lₐ) (m ∷ʳ c)
 εᵐ-new-≡ {l} {lₐ} ¬p m c with l ⊑? lₐ
 εᵐ-new-≡ ¬p m c | yes p = ⊥-elim (¬p p)
 εᵐ-new-≡ ¬p₁ m c | no ¬p = refl
 
-εᵐ-write-≡ :  ∀ {l lₐ τ n} -> ¬ l ⊑ lₐ -> (m : Memory l) (r : TypedIx τ n m) (c : CTerm τ) -> εᵐ lₐ (l ⊑? lₐ) m ≡ εᵐ lₐ (l ⊑? lₐ) (m [ r ]≔ c)
+εᵐ-write-≡ :  ∀ {l lₐ τ n s₁ s₂} -> ¬ l ⊑ lₐ -> (m : Memory l) (r : TypedIx τ s₁ n m) (c : Cell τ s₂) -> εᵐ lₐ (l ⊑? lₐ) m ≡ εᵐ lₐ (l ⊑? lₐ) (m [ r ]≔ c)
 εᵐ-write-≡ {l} {lₐ} ¬p m r c with l ⊑? lₐ
 εᵐ-write-≡ ¬p m r c | yes p = ⊥-elim (¬p p)
 εᵐ-write-≡ ¬p₁ m r c | no ¬p = refl 
 
 --- Allocations to high, non-visible memories are canceled by the earsure function, because
 --- high memory are collapsed to ∙.
-εˢ-new-≡ : ∀ {l lₐ ls τ} -> ¬ (l ⊑ lₐ) -> (s : Store ls) (q : l ∈ ls) (c : CTerm τ) ->
-               εˢ lₐ s ≡ εˢ lₐ (newˢ q s c)
+εˢ-new-≡ : ∀ {l lₐ ls τ s} -> ¬ (l ⊑ lₐ) -> (Σ : Store ls) (q : l ∈ ls) (c : Cell τ s) ->
+               εˢ lₐ Σ ≡ εˢ lₐ (newˢ q Σ c)
 εˢ-new-≡ ¬p [] () c
 εˢ-new-≡ ¬p (m ∷ s) Here c rewrite εᵐ-new-≡ ¬p m c = refl
 εˢ-new-≡ ¬p (x ∷ s) (There q) c rewrite εˢ-new-≡ ¬p s q c = refl
 
-εˢ-write-≡ : ∀ {l lₐ ls n τ} -> ¬ (l ⊑ lₐ) -> (s : Store ls) (q : l ∈ ls) (r : TypedIx τ n (getMemory q s)) (c : CTerm τ) ->
-               εˢ lₐ s ≡ εˢ lₐ (s [ q ][ r ]≔ c)
+εˢ-write-≡ : ∀ {l lₐ ls n τ s} -> ¬ (l ⊑ lₐ) -> (Σ : Store ls) (q : l ∈ ls) (r : TypedIx τ s n (getMemory q Σ)) (c : Cell τ s) ->
+               εˢ lₐ Σ ≡ εˢ lₐ (Σ [ q ][ r ]≔ c)
 εˢ-write-≡ ¬p [] () r c
 εˢ-write-≡ ¬p (m ∷ s) Here r c rewrite εᵐ-write-≡ ¬p m r c = refl
 εˢ-write-≡ ¬p (x ∷ s) (There q) r c rewrite εˢ-write-≡ ¬p s q r c = refl               
@@ -226,37 +226,38 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 εˢ-≡⋆ lₐ ¬p [] = refl
 εˢ-≡⋆ lₐ ¬p (s ∷ ss) rewrite εˢ-≡ lₐ ¬p s | εˢ-≡⋆ lₐ ¬p ss =  refl
 
-εˢ-≡ lₐ ¬p (Pure x) = refl
-εˢ-≡ lₐ ¬p (BindCtx s) = εˢ-≡ lₐ ¬p s
-εˢ-≡ lₐ ¬p (CatchCtx s) = εˢ-≡ lₐ ¬p s
-εˢ-≡ lₐ ¬p (unlabelCtx p (Pure x)) = refl
-εˢ-≡ lₐ ¬p (join p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (lemma p ¬p) ss = refl
-εˢ-≡ lₐ ¬p (joinEx p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (lemma p ¬p) ss = refl
-εˢ-≡ lₐ ¬p (new {s = s} p q) = εˢ-new-≡ (lemma p ¬p) s q _
-εˢ-≡ lₐ ¬p (writeCtx p (Pure x)) = refl
-εˢ-≡ lₐ ¬p (write {s = s} p q r) = εˢ-write-≡ (lemma p ¬p) s q r _ 
-εˢ-≡ lₐ ¬p (writeEx p q r) = refl
-εˢ-≡ lₐ ¬p (readCtx p (Pure x)) = refl
-εˢ-≡ lₐ ¬p (read p q r) = refl
-εˢ-≡ lₐ ¬p (readEx p) = refl
+εˢ-≡ lₐ ¬p s = {!!}
+-- εˢ-≡ lₐ ¬p (Pure x) = refl
+-- εˢ-≡ lₐ ¬p (BindCtx s) = εˢ-≡ lₐ ¬p s
+-- εˢ-≡ lₐ ¬p (CatchCtx s) = εˢ-≡ lₐ ¬p s
+-- εˢ-≡ lₐ ¬p (unlabelCtx p (Pure x)) = refl
+-- εˢ-≡ lₐ ¬p (join p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (lemma p ¬p) ss = refl
+-- εˢ-≡ lₐ ¬p (joinEx p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (lemma p ¬p) ss = refl
+-- εˢ-≡ lₐ ¬p (new {s = s} p q) = εˢ-new-≡ (lemma p ¬p) s q _
+-- εˢ-≡ lₐ ¬p (writeCtx p (Pure x)) = refl
+-- εˢ-≡ lₐ ¬p (write {s = s} p q r) = εˢ-write-≡ (lemma p ¬p) s q r _ 
+-- εˢ-≡ lₐ ¬p (writeEx p q r) = refl
+-- εˢ-≡ lₐ ¬p (readCtx p (Pure x)) = refl
+-- εˢ-≡ lₐ ¬p (read p q r) = refl
+-- εˢ-≡ lₐ ¬p (readEx p) = refl
 
 --------------------------------------------------------------------------------
 -- Reference proof erasure
 --------------------------------------------------------------------------------
 
-εᵐ-TypedIx : ∀ {l lₐ τ n} -> (p : l ⊑ lₐ) -> (m : Memory l) -> TypedIx τ n m -> TypedIx τ (ε lₐ n) (εᵐ lₐ (yes p) m)
+εᵐ-TypedIx : ∀ {l lₐ τ n s} -> (p : l ⊑ lₐ) -> (m : Memory l) -> TypedIx τ s n m -> TypedIx τ s (ε lₐ n) (εᵐ lₐ (yes p) m)
 εᵐ-TypedIx p ._ Here = Here
 εᵐ-TypedIx p ._ (There r) = There (εᵐ-TypedIx p _ r)
 εᵐ-TypedIx p .∙ ∙ = ∙
 
-ε-TypedIx : ∀ {l lₐ τ n ls} -> l ⊑ lₐ -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getMemory q s) -> TypedIx τ (ε lₐ n) (getMemory q (εˢ lₐ s))
+ε-TypedIx : ∀ {l lₐ τ n ls s} -> l ⊑ lₐ -> (Σ : Store ls) (q : l ∈ ls) -> TypedIx τ s n (getMemory q Σ) -> TypedIx τ s (ε lₐ n) (getMemory q (εˢ lₐ Σ))
 ε-TypedIx p [] () r
 ε-TypedIx {l} {lₐ} p (x ∷ s) Here r with l ⊑? lₐ
 ε-TypedIx p₁ (x ∷ s) Here r | yes p = εᵐ-TypedIx p x r
 ε-TypedIx p (x ∷ s) Here r | no ¬p = ⊥-elim (¬p p)
 ε-TypedIx p (x ∷ s) (There q) r = ε-TypedIx p s q r
 
-ε-TypedIx∙  : ∀ {l lₐ τ n ls} -> ¬ l ⊑ lₐ -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ n (getMemory q s) -> TypedIx τ ∙ (getMemory q (εˢ lₐ s))
+ε-TypedIx∙  : ∀ {l lₐ τ n ls s} -> ¬ l ⊑ lₐ -> (Σ : Store ls) (q : l ∈ ls) -> TypedIx τ s n (getMemory q Σ) -> TypedIx τ s ∙ (getMemory q (εˢ lₐ Σ))
 ε-TypedIx∙ ¬p [] () r
 ε-TypedIx∙ {l} {lₐ} ¬p (x ∷ s) Here r with l ⊑? lₐ
 ε-TypedIx∙ ¬p (x ∷ s) Here r | yes p = ⊥-elim (¬p p)
@@ -268,7 +269,7 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 --------------------------------------------------------------------------------
 
 -- Allocating a term in  memory and then erasing the result is the same as allocating the erased term in the erased memory.
-newᵐ-≡ : ∀ {l lₐ τ} (x : Dec (l ⊑ lₐ)) (m : Memory l) (t : CTerm τ) -> εᵐ lₐ x m ∷ʳ (ε lₐ t) ≡ εᵐ lₐ x (m ∷ʳ t)
+newᵐ-≡ : ∀ {l lₐ τ s} (x : Dec (l ⊑ lₐ)) (m : Memory l) (c : Cell τ s) -> εᵐ lₐ x m ∷ʳ (εᶜ lₐ c) ≡ εᵐ lₐ x (m ∷ʳ c)
 newᵐ-≡ (yes p) ∙ t = refl
 newᵐ-≡ (yes p) [] t = refl
 newᵐ-≡ (yes p) (x ∷ m) t rewrite newᵐ-≡ (yes p) m t = refl
@@ -298,7 +299,7 @@ count≡∙ ¬p q s rewrite getMemory≡∙ ¬p q s = refl
 count-≡ : ∀ {l lₐ ls} -> l ⊑ lₐ -> (q : l ∈ ls) (s : Store ls) -> ε lₐ (count (getMemory q s)) ≡ count (getMemory q (εˢ lₐ s))
 count-≡ {l} {lₐ} p q s rewrite getMemory-εˢ lₐ s q = countᵐ-≡ p (l ⊑? lₐ) (getMemory q s)
 
-newˢ-≡ : ∀ {l ls τ} -> (lₐ : Label) (q : l ∈ ls) (s : Store ls) (t : CTerm τ) -> εˢ lₐ (newˢ q s t) ≡ newˢ q (εˢ lₐ s) (ε lₐ t)
+newˢ-≡ : ∀ {l ls τ s} -> (lₐ : Label) (q : l ∈ ls) (Σ : Store ls) (c : Cell τ s) -> εˢ lₐ (newˢ q Σ c) ≡ newˢ q (εˢ lₐ Σ) (εᶜ lₐ c)
 newˢ-≡ {l} lₐ Here (x ∷ s) t rewrite newᵐ-≡ (l ⊑? lₐ) x t = refl
 newˢ-≡ lₐ (There q) (x ∷ s) t rewrite newˢ-≡ lₐ q s t = refl
 
@@ -306,34 +307,34 @@ newˢ-≡ lₐ (There q) (x ∷ s) t rewrite newˢ-≡ lₐ q s t = refl
 -- Read lemmas
 --------------------------------------------------------------------------------
 
-readᵐ-≡ : ∀ {l lₐ τ n} -> (p : l ⊑ lₐ) (m : Memory l) (r : TypedIx τ n m) -> ε lₐ ( m [ r ]) ≡ εᵐ lₐ (yes p) m [ εᵐ-TypedIx p m r ]
+readᵐ-≡ : ∀ {l lₐ τ n s} -> (p : l ⊑ lₐ) (m : Memory l) (r : TypedIx τ s n m) -> εᶜ lₐ ( m [ r ]) ≡ (εᵐ lₐ (yes p) m) [ εᵐ-TypedIx p m r ]
 readᵐ-≡ {l} {lₐ} p ∙ ∙ with l ⊑? lₐ
-readᵐ-≡ {lₐ = lₐ} {τ = τ} p₁ ∙ ∙ | yes p rewrite ε∙≡∙ {τ} {[]} lₐ =  refl
-readᵐ-≡ p ∙ ∙ | no ¬p = refl
+readᵐ-≡ {lₐ = lₐ} {τ = τ} p₁ ∙ ∙ | yes p rewrite ε∙≡∙ {τ} {[]} lₐ = {!!} -- refl
+readᵐ-≡ p ∙ ∙ | no ¬p = {!!} -- refl
 readᵐ-≡ p [] ()
 readᵐ-≡ {l} {lₐ} p (x ∷ m) Here with l ⊑? lₐ
-readᵐ-≡ p₁ (x ∷ m) Here | yes p = refl
+readᵐ-≡ p₁ (x ∷ m) Here | yes p = {!!} -- refl
 readᵐ-≡ p (x ∷ m) Here | no ¬p = ⊥-elim (¬p p)
 readᵐ-≡ p (x ∷ m) (There r) = readᵐ-≡ p m r
 
-readᵐ-≡∙ : ∀ {l lₐ τ n} -> (¬p : ¬ l ⊑ lₐ) (m : Memory l) (r : TypedIx τ n m) -> ε lₐ ( m [ r ]) ≡ Res ∙
+readᵐ-≡∙ : ∀ {l lₐ τ n} -> (¬p : ¬ l ⊑ lₐ) (m : Memory l) (r : TypedIx τ F n m) -> ε lₐ ( get (m [ r ])) ≡ Res ∙
 readᵐ-≡∙ {l} {lₐ} ¬p ._ Here with l ⊑? lₐ
 readᵐ-≡∙ ¬p ._ Here | yes p = ⊥-elim (¬p p)
-readᵐ-≡∙ ¬p₁ ._ Here | no ¬p = refl
+readᵐ-≡∙ ¬p₁ ._ Here | no ¬p = {!!} -- refl
 readᵐ-≡∙ ¬p ._ (There r) = readᵐ-≡∙ ¬p _ r
 readᵐ-≡∙ {l} {lₐ} ¬p .∙ ∙ with l ⊑? lₐ
 readᵐ-≡∙ ¬p .∙ ∙ | yes p = ⊥-elim (¬p p)
 readᵐ-≡∙ ¬p₁ .∙ ∙ | no ¬p = refl
 
-readˢ-≡ : ∀ {l lₐ ls τ n} -> (p : l ⊑ lₐ) (s : Store ls) (q : l ∈ ls) (r : TypedIx τ n (getMemory q s)) ->
-            ε lₐ (s [ q ][ r ]) ≡ (εˢ lₐ s) [ q ][ ε-TypedIx p s q r ]
+readˢ-≡ : ∀ {l lₐ ls τ n} -> (p : l ⊑ lₐ) (Σ : Store ls) (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) ->
+            ε lₐ (Σ [ q ][ r ]) ≡ (εˢ lₐ Σ) [ q ][ ε-TypedIx p Σ q r ]
 readˢ-≡ p [] () r
 readˢ-≡ {l} {lₐ} p (x ∷ s) Here r with l ⊑? lₐ
-readˢ-≡ {l} {lₐ} p₁ (x ∷ s) Here r | yes p = readᵐ-≡ p x r
+readˢ-≡ {l} {lₐ} p₁ (x ∷ s) Here r | yes p = {!!} -- readᵐ-≡ p x r
 readˢ-≡ p (x ∷ s) Here r | no ¬p = ⊥-elim (¬p p)
 readˢ-≡ p (x ∷ s) (There q) r = readˢ-≡ p s q r
 
-readˢ-≡∙ : ∀ {l lₐ ls τ n} -> (¬p : ¬ (l ⊑ lₐ)) (s : Store ls) (q : l ∈ ls) (r : TypedIx τ n (getMemory q s)) ->
+readˢ-≡∙ : ∀ {l lₐ ls τ n} -> (¬p : ¬ (l ⊑ lₐ)) (s : Store ls) (q : l ∈ ls) (r : TypedIx τ {!!} n (getMemory q s)) ->
             ε lₐ (s [ q ][ r ]) ≡ (εˢ lₐ s) [ q ][ ε-TypedIx∙ ¬p s q r ]
 readˢ-≡∙ ¬p [] () r
 readˢ-≡∙ {l} {lₐ} ¬p (x ∷ s) Here r with l ⊑? lₐ
@@ -344,28 +345,28 @@ readˢ-≡∙ ¬p (x ∷ s) (There q) r = readˢ-≡∙ ¬p s q r
 --------------------------------------------------------------------------------
 -- Write lemmas
 --------------------------------------------------------------------------------
-
-writeᵐ-≡ : ∀ {l lₐ τ n} -> (c : CTerm τ) (p : l ⊑ lₐ) (m : Memory l) (r : TypedIx τ n m) -> (εᵐ lₐ (yes p) m [ εᵐ-TypedIx p m r ]≔ ε lₐ c) ≡ εᵐ lₐ (yes p) (m [ r ]≔ c) 
+  
+writeᵐ-≡ : ∀ {l lₐ τ n s} -> (c : Cell τ s) (p : l ⊑ lₐ) (m : Memory l) (r : TypedIx τ s n m) -> (εᵐ lₐ (yes p) m [ εᵐ-TypedIx p m r ]≔ εᶜ lₐ c) ≡ εᵐ lₐ (yes p) (m [ r ]≔ c) 
 writeᵐ-≡ c p ._ Here = refl
 writeᵐ-≡ c p ._ (There r) rewrite writeᵐ-≡ c p _ r = refl
 writeᵐ-≡ c p .∙ ∙ = refl
 
-writeˢ-≡ : ∀ {l lₐ ls τ n} -> (c : CTerm τ) (p : l ⊑ lₐ) (q : l ∈ ls) (s : Store ls) (r : TypedIx τ n (getMemory q s)) ->
-           εˢ lₐ (s [ q ][ r ]≔ c) ≡ εˢ lₐ s [ q ][ ε-TypedIx p s q r ]≔ ε lₐ c
+writeˢ-≡ : ∀ {l lₐ ls τ n s} -> (c : Cell τ s) (p : l ⊑ lₐ) (q : l ∈ ls) (Σ : Store ls) (r : TypedIx τ s n (getMemory q Σ)) ->
+           εˢ lₐ (Σ [ q ][ r ]≔ c) ≡ εˢ lₐ Σ [ q ][ ε-TypedIx p Σ q r ]≔ εᶜ lₐ c
 writeˢ-≡ {l} {lₐ}  c p Here (x ∷ s) r with l ⊑? lₐ
 writeˢ-≡ c p₁ Here (m ∷ s) r | yes p rewrite writeᵐ-≡ c p m r = refl
 writeˢ-≡ c p Here (x ∷ s) r | no ¬p = ⊥-elim (¬p p)
 writeˢ-≡ c p (There q) (x ∷ s) r rewrite writeˢ-≡ c p q s r = refl
 
-writeˢ-≡∙ : ∀ {l lₐ ls τ n} -> (c : CTerm τ) (¬p : ¬ l ⊑ lₐ) (q : l ∈ ls) (s : Store ls) (r : TypedIx τ n (getMemory q s)) ->
-           εˢ lₐ (s [ q ][ r ]≔ c) ≡ εˢ lₐ s [ q ][ ε-TypedIx∙ ¬p s q r ]≔ ε lₐ c
+writeˢ-≡∙ : ∀ {l lₐ ls τ n s} -> (c : Cell τ s) (¬p : ¬ l ⊑ lₐ) (q : l ∈ ls) (Σ : Store ls) (r : TypedIx τ s n (getMemory q Σ)) ->
+           εˢ lₐ (Σ [ q ][ r ]≔ c) ≡ εˢ lₐ Σ [ q ][ ε-TypedIx∙ ¬p Σ q r ]≔ εᶜ lₐ c
 writeˢ-≡∙ {l} {lₐ} c ¬p Here (m ∷ s) r with l ⊑? lₐ
 writeˢ-≡∙ c ¬p Here (m ∷ s) r | yes p = ⊥-elim (¬p p)
 writeˢ-≡∙ c ¬p₁ Here (m ∷ s) r | no ¬p = refl
 writeˢ-≡∙ c ¬p (There q) (x ∷ s) r rewrite writeˢ-≡∙ c ¬p q s r = refl
 
-writeExˢ-≡∙ : ∀ {l lₐ ls τ n} -> (c : CTerm τ) (¬p : ¬ l ⊑ lₐ) (q : l ∈ ls) (s : Store ls) (r : TypedIx τ n (getMemory q s)) ->
-              (εˢ lₐ s) [ q ][ ε-TypedIx∙ ¬p s q r ]≔ ε lₐ c ≡ (εˢ lₐ s)
+writeExˢ-≡∙ : ∀ {l lₐ ls τ n s} -> (c : Cell τ s) (¬p : ¬ l ⊑ lₐ) (q : l ∈ ls) (Σ : Store ls) (r : TypedIx τ s n (getMemory q Σ)) ->
+              (εˢ lₐ Σ) [ q ][ ε-TypedIx∙ ¬p Σ q r ]≔ εᶜ lₐ c ≡ (εˢ lₐ Σ)
 writeExˢ-≡∙ {l} {lₐ} c ¬p Here (x ∷ s) r with l ⊑? lₐ
 writeExˢ-≡∙ c ¬p Here (x ∷ s) r | yes p = ⊥-elim (¬p p)
 writeExˢ-≡∙ c ¬p₁ Here (x ∷ s) r | no ¬p = refl
@@ -374,13 +375,13 @@ writeExˢ-≡∙ {lₐ = lₐ} c ¬p (There q) (_∷_ {l = l'} x s) r = cong (_�
 
 -- We need to be careful with the rewriting or Agda starts going crazy.
 -- It seems that if we introduce enough indirections everything works fine! :)
-writeEx' :  ∀ {l h lₐ ls τ n} -> (c : CTerm τ) (p : l ⊑ h) (¬p : ¬ h ⊑ lₐ) (q : h ∈ ls) (s : Store ls) (r : TypedIx τ n (getMemory q s)) ->             
-              ⟨ εˢ lₐ s ∥ write p (Res ∙) (ε lₐ c) ⟩ ⟼ ⟨ (εˢ lₐ s) ∥ Return （） ⟩ 
+writeEx' :  ∀ {l h lₐ ls τ n} -> (c : CTerm τ) (p : l ⊑ h) (¬p : ¬ h ⊑ lₐ) (q : h ∈ ls) (Σ : Store ls) (r : TypedIx τ F n (getMemory q Σ)) ->
+            ⟨ εˢ lₐ Σ ∥ write p (Res ∙) (ε lₐ c) ⟩ ⟼ ⟨ (εˢ lₐ Σ) ∥ Return （） ⟩ 
 writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
   where
-        aux : ⟨ εˢ lₐ s ∥ write p (Res ∙) (ε lₐ c) ⟩ ⟼ ⟨ (εˢ lₐ s) [ q ][ ε-TypedIx∙ ¬p s q r ]≔ ε lₐ c ∥ Return （） ⟩ ->
+        aux : ⟨ εˢ lₐ s ∥ write p (Res ∙) (ε lₐ c) ⟩ ⟼ ⟨ (εˢ lₐ s) [ q ][ ε-TypedIx∙ ¬p s q r ]≔ εᶜ lₐ ⟦ c ⟧ ∥ Return （） ⟩ ->
               ⟨ εˢ lₐ s ∥ write p (Res ∙) (ε lₐ c) ⟩ ⟼ ⟨ (εˢ lₐ s) ∥ Return （） ⟩ 
-        aux step rewrite writeExˢ-≡∙ c ¬p q s r = step
+        aux x rewrite writeExˢ-≡∙ ⟦ c ⟧ ¬p q s r = x
         
 --------------------------------------------------------------------------------
 
@@ -395,8 +396,8 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 ε-Mac-dist lₐ (yes p₁) (joinEx p₂ bs) | yes p = joinEx p₂ (ε-Mac-distₓ⇓ lₐ p bs)
 ε-Mac-dist lₐ (yes p) (joinEx p₁ (BigStep x ss)) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = join p₁ (BigStep (Mac ∙) [])
 ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p₂ q) | yes p rewrite newˢ-≡ lₐ q s t | count-≡ p q s = new p₂ q
-ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p q) | no ¬p rewrite newˢ-≡ lₐ q s t | count≡∙ ¬p q s = new p q
+ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p₂ q) | yes p rewrite newˢ-≡ lₐ q s ⟦ t ⟧ | count-≡ p q s = new p₂ q
+ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p q) | no ¬p rewrite newˢ-≡ lₐ q s ⟦ t ⟧ | count≡∙ ¬p q s = new p q
 ε-Mac-dist lₐ (yes p) (readCtx {l = l} p₁ s) with l ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (readCtx p₂ s) | yes p = readCtx p₂ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p) (readCtx p₁ s) | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
@@ -410,11 +411,19 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 ε-Mac-dist lₐ (yes p₁) (writeCtx p₂ s) | yes p = writeCtx p₂ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p₁) (writeCtx p s) | no ¬p = writeCtx p (εᵖ-dist lₐ s) 
 ε-Mac-dist lₐ (yes p₁) (write {h = h} {s = s} {c = c} p q r) with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (write {s = s} {c = c} p₂ q r) | yes p rewrite writeˢ-≡ c p q s r = write p₂ q (ε-TypedIx p s q r)
-ε-Mac-dist lₐ (yes p₁) (write {s = s} {c = c} p q r) | no ¬p rewrite writeˢ-≡∙ c ¬p q s r = write p q (ε-TypedIx∙ ¬p s q r)
+ε-Mac-dist lₐ (yes p₁) (write {s = s} {c = c} p₂ q r) | yes p rewrite writeˢ-≡ ⟦ c ⟧ p q s r = write p₂ q (ε-TypedIx p s q r)
+ε-Mac-dist lₐ (yes p₁) (write {s = s} {c = c} p q r) | no ¬p rewrite writeˢ-≡∙ ⟦ c ⟧ ¬p q s r = write p q (ε-TypedIx∙ ¬p s q r)
 ε-Mac-dist lₐ (yes p₁) (writeEx {h = h} {s = s} p q r) with h ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (writeEx {s = s} p₂ q r) | yes p = writeEx p₂ q (ε-TypedIx p s q r)
 ε-Mac-dist lₐ (yes p₁) (writeEx {s = s} {c = c} p q r) | no ¬p = writeEx' c p ¬p q s r
+ε-Mac-dist lₐ (yes p) (fork p₁ t) = {!!}
+ε-Mac-dist lₐ (yes p) (newMVar p₁ q) = {!!}
+ε-Mac-dist lₐ (yes p) (putMVarCtx s) = {!!}
+ε-Mac-dist lₐ (yes p) (putMVar q r) = {!!}
+ε-Mac-dist lₐ (yes p) putMVarEx = {!!}
+ε-Mac-dist lₐ (yes p) (takeMVarCtx s) = {!!}
+ε-Mac-dist lₐ (yes p) (takeMVar q r) = {!!}
+ε-Mac-dist lₐ (yes p) takeMVarEx = {!!}
 ε-Mac-dist {c₁ = c₁} {c₂ = c₂} lₐ (no ¬p) s
   rewrite ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p | εˢ-≡ lₐ ¬p s = Pure Hole
 

@@ -97,10 +97,15 @@ open import Data.List as L hiding (drop)
 ε {Nat} lₐ (suc n) = suc (ε lₐ n)
 ε lₐ ∙ = ∙
 
+-- Erasure of cell
+εᶜ : ∀ {τ p} -> Label -> Cell p τ -> Cell p τ
+εᶜ lₐ ⊞ = ⊞
+εᶜ lₐ ⟦ x ⟧ = ⟦ ε lₐ x ⟧
+
 εᵐ : ∀ {l} -> (lₐ : Label) -> Dec (l ⊑ lₐ) -> Memory l -> Memory l
 εᵐ lₐ (yes p) ∙ = ∙
 εᵐ lₐ (yes p) [] = []
-εᵐ lₐ (yes p) (x ∷ m) = ε lₐ x ∷ εᵐ lₐ (yes p) m
+εᵐ lₐ (yes p) (c ∷ m) = εᶜ lₐ c ∷ εᵐ lₐ (yes p) m
 εᵐ lₐ (no ¬p) m = ∙
 
 -- A store is erased by erasing visible memory and collapsing sensitive memories.
