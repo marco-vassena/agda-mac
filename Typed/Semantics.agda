@@ -135,7 +135,7 @@ mutual
               ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
               ⟨ s₁ ∥ (read {α = α} p c₁) ⟩ ⟼ ⟨ s₂ ∥ (read p c₂) ⟩
 
-    read : ∀ {l h α n} {s : Store ls} {m : Memory l} -> (p : l ⊑ h) (q : l ∈ ls) -> (r : TypedIx α F n (getMemory q s)) ->
+    read : ∀ {l h α n} {s : Store ls} -> (p : l ⊑ h) (q : l ∈ ls) -> (r : TypedIx α F n (getMemory q s)) ->
               ⟨ s ∥ (read p (Res n)) ⟩ ⟼ ⟨ s ∥ unlabel p (s [ q ][ r ]) ⟩
 
     readEx : ∀ {l h α} {s : Store ls} {e : CTerm Exception} -> (p : l ⊑ h) ->
@@ -161,10 +161,10 @@ mutual
                   ⟨ Σ₁ ∥ takeMVar {α = α} c₁ ⟩ ⟼ ⟨ Σ₂ ∥ takeMVar c₂ ⟩
                   
     -- Deciding whether r points to E or F is a read operation!!!
-    takeMVar : ∀ {l τ n} {Σ : Store ls} {t : CTerm (Res l τ)} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) ->
+    takeMVar : ∀ {l : Label} {τ : Ty} {n : CTerm Nat} {Σ : Store ls} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) ->
                ⟨ Σ ∥ takeMVar {α = τ}  (Res n) ⟩ ⟼ ⟨ Σ ∥  unlabel refl-⊑ (Σ [ q ][ r ]) ⟩
               
-    takeMVarEx : ∀ {l τ} {Σ : Store ls} {e : CTerm Exception} {t : CTerm τ} -> ⟨ Σ ∥ takeMVar {α = τ} (Resₓ e) ⟩ ⟼ ⟨ Σ ∥ Throw e ⟩
+    takeMVarEx : ∀ {l τ} {Σ : Store ls} {e : CTerm Exception} -> ⟨ Σ ∥ takeMVar {α = τ} (Resₓ e) ⟩ ⟼ ⟨ Σ ∥ Throw e ⟩
 
   -- A program is a Redex if it can be reduced further in a certain memory configuration
   data Redex {ls : List Label} {τ : Ty} (s₁ : Store ls) (c₁ : CTerm τ) : Set where
