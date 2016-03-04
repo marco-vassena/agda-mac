@@ -247,6 +247,22 @@ determinismC {s₁ = s₁} (read p q₁ r₁) (read .p q₂ r₂) rewrite store-
 determinismC (readEx p) (readEx .p) = refl
 determinismC (readEx p) (readCtx .p (Pure ()))
 determinismC (readCtx p (Pure ())) (readEx .p)
+determinismC (fork p t) (fork .p .t) = refl
+determinismC (newMVar {Σ = Σ} p q) (newMVar .p q₁) rewrite store-unique Σ q q₁ = refl
+determinismC (putMVarCtx s₁) (putMVarCtx s₂) rewrite determinismC s₁ s₂ = refl
+determinismC (putMVarCtx (Pure ())) (putMVar q r)
+determinismC (putMVarCtx (Pure ())) putMVarEx
+determinismC (putMVar q r) (putMVarCtx (Pure ()))
+determinismC (putMVar {Σ = Σ} q₁ r₁) (putMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ = refl
+determinismC putMVarEx (putMVarCtx (Pure ()))
+determinismC putMVarEx putMVarEx = refl
+determinismC (takeMVarCtx s₁) (takeMVarCtx s₂) rewrite determinismC s₁ s₂ = refl
+determinismC (takeMVarCtx (Pure ())) (takeMVar q r)
+determinismC (takeMVarCtx (Pure ())) takeMVarEx
+determinismC (takeMVar q r) (takeMVarCtx (Pure ()))
+determinismC (takeMVar {Σ = Σ} q₁ r₁) (takeMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ | index-unique r₁ r₂ = refl
+determinismC takeMVarEx (takeMVarCtx (Pure ()))
+determinismC takeMVarEx takeMVarEx = refl
 
 determinismMixedS : ∀ {ls τ} {s₁ s₂ : Store ls} {c₁ c₂ c₃ : CTerm τ} -> 
                    c₁ ⇝ c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₃ ⟩ -> s₁ ≡ s₂
@@ -318,6 +334,22 @@ determinismS (read p q₁ r₁) (read .p q₂ r₂) = refl
 determinismS (readEx p) (readEx .p) = refl
 determinismS (readEx p) (readCtx .p (Pure ()))
 determinismS (readCtx p (Pure ())) (readEx .p)
+determinismS (fork p t) (fork .p .t) = refl
+determinismS (newMVar {Σ = Σ} p q) (newMVar .p q₁) rewrite store-unique Σ q q₁ = refl
+determinismS (putMVarCtx s₁) (putMVarCtx s₂) rewrite determinismS s₁ s₂ = refl
+determinismS (putMVarCtx (Pure ())) (putMVar q r)
+determinismS (putMVarCtx (Pure ())) putMVarEx
+determinismS (putMVar q r) (putMVarCtx (Pure ()))
+determinismS (putMVar {Σ = Σ} q₁ r₁) (putMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ | index-unique r₁ r₂ = refl
+determinismS putMVarEx (putMVarCtx (Pure ()))
+determinismS putMVarEx putMVarEx = refl
+determinismS (takeMVarCtx s₁) (takeMVarCtx s₂) rewrite determinismS s₁ s₂ = refl
+determinismS (takeMVarCtx (Pure ())) (takeMVar q r)
+determinismS (takeMVarCtx (Pure ())) takeMVarEx
+determinismS (takeMVar q r) (takeMVarCtx (Pure ()))
+determinismS (takeMVar {Σ = Σ} q₁ r₁) (takeMVar q₂ r₂) = refl
+determinismS takeMVarEx (takeMVarCtx (Pure ()))
+determinismS takeMVarEx takeMVarEx = refl
 
 -- The general statement of determinism.
 determinism :  ∀ {τ ls} {p₁ p₂ p₃ : Program τ ls} ->
