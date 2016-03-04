@@ -122,17 +122,17 @@ store-unique = aux
 data TypedIx {l} (τ : Ty) : Status -> CTerm Nat -> Memory l -> Set where
   Here : ∀ {m p} {c : Cell τ p} -> TypedIx τ p zero (c ∷ m)
   There : ∀ {m n p p' τ'} {c : Cell τ' p'} -> TypedIx τ p n m -> TypedIx τ p (suc n) (c ∷ m)
-  ∙ : ∀ {n p} -> TypedIx τ p n ∙
+  ∙ : ∀ {n} -> TypedIx τ F n ∙
 
 index-unique : ∀ {τ n p l} {m : Memory l} -> (i j : TypedIx τ p n m) -> i ≡ j
 index-unique Here Here = refl
 index-unique (There i) (There j) rewrite index-unique i j = refl
 index-unique ∙ ∙ = refl
 
--- index-unique-status : ∀ {τ n l} {m : Memory l} -> TypedIx τ F n m -> TypedIx τ E n m -> m ≡ ∙
--- index-unique-status Here ()
--- index-unique-status (There x) (There y) = {!!} -- index-unique-status {!!} x y
--- index-unique-status ∙ ∙ = refl -- I cannot prevent this!
+index-unique-status : ∀ {τ n l} {m : Memory l} -> TypedIx τ F n m -> TypedIx τ E n m -> ⊥
+index-unique-status Here ()
+index-unique-status (There x) (There y) = index-unique-status x y
+index-unique-status ∙ ()
 
 liftRes : ∀ {p τ l} -> Cell τ p -> Cell (Res l τ) p
 liftRes ⊞ = ⊞
@@ -146,8 +146,7 @@ get ⟦ x ⟧ = x
 _[_] : ∀ {τ l n p} -> (m : Memory l) -> TypedIx τ p n m -> Cell (Res l τ) p
 (c ∷ m) [ Here ] = liftRes c
 (c ∷ m) [ There i ] = _[_] m i 
-_[_] {p = E} ∙ ∙ = ⊞
-_[_] {p = F} ∙ ∙ = ⟦ (Res ∙) ⟧
+_[_] {p = F} ∙ ∙ = ⟦ Res ∙ ⟧
 
 -- Update something in memory
 _[_]≔_ : ∀ {p₁ p₂ l τ n} -> (m : Memory l) -> TypedIx τ p₁ n m -> Cell τ p₂ -> Memory l

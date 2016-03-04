@@ -264,7 +264,7 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 ε-TypedIx p (x ∷ s) Here r | no ¬p = ⊥-elim (¬p p)
 ε-TypedIx p (x ∷ s) (There q) r = ε-TypedIx p s q r
 
-ε-TypedIx∙  : ∀ {l lₐ τ n ls s} -> ¬ l ⊑ lₐ -> (Σ : Store ls) (q : l ∈ ls) -> TypedIx τ s n (getMemory q Σ) -> TypedIx τ s ∙ (getMemory q (εˢ lₐ Σ))
+ε-TypedIx∙  : ∀ {l lₐ τ n ls s} -> ¬ l ⊑ lₐ -> (Σ : Store ls) (q : l ∈ ls) -> TypedIx τ s n (getMemory q Σ) -> TypedIx τ F ∙ (getMemory q (εˢ lₐ Σ))
 ε-TypedIx∙ ¬p [] () r
 ε-TypedIx∙ {l} {lₐ} ¬p (x ∷ s) Here r with l ⊑? lₐ
 ε-TypedIx∙ ¬p (x ∷ s) Here r | yes p = ⊥-elim (¬p p)

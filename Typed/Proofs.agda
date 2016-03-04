@@ -359,16 +359,13 @@ determinism {p₁ = ⟨ s₁ ∥ c₁ ⟩} {⟨ s₂ ∥ c₂ ⟩} {⟨ s₃ ∥
 
 open import Data.Sum
 
--- TODO to prove this we cannot rely only on the mutual exclusion of TypedIx E and TypedIx F, because that does not hold
--- for collapsed memory. We actually need to perform the "read" operation, therefore introducing equality
--- 
 blocked-no-reduce : ∀ {ls l} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} -> Blocked Σ₁ t₁ -> ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ -> ⊥
 blocked-no-reduce (onPut q r) (Pure ()) 
 blocked-no-reduce (onPut q r) (putMVarCtx (Pure ()))
-blocked-no-reduce {Σ₁ = Σ} (onPut q₁ r₁) (putMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ = {!!}
+blocked-no-reduce {Σ₁ = Σ} (onPut q₁ r₁) (putMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ = index-unique-status r₁ r₂
 blocked-no-reduce (onTake q r) (Pure ())
 blocked-no-reduce (onTake q r) (takeMVarCtx (Pure ()))
-blocked-no-reduce {Σ₁ = Σ} (onTake q₁ r₁) (takeMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ = {!!}
+blocked-no-reduce {Σ₁ = Σ} (onTake q₁ r₁) (takeMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ = index-unique-status r₂ r₁
 
 blocked-no-value : ∀ {l ls} {Σ : Store ls} {t : Thread l} -> Blocked Σ t -> IsValue t -> ⊥
 blocked-no-value (onPut q r) ()
