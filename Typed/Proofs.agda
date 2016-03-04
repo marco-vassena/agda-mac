@@ -1,3 +1,4 @@
+
 module Typed.Proofs where
 
 open import Data.Sum
@@ -371,20 +372,70 @@ blocked-no-value : ∀ {l ls} {Σ : Store ls} {t : Thread l} -> Blocked Σ t -> 
 blocked-no-value (onPut q r) ()
 blocked-no-value (onTake q r) ()
 
--- We the current definition of s ↑ e is hard to prove this! :(
-event-≡ : ∀ {ls τ} {p₁ p₂ : Program ls τ} -> (s₁ s₂ : p₁ ⟼ p₂) (e₁ e₂ : Event) -> s₁ ↑ e₁ -> s₂ ↑ e₂ -> e₁ ≡ e₂
-event-≡ s₁ s₂ ∅ ∅ x y = refl
-event-≡ s₁ s₂ ∅ (fork x) x₁ y = {!!}
-event-≡ s₁ s₂ (fork x) ∅ x₁ y = {!!}
-event-≡ s₁ s₂ (fork t₁) (fork t₂) x₂ y = {!!}
+-- data _is-forked-by_ {ls : List Label} : ∀ {τ l} {p₁ p₂ : Program ls τ} -> Thread l -> p₁ ⟼ p₂ -> Set where
+--   fork : ∀ {l h} {Σ : Store ls} -> (p : l ⊑ h) (t : Thread h) -> t is-forked-by (fork {Σ = Σ} p t)
+
+-- fork-generated-by-fork : ∀ {ls τ l} {t : Thread l} {p₁ p₂ : Program ls τ} -> (s : p₁ ⟼ p₂) -> s ↑ (fork t) -> t is-forked-by s
+-- fork-generated-by-fork (Pure x) ()
+-- fork-generated-by-fork (BindCtx s) ()
+-- fork-generated-by-fork (CatchCtx s) ()
+-- fork-generated-by-fork (unlabelCtx p s) ()
+-- fork-generated-by-fork (join p x) ()
+-- fork-generated-by-fork (joinEx p x) ()
+-- fork-generated-by-fork (new p q) ()
+-- fork-generated-by-fork (writeCtx p s) ()
+-- fork-generated-by-fork (write p q r₂) ()
+-- fork-generated-by-fork (writeEx p q r₂) ()
+-- fork-generated-by-fork (readCtx p s) ()
+-- fork-generated-by-fork (read p q r₂) ()
+-- fork-generated-by-fork (readEx p) ()
+-- fork-generated-by-fork (fork p t) MkE = fork p t
+-- fork-generated-by-fork (newMVar p q) ()
+-- fork-generated-by-fork (putMVarCtx s) ()
+-- fork-generated-by-fork (putMVar q r₂) ()
+-- fork-generated-by-fork putMVarEx ()
+-- fork-generated-by-fork (takeMVarCtx s) ()
+-- fork-generated-by-fork (takeMVar q r₂) ()
+-- fork-generated-by-fork takeMVarEx ()
+
+data IsFork {ls : List Label} : ∀ {τ} {p₁ p₂ : Program ls τ} -> p₁ ⟼ p₂ -> Set where
+  fork : ∀ {l h} {Σ : Store ls} -> (p : l ⊑ h) (t : Thread h) -> IsFork (fork {Σ = Σ} p t)
+
+fork-triggers-fork : ∀ {ls τ l} {t : Thread l} {p₁ p₂ : Program ls τ} -> (s : p₁ ⟼ p₂) -> s ↑ (fork t) -> IsFork s
+fork-triggers-fork (Pure x) ()
+fork-triggers-fork (BindCtx s) ()
+fork-triggers-fork (CatchCtx s) ()
+fork-triggers-fork (unlabelCtx p s) ()
+fork-triggers-fork (join p x) ()
+fork-triggers-fork (joinEx p x) ()
+fork-triggers-fork (new p q) ()
+fork-triggers-fork (writeCtx p s) ()
+fork-triggers-fork (write p q r₂) ()
+fork-triggers-fork (writeEx p q r₂) ()
+fork-triggers-fork (readCtx p s) ()
+fork-triggers-fork (read p q r₂) ()
+fork-triggers-fork (readEx p) ()
+fork-triggers-fork (fork p t) MkE = fork p t
+fork-triggers-fork (newMVar p q) ()
+fork-triggers-fork (putMVarCtx s) ()
+fork-triggers-fork (putMVar q r₂) ()
+fork-triggers-fork putMVarEx ()
+fork-triggers-fork (takeMVarCtx s) ()
+fork-triggers-fork (takeMVar q r₂) ()
+fork-triggers-fork takeMVarEx ()
+
+unique-event : ∀ {l ls τ} {t : Thread l} {p₁ p₂ p₃ : Program ls τ} -> (s₁ : p₁ ⟼ p₂) (s₂ : p₁ ⟼ p₃) -> s₁ ↑ ∅ -> s₂ ↑ (fork t) -> ⊥
+unique-event s₁ s₂ x y with fork-triggers-fork s₂ y
+unique-event (Pure ()) .(fork p t) x₁ y | fork p t
+unique-event (fork p t₁) .(fork p t₁) () y | fork .p .t₁
 
 -- Determinism for concurrent semantics 
 determinism↪ : ∀ {ls} {t₁ t₂ t₃ : Global ls} -> t₁ ↪ t₂ -> t₁ ↪ t₃ -> t₂ ≡ t₃
 determinism↪ (step s₁ x₁) (step s₂ x₂) rewrite determinismC s₁ s₂ | determinismS s₁ s₂ = refl
-determinism↪ (step s₁ x₁) (fork s₂ x₂) rewrite determinism s₁ s₂ = {!!}
+determinism↪ (step s₁ x₁) (fork s₂ x₂) rewrite determinism s₁ s₂ = ⊥-elim (unique-event s₁ s₂ x₁ x₂)
 determinism↪ (step s₁ x) (skip x₁) = ⊥-elim (blocked-no-reduce x₁ s₁)
 determinism↪ (step s₁ x₁) (exit isV) = ⊥-elim (valueNotRedex _ isV (Step s₁))
-determinism↪ (fork s₁ x) (step s₂ x₁) = {!!}
+determinism↪ (fork s₁ x₁) (step s₂ x₂) = ⊥-elim (unique-event s₂ s₁ x₂ x₁)
 determinism↪ (fork s₁ x₁) (fork s₂ x₂) rewrite determinismC s₁ s₂ | determinismS s₁ s₂ = refl
 determinism↪ (fork s₁ x) (skip x₁) = ⊥-elim (blocked-no-reduce x₁ s₁)
 determinism↪ (fork s₁ _) (exit isV) = ⊥-elim (valueNotRedex _ isV (Step s₁))
@@ -396,7 +447,6 @@ determinism↪ (exit isV) (step s x) = ⊥-elim (valueNotRedex _ isV (Step s))
 determinism↪ (exit isV) (fork s x) = ⊥-elim (valueNotRedex _ isV (Step s))
 determinism↪ (exit v) (skip x) = ⊥-elim (blocked-no-value x v)
 determinism↪ (exit x) (exit x₁) = refl
-
 
 preservation : ∀ {ls} {s₁ s₂ : Store ls} {τ : Ty} {c₁ c₂ : CTerm τ} -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> τ ≡ τ
 preservation s = refl
