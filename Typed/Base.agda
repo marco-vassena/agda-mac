@@ -129,6 +129,11 @@ index-unique Here Here = refl
 index-unique (There i) (There j) rewrite index-unique i j = refl
 index-unique ∙ ∙ = refl
 
+-- index-unique-status : ∀ {τ n l} {m : Memory l} -> TypedIx τ F n m -> TypedIx τ E n m -> m ≡ ∙
+-- index-unique-status Here ()
+-- index-unique-status (There x) (There y) = {!!} -- index-unique-status {!!} x y
+-- index-unique-status ∙ ∙ = refl -- I cannot prevent this!
+
 liftRes : ∀ {p τ l} -> Cell τ p -> Cell (Res l τ) p
 liftRes ⊞ = ⊞
 liftRes ⟦ x ⟧ = ⟦ (Res x) ⟧

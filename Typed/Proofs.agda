@@ -357,5 +357,49 @@ determinism :  ∀ {τ ls} {p₁ p₂ p₃ : Program τ ls} ->
 determinism {p₁ = ⟨ s₁ ∥ c₁ ⟩} {⟨ s₂ ∥ c₂ ⟩} {⟨ s₃ ∥ c₃ ⟩} st₁ st₂
   rewrite determinismS st₁ st₂ | determinismC st₁ st₂ = refl 
 
+open import Data.Sum
+
+-- TODO to prove this we cannot rely only on the mutual exclusion of TypedIx E and TypedIx F, because that does not hold
+-- for collapsed memory. We actually need to perform the "read" operation, therefore introducing equality
+-- 
+blocked-no-reduce : ∀ {ls l} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} -> Blocked Σ₁ t₁ -> ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ -> ⊥
+blocked-no-reduce (onPut q r) (Pure ()) 
+blocked-no-reduce (onPut q r) (putMVarCtx (Pure ()))
+blocked-no-reduce {Σ₁ = Σ} (onPut q₁ r₁) (putMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ = {!!}
+blocked-no-reduce (onTake q r) (Pure ())
+blocked-no-reduce (onTake q r) (takeMVarCtx (Pure ()))
+blocked-no-reduce {Σ₁ = Σ} (onTake q₁ r₁) (takeMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ = {!!}
+
+blocked-no-value : ∀ {l ls} {Σ : Store ls} {t : Thread l} -> Blocked Σ t -> IsValue t -> ⊥
+blocked-no-value (onPut q r) ()
+blocked-no-value (onTake q r) ()
+
+-- We the current definition of s ↑ e is hard to prove this! :(
+event-≡ : ∀ {ls τ} {p₁ p₂ : Program ls τ} -> (s₁ s₂ : p₁ ⟼ p₂) (e₁ e₂ : Event) -> s₁ ↑ e₁ -> s₂ ↑ e₂ -> e₁ ≡ e₂
+event-≡ s₁ s₂ ∅ ∅ x y = refl
+event-≡ s₁ s₂ ∅ (fork x) x₁ y = {!!}
+event-≡ s₁ s₂ (fork x) ∅ x₁ y = {!!}
+event-≡ s₁ s₂ (fork t₁) (fork t₂) x₂ y = {!!}
+
+-- Determinism for concurrent semantics 
+determinism↪ : ∀ {ls} {t₁ t₂ t₃ : Global ls} -> t₁ ↪ t₂ -> t₁ ↪ t₃ -> t₂ ≡ t₃
+determinism↪ (step s₁ x₁) (step s₂ x₂) rewrite determinismC s₁ s₂ | determinismS s₁ s₂ = refl
+determinism↪ (step s₁ x₁) (fork s₂ x₂) rewrite determinism s₁ s₂ = {!!}
+determinism↪ (step s₁ x) (skip x₁) = ⊥-elim (blocked-no-reduce x₁ s₁)
+determinism↪ (step s₁ x₁) (exit isV) = ⊥-elim (valueNotRedex _ isV (Step s₁))
+determinism↪ (fork s₁ x) (step s₂ x₁) = {!!}
+determinism↪ (fork s₁ x₁) (fork s₂ x₂) rewrite determinismC s₁ s₂ | determinismS s₁ s₂ = refl
+determinism↪ (fork s₁ x) (skip x₁) = ⊥-elim (blocked-no-reduce x₁ s₁)
+determinism↪ (fork s₁ _) (exit isV) = ⊥-elim (valueNotRedex _ isV (Step s₁))
+determinism↪ (skip x) (step s x₁) = ⊥-elim (blocked-no-reduce x s)
+determinism↪ (skip x) (fork s₁ x₁) = ⊥-elim (blocked-no-reduce x s₁)
+determinism↪ (skip x) (skip x₁) = refl
+determinism↪ (skip x) (exit v) = ⊥-elim (blocked-no-value x v)
+determinism↪ (exit isV) (step s x) = ⊥-elim (valueNotRedex _ isV (Step s))
+determinism↪ (exit isV) (fork s x) = ⊥-elim (valueNotRedex _ isV (Step s))
+determinism↪ (exit v) (skip x) = ⊥-elim (blocked-no-value x v)
+determinism↪ (exit x) (exit x₁) = refl
+
+
 preservation : ∀ {ls} {s₁ s₂ : Store ls} {τ : Ty} {c₁ c₂ : CTerm τ} -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> τ ≡ τ
 preservation s = refl

@@ -191,7 +191,7 @@ event (fork p t) = fork t
 event _ = ∅
 
 data _↑_ {ls : List Label} {τ : Ty} {p₁ p₂ : Program ls τ} (s : p₁ ⟼ p₂) : Event -> Set where
-  _,_ : s ↑ (event s)
+  MkE : s ↑ (event s)
 
 
 data Pool : Set where
@@ -199,10 +199,10 @@ data Pool : Set where
   _◅_ : ∀ {l} -> Thread l -> Pool -> Pool
 
 -- The global configuration is a thread pool  paired with some shared split memory Σ
-data Global : Set where
-  ⟨_,_⟩ : ∀ {ls} -> (Σ : Store ls) -> (ts : Pool) -> Global
+data Global (ls : List Label) : Set where
+  ⟨_,_⟩ : (Σ : Store ls) -> (ts : Pool) -> Global ls
   
-pool : Global -> Pool
+pool : ∀ {ls} -> Global ls -> Pool
 pool ⟨ Σ , ts ⟩ = ts
 
 -- Enqueue
@@ -219,12 +219,12 @@ data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set whe
 
 
 -- Semantics for threadpools
-data _↪_ {ls : List Label} : Global -> Global -> Set where
+data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
   -- Sequential stop
-  step : ∀ {l} {t₁ t₂ : Thread l} {ts : Pool} {Σ₁ Σ₂ : Store ls} {s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩} ->
+  step : ∀ {l} {t₁ t₂ : Thread l} {ts : Pool} {Σ₁ Σ₂ : Store ls} (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) ->
          s ↑ ∅ -> ⟨ Σ₁  , t₁ ◅ ts ⟩ ↪ ⟨ Σ₂ , ts ▻ t₂ ⟩
 
-  fork : ∀ {l h} {Σ₁ Σ₂ : Store ls} {s : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool} {s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩} ->
+  fork : ∀ {l h} {Σ₁ Σ₂ : Store ls} {s : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool} (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) ->
          s ↑ (fork tⁿ) -> ⟨ Σ₁ , t₁ ◅ ts ⟩ ↪ ⟨ Σ₂ , (ts ▻ t₂ ▻ t₂) ⟩
 
   -- Skip a blocked thread
