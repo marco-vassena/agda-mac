@@ -117,14 +117,20 @@ open import Data.List as L hiding (drop)
 εᵖ lₐ ⟨ s ∥ c ⟩ = ⟨ εˢ lₐ s ∥ ε lₐ c ⟩
 
 
--- Erasure of thread pool
-εᵗ : Label -> Pool -> Pool
-εᵗ lₐ [] = []
-εᵗ lₐ (t ◅ ts) = ε lₐ t ◅ εᵗ lₐ ts
+-- -- Erasure of thread pool
+εᵗ : {l lₐ : Label} -> Dec (l ⊑ lₐ) -> Pool l -> Pool l
+εᵗ (yes p) [] = []
+εᵗ (yes p) (t ◅ ts) = (ε-Mac _ (yes p) t) ◅ (εᵗ (yes p) ts)
+εᵗ (yes p) ∙ = ∙
+εᵗ (no ¬p) ts = ∙
+
+ε-pools : ∀ {ls} -> Label -> Pools ls -> Pools ls
+ε-pools lₐ [] = []
+ε-pools lₐ (_∷_ {l = l} ts ps) = εᵗ (l ⊑? lₐ) ts ∷ (ε-pools lₐ ps)
 
 -- Erasure of global configuration
 εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
-εᵍ lₐ ⟨ Σ , ts ⟩ = ⟨ (εˢ lₐ Σ) , εᵗ lₐ ts ⟩
+εᵍ lₐ ⟨ n , Σ , ps ⟩ = ⟨ n , εˢ lₐ Σ , ε-pools lₐ ps ⟩
 
 --------------------------------------------------------------------------------
 

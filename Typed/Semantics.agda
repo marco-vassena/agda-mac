@@ -206,7 +206,7 @@ data Pools : List Label -> Set where
 
 -- The global configuration is a thread pool  paired with some shared split memory Σ
 data Global (ls : List Label) : Set where
-  ⟨_,_,_⟩ : ℕ -> (Σ : Store ls) -> (ps : Pools ls)  -> Global ls
+  ⟨_,_,_⟩ : (n : ℕ) -> (Σ : Store ls) -> (ps : Pools ls)  -> Global ls
   
 -- Enqueue
 _▻_ : ∀ {l} -> Pool l -> Thread l -> Pool l
