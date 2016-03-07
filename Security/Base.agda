@@ -116,6 +116,18 @@ open import Data.List as L hiding (drop)
 εᵖ : ∀ {ls τ} -> Label -> Program ls τ -> Program ls τ
 εᵖ lₐ ⟨ s ∥ c ⟩ = ⟨ εˢ lₐ s ∥ ε lₐ c ⟩
 
+
+-- Erasure of thread pool
+εᵗ : Label -> Pool -> Pool
+εᵗ lₐ [] = []
+εᵗ lₐ (t ◅ ts) = ε lₐ t ◅ εᵗ lₐ ts
+
+-- Erasure of global configuration
+εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
+εᵍ lₐ ⟨ Σ , ts ⟩ = ⟨ (εˢ lₐ Σ) , εᵗ lₐ ts ⟩
+
+--------------------------------------------------------------------------------
+
 ε-Mac-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Mac lᵈ τ)) -> ε-Mac lₐ x t ≡ ε-Mac lₐ y t
 ε-Mac-extensional (yes p) (yes p₁) (Var x₁) = refl
 ε-Mac-extensional (yes p) (no ¬p) (Var x₁) = ⊥-elim (¬p p)

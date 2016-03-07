@@ -458,3 +458,19 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
             (lₐ : Label) -> p₁ ⟼⋆ p₂ -> εᵖ lₐ p₁ ⟼⋆ εᵖ lₐ p₂
 εᵖ-dist⋆ lₐ [] = []
 εᵖ-dist⋆ lₐ (x ∷ ss) = (εᵖ-dist lₐ x) ∷ (εᵖ-dist⋆ lₐ ss)            
+
+
+-- I believe that the first three cases are fine, the issue is with the exit case.
+-- The problem is that we are removing a thread that has terminated from the thread pool,
+-- so ⟨ Σ , v ◅ ts ⟩ ↪ ⟨ Σ , ts ⟩
+-- If v is a sensitive though (Mac H ()) it will be erased to ∙, which is NOT a value, hence
+-- the exit rule does not apply. Even though ∙ ⇝ ∙ we cannot exploit this and use the step
+-- rule, because v does not occur in the right hand side.
+-- Note that making ∙ a value would raise issues in the step cases, so that is not a viable solution.
+-- I believe that also the thread pool needs to be compartmentalized according to the labels and
+-- collapsed to ∙ just like memory.
+εᵍ-dist : ∀ {ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> g₁ ↪ g₂ -> (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
+εᵍ-dist lₐ (step s x) = {!!}
+εᵍ-dist lₐ (fork s₁ x) = {!!}
+εᵍ-dist lₐ (skip x) = {!!}
+εᵍ-dist lₐ (exit x) = {!!} 
