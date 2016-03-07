@@ -193,42 +193,95 @@ event _ = ∅
 data _↑_ {ls : List Label} {τ : Ty} {p₁ p₂ : Program ls τ} (s : p₁ ⟼ p₂) : Event -> Set where
   MkE : s ↑ (event s)
 
+-- Pool of threads at a certain label
+data Pool (l : Label) : Set where
+  [] : Pool l
+  _◅_ : Thread l -> Pool l -> Pool l
+  ∙ : Pool l
 
-data Pool : Set where
-  [] : Pool
-  _◅_ : ∀ {l} -> Thread l -> Pool -> Pool
+-- A list of pools 
+data Pools : List Label -> Set where
+  [] : Pools []
+  _∷_ : ∀ {l ls} {{u : Unique l ls}} -> Pool l -> Pools ls -> Pools (l ∷ ls)
 
 -- The global configuration is a thread pool  paired with some shared split memory Σ
 data Global (ls : List Label) : Set where
-  ⟨_,_⟩ : (Σ : Store ls) -> (ts : Pool) -> Global ls
+  ⟨_,_,_⟩ : ℕ -> (Σ : Store ls) -> (ps : Pools ls)  -> Global ls
   
-pool : ∀ {ls} -> Global ls -> Pool
-pool ⟨ Σ , ts ⟩ = ts
-
 -- Enqueue
-_▻_ : ∀ {l} -> Pool -> Thread l -> Pool
+_▻_ : ∀ {l} -> Pool l -> Thread l -> Pool l
 [] ▻ t = t ◅ []
 (x ◅ ts) ▻ t = x ◅ (ts ▻ t) 
+∙ ▻ t = ∙
 
 infixl 3 _▻_
+
+-- nextOr : ∀ {ls} {l : Label} -> Label -> l ∈ ls -> Label
+-- nextOr {l ∷ []} l₁ Here = l₁
+-- nextOr {l ∷ (l₂ ∷ ls₁)} _ Here = l₂
+-- nextOr l₁ (There q) = nextOr l₁ q
+
+-- next : ∀ {ls} {l : Label} -> l ∈ ls -> Label
+-- next {[]} ()
+-- next {l ∷ []} Here = l
+-- next {x ∷ []} (There ())
+-- next {.l₁ ∷ (l₂ ∷ ls)} {l₁} Here = l₂
+-- next {l₁ ∷ (l₂ ∷ ls)} (There q) = nextOr l₁ q
 
 -- The proof that a term is blocked
 data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set where
   onPut : ∀ {l n τ} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) -> Blocked Σ (putMVar (Res n) t)
   onTake : ∀ {l n τ} (q : l ∈ ls) (r : TypedIx τ E n (getMemory q Σ)) -> Blocked Σ (takeMVar {α = τ} (Res n))
 
+data LabeledIx (l : Label) : ℕ -> List Label -> Set where
+  Here : ∀ {n ls} -> LabeledIx l (suc n) (l ∷ ls)
+  There : ∀ {n ls l'} -> LabeledIx l n ls -> LabeledIx l (suc n) (l' ∷ ls)
 
--- Semantics for threadpools
+getPool : ∀ {n l ls} -> LabeledIx l n ls -> Pools ls -> Pool l
+getPool Here (p ∷ ps) = p
+getPool (There q) (p ∷ ps) = getPool q ps
+
+updatePool : ∀ {n l ls} -> LabeledIx l n ls -> Pools ls -> Pool l -> Pools ls
+updatePool Here (_ ∷ ps) p = p ∷ ps
+updatePool (There q) (p₁ ∷ ps) p₂ = p₁ ∷ updatePool q ps p₂
+
+forkPool : ∀ {n l ls} -> LabeledIx l n ls ->  Pools ls -> Thread l -> Pools ls
+forkPool Here (ts ∷ ps) t = (ts ▻ t) ∷ ps
+forkPool (There r) (ts ∷ ps) t = ts ∷ forkPool r ps t
+
+open import Data.Sum
+
+-- Semantics for a thread pool at a certain level
 data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
-  -- Sequential stop
-  step : ∀ {l} {t₁ t₂ : Thread l} {ts : Pool} {Σ₁ Σ₂ : Store ls} (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) ->
-         s ↑ ∅ -> ⟨ Σ₁  , t₁ ◅ ts ⟩ ↪ ⟨ Σ₂ , ts ▻ t₂ ⟩
 
-  fork : ∀ {l h} {Σ₁ Σ₂ : Store ls} {s : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool} (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) ->
-         s ↑ (fork tⁿ) -> ⟨ Σ₁ , t₁ ◅ ts ⟩ ↪ ⟨ Σ₂ , (ts ▻ t₂ ▻ t₂) ⟩
+  -- Sequential stop
+  step : ∀ {l n} {t₁ t₂ : Thread l} {ts : Pool l} {Σ₁ Σ₂ : Store ls} {ps : Pools ls} ->
+          (r : LabeledIx l (suc n) ls) -> getPool r ps ≡ t₁ ◅ ts ->
+          (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) -> s ↑ ∅ ->
+          ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , updatePool r ps (ts ▻ t₂) ⟩
+
+  fork : ∀ {l h n} {Σ₁ Σ₂ : Store ls} {ps₁ : Pools ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l}
+         (r : LabeledIx l (suc n) ls) -> getPool r ps₁ ≡ t₁ ◅ ts ->
+         (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) ->  s ↑ (fork tⁿ) ->
+         let ps₂ = updatePool r ps₁ (ts ▻ t₂) in
+         ⟨ suc n , Σ₁ , ps₁  ⟩ ↪ ⟨ n , Σ₂ , forkPool r ps₂ t₂ ⟩
+
+  -- Nothing to do here, try with a thread from the next pool
+  next : ∀ {n l} {Σ : Store ls} {ps : Pools ls} (r : LabeledIx l (suc n) ls) ->
+           let ts = getPool r ps in ts ≡ [] ⊎ ts ≡ ∙ ->
+           ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , ps ⟩
 
   -- Skip a blocked thread
-  skip : ∀ {l} {Σ : Store ls} {t : Thread l} {ts : Pool} -> Blocked Σ t -> ⟨ Σ , t ◅ ts ⟩ ↪ ⟨ Σ , ts ▻ t ⟩ 
+  skip : ∀ {l n} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} -> (r : LabeledIx l (suc n) ls) ->
+         getPool r ps ≡ t ◅ ts -> Blocked Σ t ->
+         ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , updatePool r ps (ts ▻ t) ⟩ 
 
   -- In the paper Σ changes in this rule. Why is that?
-  exit : ∀ {l} {Σ : Store ls} {ts : Pool} {t : Thread l} -> IsValue t ->  ⟨ Σ , t ◅ ts ⟩ ↪ ⟨ Σ , ts ⟩
+  exit : ∀ {l n} {Σ : Store ls} {ts : Pool l} {ps : Pools ls} {t : Thread l} (r : LabeledIx l (suc n) ls) ->
+           getPool r ps ≡ t ◅ ts ->
+           IsValue t ->  ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , updatePool r ps ts ⟩
+
+  -- Restart. I am assuming that ls ≠ [], else we are stuck
+  cycle : ∀ {Σ : Store ls} {ps : Pools ls} -> ⟨ 0 , Σ , ps ⟩ ↪ ⟨ length ls , Σ , ps ⟩
+
+  
