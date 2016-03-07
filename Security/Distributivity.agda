@@ -460,6 +460,39 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 εᵖ-dist⋆ lₐ (x ∷ ss) = (εᵖ-dist lₐ x) ∷ (εᵖ-dist⋆ lₐ ss)            
 
 
+--------------------------------------------------------------------------------
+-- Lemmas for pool manipulating functions
+
+open import Data.Sum
+
+next-lemma : ∀ {lₐ l n ls } -> (r : LabeledIx l n ls) (ps : Pools ls) ->
+               let ts = getPool r ps
+                   tsᵉ = getPool r (ε-pools lₐ ps) in
+               (ts ≡ []) ⊎ (ts ≡ ∙) -> (tsᵉ ≡ []) ⊎ (tsᵉ ≡ ∙)
+next-lemma {lₐ} Here (_∷_ {l = l} ts ps) x with l ⊑? lₐ
+next-lemma Here (.[] ∷ ps) (inj₁ refl) | yes p = inj₁ refl
+next-lemma Here (.∙ ∷ ps) (inj₂ refl) | yes p = inj₂ refl
+next-lemma Here (ts ∷ ps) x | no ¬p = inj₂ refl
+next-lemma (There r) (x ∷ ps) x₁ = next-lemma r ps x₁                
+
+εᵗ-extensional : ∀ {l lₐ} (x y : Dec (l ⊑ lₐ)) (ts : Pool l) -> εᵗ x ts ≡ εᵗ y ts
+εᵗ-extensional (yes p) (yes p₁) [] = refl
+εᵗ-extensional (yes p) (yes p₁) (x ◅ ts)
+  rewrite ε-Mac-extensional (yes p) (yes p₁) x | εᵗ-extensional (yes p) (yes p₁) ts = refl
+εᵗ-extensional (yes p) (yes p₁) ∙ = refl
+εᵗ-extensional (yes p) (no ¬p) ts = ⊥-elim (¬p p)
+εᵗ-extensional (no ¬p) (yes p) ts = ⊥-elim (¬p p)
+εᵗ-extensional (no ¬p) (no ¬p₁) ts = refl
+
+updatePool-≡ : ∀ {l lₐ n ls} (x : Dec (l ⊑ lₐ)) (r : LabeledIx l n ls) (ps : Pools ls) (ts : Pool l) ->
+                 ε-pools lₐ (updatePool r ps ts) ≡ updatePool r (ε-pools lₐ ps) (εᵗ x ts)
+updatePool-≡ {l} {lₐ} x Here (ts₁ ∷ ps) ts₂ rewrite εᵗ-extensional x (l ⊑? lₐ) ts₂ = refl
+updatePool-≡ x (There r) (ts₁ ∷ ps) ts₂ rewrite updatePool-≡ x r ps ts₂ = refl
+
+-- After erasure what was blocked is either blocked or •
+-- blocked-ε : ∀
+
+
 -- I believe that the first three cases are fine, the issue is with the exit case.
 -- The problem is that we are removing a thread that has terminated from the thread pool,
 -- so ⟨ Σ , v ◅ ts ⟩ ↪ ⟨ Σ , ts ⟩
@@ -470,7 +503,9 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 -- I believe that also the thread pool needs to be compartmentalized according to the labels and
 -- collapsed to ∙ just like memory.
 εᵍ-dist : ∀ {ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> g₁ ↪ g₂ -> (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
-εᵍ-dist lₐ (step s x) = {!!}
-εᵍ-dist lₐ (fork s₁ x) = {!!}
-εᵍ-dist lₐ (skip x) = {!!}
-εᵍ-dist lₐ (exit x) = {!!} 
+εᵍ-dist lₐ (step {l}  r x s x₁) = step {!r!} refl (ε-Mac-dist lₐ (l ⊑? lₐ) s) {!x₁!}
+εᵍ-dist lₐ (fork {l} r x s x₁) = fork {!r!} refl (ε-Mac-dist lₐ (l ⊑? lₐ) s) {!!}
+εᵍ-dist lₐ (next r x) = next r (next-lemma r _ x)
+εᵍ-dist lₐ (skip {l} {t = t} {ts = ts} {ps = ps} r x x₁) rewrite updatePool-≡ (l ⊑? lₐ ) r ps (t ◅ ts) = skip {!r!} refl {!!}
+εᵍ-dist lₐ (exit r x x₁) = exit {!!} {!!} {!!}
+εᵍ-dist lₐ cycle = cycle
