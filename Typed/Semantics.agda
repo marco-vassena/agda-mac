@@ -264,9 +264,9 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
           (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) -> s ↑ ∅ -> (q : l ∈ ls) -> PoolView (t₁ ◅ ts) ps (suc n) -> 
           ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , update q ps (ts ▻ t₂ ) ⟩
 
-  fork : ∀ {l h n} {Σ₁ Σ₂ : Store ls} {ps : Pools ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l}
+  fork : ∀ {l h n} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l} {ps : Pools ls}
          (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) ->  s ↑ (fork tⁿ) -> (q : l ∈ ls) (r : h ∈ ls) -> PoolView (t₁ ◅ ts) ps (suc n) ->
-         ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , update q (forkInPool tⁿ r ps) (t₂ ◅ ts) ⟩ 
+         ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , update q (forkInPool tⁿ r ps) (ts ▻ t₂) ⟩ 
 
   empty : ∀ {l n} {Σ : Store ls} {ps : Pools ls} -> PoolView {l} [] ps (suc n) -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , ps ⟩
 
@@ -277,7 +277,7 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
           Blocked Σ t -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , update q ps (ts ▻ t) ⟩ 
 
   -- In the paper Σ changes in this rule. Why is that?
-  exit : ∀ {l n} {Σ : Store ls} {ts : Pool l} {ps : Pools ls} {t : Thread l} -> (q : l ∈ ls) -> PoolView (t ◅ ts) ps (suc n) ->
+  exit : ∀ {l n} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} -> (q : l ∈ ls) -> PoolView (t ◅ ts) ps (suc n) ->
            IsValue t ->  ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ ,  update q ps ts ⟩
 
   -- restart the counter

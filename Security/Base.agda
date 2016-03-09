@@ -124,13 +124,13 @@ open import Data.List as L hiding (drop)
 εᵗ (yes p) ∙ = ∙
 εᵗ (no ¬p) ts = ∙
 
-ε-pools : Label -> Pools -> Pools
+ε-pools : ∀ {ls} -> Label -> Pools ls -> Pools ls
 ε-pools lₐ [] = []
 ε-pools lₐ (_◅_ {l = l} ts ps) = εᵗ (l ⊑? lₐ) ts ◅ (ε-pools lₐ ps)
 
 -- Erasure of global configuration
 εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
-εᵍ lₐ ⟨ Σ , ps ⟩ = ⟨ εˢ lₐ Σ , ε-pools lₐ ps ⟩
+εᵍ lₐ ⟨ n , Σ , ps ⟩ = ⟨ n , εˢ lₐ Σ , ε-pools lₐ ps ⟩
 
 --------------------------------------------------------------------------------
 

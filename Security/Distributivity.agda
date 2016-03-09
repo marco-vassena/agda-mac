@@ -478,12 +478,6 @@ open import Data.Sum
 εᵗ∙≡∙ (yes p) = refl
 εᵗ∙≡∙ (no ¬p) = refl
 
--- After erasure what was blocked is either blocked or •
--- blocked-ε : ∀
-ε-▻ᵖ-≡ : ∀ {l lₐ} (x : Dec (l ⊑ lₐ)) (ps : Pools) (ts : Pool l) -> ε-pools lₐ (ps ▻ᵖ ts) ≡ (ε-pools lₐ ps ▻ᵖ εᵗ x ts)
-ε-▻ᵖ-≡ {l} {lₐ} x [] ts rewrite εᵗ-extensional x (l ⊑? lₐ) ts = refl
-ε-▻ᵖ-≡ x (x₁ ◅ ps) ts rewrite ε-▻ᵖ-≡ x ps ts = refl
-
 ε-▻-≡ : ∀ {l lₐ} (p : l ⊑ lₐ) (t : Thread l) (ts : Pool l) -> εᵗ (yes p) (ts ▻ t) ≡ (εᵗ (yes p) ts ▻ ε-Mac lₐ (yes p) t)
 ε-▻-≡ p t [] = refl
 ε-▻-≡ p t (x ◅ ts) rewrite ε-▻-≡ p t ts = refl
@@ -505,6 +499,84 @@ fork-⊑ : ∀ {ls τ l h} {p₁ p₂ : Program ls (Mac l τ)} {t : Thread h }  
 fork-⊑ s e with fork-triggers-fork s e
 fork-⊑ .(fork p t) e | fork p t = p
 
+ε-PoolView : ∀ {l lₐ ls n} {p : Pool l} {ps : Pools ls} -> (x : Dec (l ⊑ lₐ)) -> PoolView p ps n -> PoolView (εᵗ x p) (ε-pools lₐ ps) n
+ε-PoolView x Here = Here
+ε-PoolView x (There y) = There (ε-PoolView x y)
+
+ε-update∙-≡ : ∀ {l lₐ ls} -> ¬ (l ⊑ lₐ) -> (q : l ∈ ls) (ps : Pools ls) (ts : Pool l) -> ε-pools lₐ ps ≡ ε-pools lₐ (update q ps ts) 
+ε-update∙-≡ {l} {lₐ} ¬p Here (x ◅ ps) ts with l ⊑? lₐ
+ε-update∙-≡ ¬p Here (x ◅ ps) ts | yes p = ⊥-elim (¬p p)
+ε-update∙-≡ ¬p₁ Here (x ◅ ps) ts | no ¬p = refl
+ε-update∙-≡ ¬p (There q) (x ◅ ps) ts rewrite ε-update∙-≡ ¬p q ps ts = refl
+
+ε-fork∙-≡ : ∀ {h lₐ ls} -> ¬ (h ⊑ lₐ) -> (q : h ∈ ls) (ps : Pools ls) (tⁿ : Thread h) -> ε-pools lₐ ps ≡ ε-pools lₐ (forkInPool tⁿ q ps) 
+ε-fork∙-≡ {l} {lₐ} ¬p Here (x ◅ ps) ts with l ⊑? lₐ
+ε-fork∙-≡ ¬p Here (x ◅ ps) ts | yes p = ⊥-elim (¬p p)
+ε-fork∙-≡ ¬p₁ Here (x ◅ ps) ts | no ¬p = refl
+ε-fork∙-≡ ¬p (There q) (x ◅ ps) ts rewrite ε-fork∙-≡ ¬p q ps ts = refl
+
+ε-fork-≡ : ∀ {h lₐ ls} -> (x : Dec (h ⊑ lₐ)) (r : h ∈ ls) (ps : Pools ls) (tⁿ : Thread h) ->
+             ε-pools lₐ (forkInPool tⁿ r ps) ≡ forkInPool (ε-Mac _ x tⁿ) r (ε-pools lₐ ps)
+ε-fork-≡ {h} {lₐ} x Here (x₁ ◅ ps) tⁿ with h ⊑? lₐ
+ε-fork-≡ x Here (ts ◅ ps) tⁿ | yes p rewrite ε-▻-≡ p tⁿ ts | ε-Mac-extensional (yes p) x tⁿ = refl
+ε-fork-≡ x Here (x₁ ◅ ps) tⁿ | no ¬p = refl
+ε-fork-≡ x (There r) (x₁ ◅ ps) tⁿ rewrite ε-fork-≡ x r ps tⁿ = refl
+
+ε-update-≡ : ∀ {l lₐ ls} -> (x : Dec (l ⊑ lₐ)) (q : l ∈ ls) (ps : Pools ls) (ts : Pool l) ->
+               ε-pools lₐ (update q ps ts) ≡ update q (ε-pools lₐ ps) (εᵗ x ts)
+ε-update-≡ {l} {lₐ} x Here (_ ◅ ps) ts rewrite εᵗ-extensional (l ⊑? lₐ) x ts = refl
+ε-update-≡ x (There q) (_ ◅ ps) ts rewrite ε-update-≡ x q ps ts = refl
+
+εᵗ-yes-≡ : ∀ {l lₐ} -> (p : l ⊑ lₐ) (ts : Pool l) (t : Thread l) -> εᵗ (yes p) (ts ▻ t) ≡ (εᵗ (yes p) ts ▻ ε-Mac _ (yes p) t)
+εᵗ-yes-≡ p [] t = refl
+εᵗ-yes-≡ p (x ◅ ts) t rewrite εᵗ-yes-≡ p ts t = refl
+εᵗ-yes-≡ p ∙ t = refl
+
+εᵉ : Label -> Event -> Event
+εᵉ lₐ ∅ = ∅
+εᵉ lₐ (fork t) = fork (ε lₐ t)
+
+ε-↑ : ∀ {l lₐ τ ls e} {p₁ p₂ : Program ls (Mac l τ)} -> (p : l ⊑ lₐ) -> (s : p₁ ⟼ p₂) -> s ↑ e -> ε-Mac-dist lₐ (yes p) s ↑ (εᵉ lₐ e)
+ε-↑ p (Pure x) MkE = MkE
+ε-↑ p (BindCtx s) MkE = MkE
+ε-↑ p (CatchCtx s) MkE = MkE
+ε-↑ p (unlabelCtx p₁ s) MkE = MkE
+ε-↑ {lₐ = lₐ} p (join {h = h} p₁ x) x₁ with h ⊑? lₐ
+ε-↑ p₁ (join p₂ x) MkE | yes p = MkE
+ε-↑ {lₐ = lₐ} p (join p₁ (BigStep isV ss)) MkE | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = MkE
+ε-↑ {lₐ = lₐ} p (joinEx {h = h} p₁ x) MkE with h ⊑? lₐ
+ε-↑ p₁ (joinEx p₂ x) MkE | yes p = MkE
+ε-↑ {lₐ = lₐ} p (joinEx p₁ (BigStep isV ss)) MkE | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = MkE
+ε-↑ {lₐ = lₐ} p (new {h = h} {s = Σ} {t = t} p₁ q) MkE with h ⊑? lₐ
+... | yes p₂ rewrite newˢ-≡ lₐ q Σ ⟦ t ⟧ | count-≡ p₂ q Σ = MkE
+... | no ¬p rewrite newˢ-≡ lₐ q Σ ⟦ t ⟧ | count≡∙ ¬p q Σ = MkE
+ε-↑ {lₐ = lₐ} p (writeCtx {h = h} p₁ s) MkE with h ⊑? lₐ
+ε-↑ p₁ (writeCtx p₂ s) MkE | yes p = MkE
+ε-↑ p (writeCtx p₁ s) MkE | no ¬p = MkE
+ε-↑ p (write p₁ q r₂) x = {!!}
+ε-↑ p (writeEx p₁ q r₂) x = {!!}
+ε-↑ p (readCtx p₁ s) x = {!!}
+ε-↑ p (read p₁ q r₂) x = {!!}
+ε-↑ p (readEx p₁) x = {!!}
+ε-↑ p (fork p₁ t) MkE = MkE
+ε-↑ {lₐ = lₐ} p (newMVar {h = h} p₁ q) x with h ⊑? lₐ
+ε-↑ p₁ (newMVar p₂ q) x | yes p = {!!}
+ε-↑ p (newMVar p₁ q) x | no ¬p = {!MkE!}
+ε-↑ p (putMVarCtx s) MkE = MkE
+ε-↑ {l} {lₐ} p (putMVar q r₂) x with l ⊑? lₐ
+ε-↑ p₁ (putMVar q r₂) x | yes p = {!!}
+ε-↑ p (putMVar q r₂) x | no ¬p = {!!}
+ε-↑ {l} {lₐ} p putMVarEx x with l ⊑? lₐ
+ε-↑ p₁ putMVarEx MkE | yes p = MkE
+ε-↑ p putMVarEx MkE | no ¬p = ⊥-elim (¬p p)
+ε-↑ p (takeMVarCtx s) MkE = MkE
+ε-↑ {l} {lₐ} p (takeMVar q r₂) x with l ⊑? lₐ
+ε-↑ p₁ (takeMVar q r₂) x | yes p = {!!}
+ε-↑ p (takeMVar q r₂) x | no ¬p = {!!}
+ε-↑ {l} {lₐ} p takeMVarEx x with l ⊑? lₐ
+ε-↑ p₁ takeMVarEx MkE | yes p = MkE
+ε-↑ p takeMVarEx x | no ¬p = ⊥-elim (¬p p)
+
 -- I believe that the first three cases are fine, the issue is with the exit case.
 -- The problem is that we are removing a thread that has terminated from the thread pool,
 -- so ⟨ Σ , v ◅ ts ⟩ ↪ ⟨ Σ , ts ⟩
@@ -515,22 +587,50 @@ fork-⊑ .(fork p t) e | fork p t = p
 -- I believe that also the thread pool needs to be compartmentalized according to the labels and
 -- collapsed to ∙ just like memory.
 εᵍ-dist : ∀ {ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> g₁ ↪ g₂ -> (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
-εᵍ-dist lₐ (step {l} s x) with l ⊑? lₐ
-εᵍ-dist lₐ (step s x) | yes p = {!step (ε-Mac-dist lₐ (yes p) s) ?!}
-εᵍ-dist lₐ (step {t₂ = t} {ts = ts} {ps = ps} s x) | no ¬p rewrite εˢ-≡ lₐ ¬p s | ε-▻ᵖ-≡ (no ¬p) ps (ts ▻ t) = hole
-εᵍ-dist lₐ (fork {l} s x) with l ⊑? lₐ
-εᵍ-dist lₐ (fork s x) | yes p = {!fork (ε-Mac-dist lₐ (yes p) s)  ?!}
-εᵍ-dist lₐ (fork {h = h} {ps = ps} {t₂ = t} {tⁿ = tⁿ} {ts = ts} s x)
-  | no ¬p rewrite εˢ-≡ lₐ ¬p s | ε-▻ᵖ-≡ (no ¬p) (ps ▻ᵖ (tⁿ ◅ [])) (ts ▻ t) = {!hole!}
+εᵍ-dist lₐ (step {l} s x q x₁) with l ⊑? lₐ
+εᵍ-dist lₐ (step {t₂ = t} {ts = ts} {ps = ps} s x q v) | yes p
+  rewrite ε-update-≡ (yes p) q ps (ts ▻ t) | εᵗ-yes-≡ p ts t = step (ε-Mac-dist lₐ (yes p) s) (ε-↑ p s x) q (ε-PoolView (yes p) v)
+εᵍ-dist lₐ (step {t₂ = t} {ts = ts} {ps = ps} s x q v) | no ¬p with ε-PoolView (no ¬p) v
+... | v' rewrite εˢ-≡ lₐ ¬p s | ε-update∙-≡ ¬p q ps (ts ▻ t) = hole v'
+εᵍ-dist lₐ (fork {l} s x q r v) with l ⊑? lₐ
+εᵍ-dist lₐ (fork {h = h} {t₂ = t} {tⁿ = tⁿ} {ts = ts} {ps = ps} s x q r v) | yes p
+  rewrite ε-update-≡ (yes p) q (forkInPool tⁿ r ps) (ts ▻ t) | εᵗ-yes-≡ p ts t | ε-fork-≡ (h ⊑? lₐ) r ps tⁿ
+    = fork (ε-Mac-dist lₐ (yes p) s) (ε-↑ p s x) q r (ε-PoolView (yes p) v)
+εᵍ-dist lₐ (fork {t₂ = t} {tⁿ = tⁿ} {ts = ts} {ps = ps} s x q r v) | no ¬p with ε-PoolView (no ¬p) v
+... | v' rewrite εˢ-≡ lₐ ¬p s | ε-fork∙-≡ (lemma (fork-⊑ s x) ¬p) r ps tⁿ | ε-update∙-≡ ¬p q (forkInPool tⁿ r ps) (ts ▻ t) = hole v'
+εᵍ-dist lₐ (empty {l} x) with l ⊑? lₐ
+εᵍ-dist lₐ (empty x) | yes p = empty (ε-PoolView (yes p) x)
+εᵍ-dist lₐ (empty x) | no ¬p = hole (ε-PoolView (no ¬p) x)
+εᵍ-dist lₐ (hole {l} x) with l ⊑? lₐ
+εᵍ-dist lₐ (hole x) | yes p = hole (ε-PoolView (yes p) x)
+εᵍ-dist lₐ (hole x) | no ¬p = hole (ε-PoolView (no ¬p) x)
+εᵍ-dist lₐ (skip {l} q v b) with l ⊑? lₐ
+εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} q v b) | yes p
+  rewrite ε-update-≡ (yes p) q ps (ts ▻ t) | εᵗ-yes-≡ p ts t = skip q (ε-PoolView (yes p) v) (ε-Blocked p b)
+εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} q v b) | no ¬p with ε-PoolView (no ¬p) v
+... | v' rewrite ε-update∙-≡ ¬p q ps (ts ▻ t) = hole v'
+εᵍ-dist lₐ (exit {l} q x x₁) with l ⊑? lₐ
+εᵍ-dist lₐ (exit {ts = ts} {ps = ps} q v isV) | yes p
+  rewrite ε-update-≡ (yes p) q ps ts = exit q (ε-PoolView (yes p) v) (ε-IsValue p isV)
+εᵍ-dist lₐ (exit {t = t} {ts = ts} {ps = ps} q v isV) | no ¬p with ε-PoolView (no ¬p) v
+... | v' rewrite ε-update∙-≡ ¬p q ps ts = hole v'
+εᵍ-dist lₐ cycle = cycle
+-- εᵍ-dist lₐ (step {l} s x) with l ⊑? lₐ
+-- εᵍ-dist lₐ (step s x) | yes p = {!step (ε-Mac-dist lₐ (yes p) s) ?!}
+-- εᵍ-dist lₐ (step {t₂ = t} {ts = ts} {ps = ps} s x) | no ¬p rewrite εˢ-≡ lₐ ¬p s | ε-▻ᵖ-≡ (no ¬p) ps (ts ▻ t) = hole
+-- εᵍ-dist lₐ (fork {l} s x) with l ⊑? lₐ
+-- εᵍ-dist lₐ (fork s x) | yes p = {!fork (ε-Mac-dist lₐ (yes p) s)  ?!}
+-- εᵍ-dist lₐ (fork {h = h} {ps = ps} {t₂ = t} {tⁿ = tⁿ} {ts = ts} s x)
+--   | no ¬p rewrite εˢ-≡ lₐ ¬p s | ε-▻ᵖ-≡ (no ¬p) (ps ▻ᵖ (tⁿ ◅ [])) (ts ▻ t) = {!hole!}
 
--- ε-▻ᵖ-≡ (no (lemma (fork-⊑ s x) ¬p)) (ps ▻ᵖ (ts ▻ t)) (tⁿ ◅ []) = {!hole!}  -- s won't change the store because this is sensitive!
-εᵍ-dist lₐ (empty {l} {ps = ps}) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps [] with l ⊑? lₐ
-εᵍ-dist lₐ empty | yes p = empty
-εᵍ-dist lₐ (empty {l} {ps = ps}) | no ¬p = hole
-εᵍ-dist lₐ (hole {l} {ps = ps}) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps ∙ |  εᵗ∙≡∙ (l ⊑? lₐ) = hole
-εᵍ-dist lₐ (skip {l} x) with l ⊑? lₐ
-εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} x) | yes p rewrite ε-▻ᵖ-≡ (yes p) ps (ts ▻ t) | ε-▻-≡ p t ts = skip (ε-Blocked p x) 
-εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} x) | no ¬p rewrite ε-▻ᵖ-≡ (no ¬p) ps (ts ▻ t) = hole
-εᵍ-dist lₐ (exit {l} {ts = ts} {ps = ps} x) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps ts with l ⊑? lₐ
-εᵍ-dist lₐ (exit {ts = ts} {ps = ps} x) | yes p = exit (ε-IsValue p x)
-εᵍ-dist lₐ (exit {ts = ts} {ps = ps} x) | no ¬p = {!!} 
+-- -- ε-▻ᵖ-≡ (no (lemma (fork-⊑ s x) ¬p)) (ps ▻ᵖ (ts ▻ t)) (tⁿ ◅ []) = {!hole!}  -- s won't change the store because this is sensitive!
+-- εᵍ-dist lₐ (empty {l} {ps = ps}) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps [] with l ⊑? lₐ
+-- εᵍ-dist lₐ empty | yes p = empty
+-- εᵍ-dist lₐ (empty {l} {ps = ps}) | no ¬p = hole
+-- εᵍ-dist lₐ (hole {l} {ps = ps}) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps ∙ |  εᵗ∙≡∙ (l ⊑? lₐ) = hole
+-- εᵍ-dist lₐ (skip {l} x) with l ⊑? lₐ
+-- εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} x) | yes p rewrite ε-▻ᵖ-≡ (yes p) ps (ts ▻ t) | ε-▻-≡ p t ts = skip (ε-Blocked p x) 
+-- εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} x) | no ¬p rewrite ε-▻ᵖ-≡ (no ¬p) ps (ts ▻ t) = hole
+-- εᵍ-dist lₐ (exit {l} {ts = ts} {ps = ps} x) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps ts with l ⊑? lₐ
+-- εᵍ-dist lₐ (exit {ts = ts} {ps = ps} x) | yes p = exit (ε-IsValue p x)
+-- εᵍ-dist lₐ (exit {ts = ts} {ps = ps} x) | no ¬p = hole 
