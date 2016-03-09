@@ -3,6 +3,7 @@ module Typed.Semantics where
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 open import Typed.Base public
 import Data.List as L
+open import Data.List.All
 
 data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
@@ -202,13 +203,13 @@ data Pool (l : Label) : Set where
 infixr 3 _◅_
 
 -- A list of pools 
-data Pools : Set where
-  [] : Pools
-  _◅_ : ∀ {l} -> Pool l -> Pools -> Pools
+data Pools : List Label -> Set where
+  [] : Pools []
+  _◅_ : ∀ {l ls} {{u : Unique l ls}} -> Pool l -> Pools ls -> Pools (l ∷ ls)
 
 -- The global configuration is a thread pool  paired with some shared split memory Σ
 data Global (ls : List Label) : Set where
-  ⟨_,_⟩ : (Σ : Store ls) -> (ps : Pools)  -> Global ls
+  ⟨_,_,_⟩ :  ℕ -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
   
 -- Enqueue
 _▻_ : ∀ {l} -> Pool l -> Thread l -> Pool l
@@ -218,12 +219,37 @@ _▻_ : ∀ {l} -> Pool l -> Thread l -> Pool l
 
 infixl 3 _▻_
 
-_▻ᵖ_ : ∀ {l} -> Pools -> Pool l -> Pools
-[] ▻ᵖ p = p ◅ []
-(p₁ ◅ ps) ▻ᵖ p₂ = p₁ ◅ (ps ▻ᵖ p₂ ) 
+-- We this data type we don't neet to actually perform a read and constraint
+-- somehow the pool that it returns (empty/bullet/non-empty)
+-- TODO if we are using numbers for injectivity then we probably don't need the uniqueness proofs in Pools
+data PoolView {l : Label} (p : Pool l) : ∀ {ls} -> Pools ls -> ℕ ->  Set where
+  Here : ∀ {ls n} {ps : Pools ls}  -> PoolView p ps (suc n)
+  There : ∀ {ls n l'} {u : Unique l' ls} {p' : Pool l'} {ps : Pools ls} -> PoolView p ps n -> PoolView p (p' ◅ ps) (suc n)
 
-infixl 3 _▻ᵖ_
+-- write in pools
+update : ∀ {l ls} -> l ∈ ls -> Pools ls -> Pool l -> Pools ls
+update Here (x ◅ ps) p = p ◅ ps
+update (There q) (p₁ ◅ ps) p₂ = p₁ ◅ update q ps p₂
 
+-- TODO remove
+-- Even more precise than write maybe better!
+-- This does not work because the current thread has been reduced 
+rotate : ∀ {l ls} -> l ∈ ls -> Pools ls -> Pools ls
+rotate Here ([] ◅ ps) = [] ◅ ps
+rotate Here ((t ◅ p) ◅ ps) = (p ▻ t) ◅ ps
+rotate Here (∙ ◅ ps) = ∙ ◅ ps
+rotate (There q) (p ◅ ps) = p ◅ (rotate q ps)
+
+forkInPool : ∀ {l ls} -> Thread l -> l ∈ ls -> Pools ls -> Pools ls
+forkInPool t Here (p ◅ ps) = (p ▻ t) ◅ ps
+forkInPool t (There q) (p ◅ ps) = p ◅ forkInPool t q ps
+
+-- -- Combine fork and update in a single operation
+-- forkAndUpdate : ∀ {l h ls} -> l ∈ ls -> h ∈ ls -> Pools ls -> Pool l -> Thread h -> Pools ls
+-- forkAndUpdate Here Here (_ ◅ ps) ts t = (ts ▻ t) ◅ ps
+-- forkAndUpdate Here (There r) (x ◅ ps) p t = {!!}
+-- forkAndUpdate (There q) Here (x ◅ ps) p t = {!!}
+-- forkAndUpdate (There q) (There r) (x ◅ ps) p t = {!!}
 
 -- The proof that a term is blocked
 data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set where
@@ -234,28 +260,28 @@ data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set whe
 data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   -- Sequential stop
-  step : ∀ {l} {t₁ t₂ : Thread l} {ts : Pool l} {Σ₁ Σ₂ : Store ls} {ps : Pools} ->
-          (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) -> s ↑ ∅ ->
-          ⟨ Σ₁ , (t₁ ◅ ts) ◅ ps ⟩ ↪ ⟨ Σ₂ , ps ▻ᵖ (ts ▻ t₂) ⟩
+  step : ∀ {l n} {t₁ t₂ : Thread l} {ts : Pool l} {Σ₁ Σ₂ : Store ls} {ps : Pools ls} ->
+          (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) -> s ↑ ∅ -> (q : l ∈ ls) -> PoolView (t₁ ◅ ts) ps (suc n) -> 
+          ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , update q ps (ts ▻ t₂ ) ⟩
 
-  fork : ∀ {l h} {Σ₁ Σ₂ : Store ls} {ps : Pools} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l}
-         (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) ->  s ↑ (fork tⁿ) ->
-         -- Here I am actually changing the shape of ps, breaking distributivity.
-         -- I have to place the new thread in the right thread pool and
-         -- then show that after the erasure they are both collapesed to ∙
-         ⟨ Σ₁ , ((t₁ ◅ ts) ◅ ps) ⟩ ↪ ⟨ Σ₂ , ps ▻ᵖ (tⁿ ◅ []) ▻ᵖ (ts ▻ t₂) ⟩ 
+  fork : ∀ {l h n} {Σ₁ Σ₂ : Store ls} {ps : Pools ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l}
+         (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) ->  s ↑ (fork tⁿ) -> (q : l ∈ ls) (r : h ∈ ls) -> PoolView (t₁ ◅ ts) ps (suc n) ->
+         ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , update q (forkInPool tⁿ r ps) (t₂ ◅ ts) ⟩ 
 
-  empty : ∀ {l} {Σ : Store ls} {ps : Pools} -> ⟨ Σ , ([] {l}) ◅ ps ⟩ ↪ ⟨ Σ , ps ▻ᵖ ([] {l})⟩
+  empty : ∀ {l n} {Σ : Store ls} {ps : Pools ls} -> PoolView {l} [] ps (suc n) -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , ps ⟩
 
-  hole : ∀ {l} {Σ : Store ls} {ps : Pools} -> ⟨ Σ , (∙ {l}) ◅ ps ⟩ ↪ ⟨ Σ , ps ▻ᵖ (∙ {l}) ⟩
+  hole : ∀ {l n} {Σ : Store ls} {ps : Pools ls} -> PoolView {l} ∙ ps (suc n) -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , ps ⟩
 
   -- Skip a blocked thread
-  skip : ∀ {l} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools} ->
-          Blocked Σ t -> ⟨ Σ , ((t ◅ ts) ◅ ps) ⟩ ↪ ⟨ Σ , ps ▻ᵖ (ts ▻ t) ⟩ 
+  skip : ∀ {l n} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} -> (q : l ∈ ls) -> PoolView (t ◅ ts) ps (suc n) -> 
+          Blocked Σ t -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , update q ps (ts ▻ t) ⟩ 
 
   -- In the paper Σ changes in this rule. Why is that?
-  exit : ∀ {l} {Σ : Store ls} {ts : Pool l} {ps : Pools} {t : Thread l} ->
-           IsValue t ->  ⟨ Σ , ((t ◅ ts) ◅ ps) ⟩ ↪ ⟨ Σ ,  ps ▻ᵖ ts ⟩
+  exit : ∀ {l n} {Σ : Store ls} {ts : Pool l} {ps : Pools ls} {t : Thread l} -> (q : l ∈ ls) -> PoolView (t ◅ ts) ps (suc n) ->
+           IsValue t ->  ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ ,  update q ps ts ⟩
+
+  -- restart the counter
+  cycle : ∀ {Σ : Store ls} {ps : Pools ls} -> ⟨ zero , Σ , ps ⟩ ↪ ⟨ length ls , Σ , ps ⟩
 
 --------------------------------------------------------------------------------
 
