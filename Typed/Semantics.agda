@@ -4,6 +4,8 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 open import Typed.Base public
 import Data.List as L
 open import Data.List.All
+open import Data.Stream using (_∷_ ; Stream)
+open import Coinduction
 
 data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
@@ -214,9 +216,9 @@ stepOf (none ¬f s) = s
 -- We this data type we don't neet to actually perform a read and constraint
 -- somehow the pool that it returns (empty/bullet/non-empty)
 -- TODO if we are using numbers for injectivity then we probably don't need the uniqueness proofs in Pools
-data PoolView {l : Label} (p : Pool l) : ∀ {ls} -> Pools ls -> ℕ ->  Set where
-  Here : ∀ {ls n} {ps : Pools ls}  -> PoolView p ps (suc n)
-  There : ∀ {ls n l'} {u : Unique l' ls} {p' : Pool l'} {ps : Pools ls} -> PoolView p ps n -> PoolView p (p' ◅ ps) (suc n)
+data PoolView {l : Label} (p : Pool l) : ∀ {ls} -> Pools ls -> l ∈ ls ->  Set where
+  Here : ∀ {ls} {ps : Pools ls} {u : Unique l ls} -> PoolView p (p ◅ ps) Here
+  There : ∀ {ls q l'} {u : Unique l' ls} {p' : Pool l'} {ps : Pools ls} -> PoolView p ps q -> PoolView p (p' ◅ ps) (There q)
 
 -- write in pools
 update : ∀ {l ls} -> l ∈ ls -> Pools ls -> Pool l -> Pools ls
@@ -236,28 +238,25 @@ data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set whe
 data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   -- Sequential stop
-  step : ∀ {l n} {t₁ t₂ : Thread l} {ts : Pool l} {Σ₁ Σ₂ : Store ls} {ps : Pools ls} ->
-          ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ ∅ -> (q : l ∈ ls) -> PoolView (t₁ ◅ ts) ps (suc n) -> 
-          ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , update q ps (ts ▻ t₂ ) ⟩
+  step : ∀ {l ll} {t₁ t₂ : Thread l} {ts : Pool l} {Σ₁ Σ₂ : Store ls} {ps : Pools ls} ->
+          (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ ∅) -> (q : l ∈ ls) -> (pv : PoolView (t₁ ◅ ts) ps q) -> 
+          ⟨ l ∷ ♯ ll , Σ₁ , ps ⟩ ↪ ⟨ ll , Σ₂ , update q ps (ts ▻ t₂ ) ⟩
 
   -- A fork step spawns a new thread
-  fork : ∀ {l h n} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l} {ps : Pools ls} ->
-           ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tⁿ) -> (q : l ∈ ls) (r : h ∈ ls) -> PoolView (t₁ ◅ ts) ps (suc n) ->
-           ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , update q (forkInPool tⁿ r ps) (ts ▻ t₂) ⟩ 
+  fork : ∀ {l h ll} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l} {ps : Pools ls} ->
+           (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tⁿ)) -> (q : l ∈ ls) (r : h ∈ ls) -> (pv : PoolView (t₁ ◅ ts) ps q) ->
+           ⟨ l ∷ ll , Σ₁ , ps ⟩ ↪ ⟨ ♭ ll , Σ₂ , update q (forkInPool tⁿ r ps) (ts ▻ t₂) ⟩ 
 
   -- Nothing to do at this level, the pool is empty
-  empty : ∀ {l n} {Σ : Store ls} {ps : Pools ls} -> PoolView {l} [] ps (suc n) -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , ps ⟩
+  empty : ∀ {l ll} {Σ : Store ls} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView {l} [] ps q) -> ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ♭ ll , Σ , ps ⟩
 
   -- The pool at this level is collpased, nothing to do.
-  hole : ∀ {l n} {Σ : Store ls} {ps : Pools ls} -> PoolView {l} ∙ ps (suc n) -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , ps ⟩
+  hole : ∀ {l ll} {Σ : Store ls} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView {l} ∙ ps q) -> ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ♭ ll , Σ , ps ⟩
 
   -- Skip a blocked thread
-  skip : ∀ {l n} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} -> (q : l ∈ ls) -> PoolView (t ◅ ts) ps (suc n) -> 
-          Blocked Σ t -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , update q ps (ts ▻ t) ⟩ 
+  skip : ∀ {l ll} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView (t ◅ ts) ps q) -> 
+          Blocked Σ t -> ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ♭ ll , Σ , update q ps (ts ▻ t) ⟩ 
 
   -- In the paper Σ changes in this rule. Why is that?
-  exit : ∀ {l n} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} -> (q : l ∈ ls) -> PoolView (t ◅ ts) ps (suc n) ->
-           IsValue t ->  ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ ,  update q ps ts ⟩
-
-  -- restart the counter (I am assuming ps ≠ [])
-  cycle : ∀ {Σ : Store ls} {ps : Pools ls} -> ⟨ zero , Σ , ps ⟩ ↪ ⟨ length ls , Σ , ps ⟩
+  exit : ∀ {l ll} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView (t ◅ ts) ps q) ->
+           IsValue t ->  ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ♭ ll , Σ ,  update q ps ts ⟩

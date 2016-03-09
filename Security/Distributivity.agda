@@ -6,6 +6,8 @@ open import Typed.Semantics
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 open import Data.Product
 open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
+open import Data.Stream using (_∷_ ; Stream)
+open import Coinduction
 
 --------------------------------------------------------------------------------
 -- The main distributivity theorem: 
@@ -499,7 +501,7 @@ fork-⊑ : ∀ {ls τ l h} {p₁ p₂ : Program ls (Mac l τ)} {t : Thread h }  
 fork-⊑ (fork p t s) = p
 
 ε-PoolView : ∀ {l lₐ ls n} {p : Pool l} {ps : Pools ls} -> (x : Dec (l ⊑ lₐ)) -> PoolView p ps n -> PoolView (εᵗ x p) (ε-pools lₐ ps) n
-ε-PoolView x Here = Here
+ε-PoolView {l} {lₐ} {p = p} x Here rewrite εᵗ-extensional x (l ⊑? lₐ) p = Here
 ε-PoolView x (There y) = There (ε-PoolView x y)
 
 ε-update∙-≡ : ∀ {l lₐ ls} -> ¬ (l ⊑ lₐ) -> (q : l ∈ ls) (ps : Pools ls) (ts : Pool l) -> ε-pools lₐ ps ≡ ε-pools lₐ (update q ps ts) 
@@ -575,27 +577,26 @@ open Program
 εᵍ-dist lₐ (step {t₂ = t} {ts = ts} {ps = ps} s q v) | yes p
   rewrite ε-update-≡ (yes p) q ps (ts ▻ t) | εᵗ-yes-≡ p ts t = step (ε-↑ p s) q (ε-PoolView (yes p) v)
 εᵍ-dist lₐ (step {t₂ = t} {ts = ts} {ps = ps} s q v) | no ¬p with ε-PoolView (no ¬p) v
-... | v' rewrite εˢ-≡ lₐ ¬p (stepOf s) | ε-update∙-≡ ¬p q ps (ts ▻ t) = hole v'
+... | v' rewrite εˢ-≡ lₐ ¬p (stepOf s) | ε-update∙-≡ ¬p q ps (ts ▻ t) = hole q v'
 εᵍ-dist lₐ (fork {l} s q r v) with l ⊑? lₐ
 εᵍ-dist lₐ (fork {h = h} {t₂ = t} {tⁿ = tⁿ} {ts = ts} {ps = ps} s q r v) | yes p
   rewrite ε-update-≡ (yes p) q (forkInPool tⁿ r ps) (ts ▻ t) | εᵗ-yes-≡ p ts t | ε-fork-≡ (h ⊑? lₐ) r ps tⁿ
     = fork (ε-↑ p s) q r (ε-PoolView (yes p) v)
 εᵍ-dist lₐ (fork {t₂ = t} {tⁿ = tⁿ} {ts = ts} {ps = ps} s q r v) | no ¬p with ε-PoolView (no ¬p) v
-... | v' rewrite εˢ-≡ lₐ ¬p (stepOf s) | ε-fork∙-≡ (lemma (fork-⊑ s) ¬p) r ps tⁿ | ε-update∙-≡ ¬p q (forkInPool tⁿ r ps) (ts ▻ t) = hole v'
-εᵍ-dist lₐ (empty {l} x) with l ⊑? lₐ
-εᵍ-dist lₐ (empty x) | yes p = empty (ε-PoolView (yes p) x)
-εᵍ-dist lₐ (empty x) | no ¬p = hole (ε-PoolView (no ¬p) x)
-εᵍ-dist lₐ (hole {l} x) with l ⊑? lₐ
-εᵍ-dist lₐ (hole x) | yes p = hole (ε-PoolView (yes p) x)
-εᵍ-dist lₐ (hole x) | no ¬p = hole (ε-PoolView (no ¬p) x)
+... | v' rewrite εˢ-≡ lₐ ¬p (stepOf s) | ε-fork∙-≡ (lemma (fork-⊑ s) ¬p) r ps tⁿ | ε-update∙-≡ ¬p q (forkInPool tⁿ r ps) (ts ▻ t) = hole q v'
+εᵍ-dist lₐ (empty {l} q x) with l ⊑? lₐ
+εᵍ-dist lₐ (empty q x) | yes p = empty q (ε-PoolView (yes p) x)
+εᵍ-dist lₐ (empty q x) | no ¬p = hole q (ε-PoolView (no ¬p) x)
+εᵍ-dist lₐ (hole {l} q x) with l ⊑? lₐ
+εᵍ-dist lₐ (hole q x) | yes p = hole q (ε-PoolView (yes p) x)
+εᵍ-dist lₐ (hole q x) | no ¬p = hole q (ε-PoolView (no ¬p) x)
 εᵍ-dist lₐ (skip {l} q v b) with l ⊑? lₐ
 εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} q v b) | yes p
   rewrite ε-update-≡ (yes p) q ps (ts ▻ t) | εᵗ-yes-≡ p ts t = skip q (ε-PoolView (yes p) v) (ε-Blocked p b)
 εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} q v b) | no ¬p with ε-PoolView (no ¬p) v
-... | v' rewrite ε-update∙-≡ ¬p q ps (ts ▻ t) = hole v'
+... | v' rewrite ε-update∙-≡ ¬p q ps (ts ▻ t) = hole q v'
 εᵍ-dist lₐ (exit {l} q x x₁) with l ⊑? lₐ
 εᵍ-dist lₐ (exit {ts = ts} {ps = ps} q v isV) | yes p
   rewrite ε-update-≡ (yes p) q ps ts = exit q (ε-PoolView (yes p) v) (ε-IsValue p isV)
 εᵍ-dist lₐ (exit {t = t} {ts = ts} {ps = ps} q v isV) | no ¬p with ε-PoolView (no ¬p) v
-... | v' rewrite ε-update∙-≡ ¬p q ps ts = hole v'
-εᵍ-dist lₐ cycle = cycle
+... | v' rewrite ε-update∙-≡ ¬p q ps ts = hole q v'
