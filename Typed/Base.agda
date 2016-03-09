@@ -198,6 +198,38 @@ newˢ Here (m ∷ s) c = (m ∷ʳ c) ∷ s
 newˢ (There q) (x ∷ s) c = x ∷ newˢ q s c
 
 --------------------------------------------------------------------------------
+-- Concurrency
+--------------------------------------------------------------------------------
+
+Thread : Label -> Set
+Thread l = CTerm (Mac l （）)
+
+-- Pool of threads at a certain label
+data Pool (l : Label) : Set where
+  [] : Pool l
+  _◅_ : Thread l -> Pool l -> Pool l
+  ∙ : Pool l
+
+infixr 3 _◅_
+
+-- A list of pools 
+data Pools : List Label -> Set where
+  [] : Pools []
+  _◅_ : ∀ {l ls} {{u : Unique l ls}} -> Pool l -> Pools ls -> Pools (l ∷ ls)
+
+-- The global configuration is a thread pool paired with some shared split memory Σ
+data Global (ls : List Label) : Set where
+  ⟨_,_,_⟩ :  ℕ -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
+  
+-- Enqueue
+_▻_ : ∀ {l} -> Pool l -> Thread l -> Pool l
+[] ▻ t = t ◅ []
+(x ◅ ts) ▻ t = x ◅ (ts ▻ t) 
+∙ ▻ t = ∙
+
+infixl 3 _▻_
+
+--------------------------------------------------------------------------------
 
 -- The proof that a certain term is a value
 data IsValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where

@@ -177,17 +177,14 @@ mutual
   NormalForm s₁ c = ¬ Redex s₁ c
 
 --------------------------------------------------------------------------------
-
--- TODO move to Typed.Base
-Thread : Label -> Set
-Thread l = CTerm (Mac l （）)
+-- Concurrency
+--------------------------------------------------------------------------------
 
 -- Events triggered
 data Event : Set where
   ∅ : Event
   fork : ∀ {l} -> Thread l -> Event
 
---------------------------------------------------------------------------------
 -- We need to tie the event data type with the small step semantics.
 -- I don't want to redefine the small step semantics with an additional index, neither
 -- I want to write a wrapper for each of them.
@@ -214,31 +211,6 @@ stepOf : ∀ {ls τ e} {p₁ p₂ : Program ls τ} -> p₁ ⟼ p₂ ↑ e -> p�
 stepOf (fork p t s) = s
 stepOf (none ¬f s) = s
 
--- Pool of threads at a certain label
-data Pool (l : Label) : Set where
-  [] : Pool l
-  _◅_ : Thread l -> Pool l -> Pool l
-  ∙ : Pool l
-
-infixr 3 _◅_
-
--- A list of pools 
-data Pools : List Label -> Set where
-  [] : Pools []
-  _◅_ : ∀ {l ls} {{u : Unique l ls}} -> Pool l -> Pools ls -> Pools (l ∷ ls)
-
--- The global configuration is a thread pool  paired with some shared split memory Σ
-data Global (ls : List Label) : Set where
-  ⟨_,_,_⟩ :  ℕ -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
-  
--- Enqueue
-_▻_ : ∀ {l} -> Pool l -> Thread l -> Pool l
-[] ▻ t = t ◅ []
-(x ◅ ts) ▻ t = x ◅ (ts ▻ t) 
-∙ ▻ t = ∙
-
-infixl 3 _▻_
-
 -- We this data type we don't neet to actually perform a read and constraint
 -- somehow the pool that it returns (empty/bullet/non-empty)
 -- TODO if we are using numbers for injectivity then we probably don't need the uniqueness proofs in Pools
@@ -251,25 +223,9 @@ update : ∀ {l ls} -> l ∈ ls -> Pools ls -> Pool l -> Pools ls
 update Here (x ◅ ps) p = p ◅ ps
 update (There q) (p₁ ◅ ps) p₂ = p₁ ◅ update q ps p₂
 
--- TODO remove
--- Even more precise than write maybe better!
--- This does not work because the current thread has been reduced 
-rotate : ∀ {l ls} -> l ∈ ls -> Pools ls -> Pools ls
-rotate Here ([] ◅ ps) = [] ◅ ps
-rotate Here ((t ◅ p) ◅ ps) = (p ▻ t) ◅ ps
-rotate Here (∙ ◅ ps) = ∙ ◅ ps
-rotate (There q) (p ◅ ps) = p ◅ (rotate q ps)
-
 forkInPool : ∀ {l ls} -> Thread l -> l ∈ ls -> Pools ls -> Pools ls
 forkInPool t Here (p ◅ ps) = (p ▻ t) ◅ ps
 forkInPool t (There q) (p ◅ ps) = p ◅ forkInPool t q ps
-
--- -- Combine fork and update in a single operation
--- forkAndUpdate : ∀ {l h ls} -> l ∈ ls -> h ∈ ls -> Pools ls -> Pool l -> Thread h -> Pools ls
--- forkAndUpdate Here Here (_ ◅ ps) ts t = (ts ▻ t) ◅ ps
--- forkAndUpdate Here (There r) (x ◅ ps) p t = {!!}
--- forkAndUpdate (There q) Here (x ◅ ps) p t = {!!}
--- forkAndUpdate (There q) (There r) (x ◅ ps) p t = {!!}
 
 -- The proof that a term is blocked
 data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set where
@@ -284,12 +240,15 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
           ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ ∅ -> (q : l ∈ ls) -> PoolView (t₁ ◅ ts) ps (suc n) -> 
           ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , update q ps (ts ▻ t₂ ) ⟩
 
+  -- A fork step spawns a new thread
   fork : ∀ {l h n} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l} {ps : Pools ls} ->
            ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tⁿ) -> (q : l ∈ ls) (r : h ∈ ls) -> PoolView (t₁ ◅ ts) ps (suc n) ->
            ⟨ suc n , Σ₁ , ps ⟩ ↪ ⟨ n , Σ₂ , update q (forkInPool tⁿ r ps) (ts ▻ t₂) ⟩ 
 
+  -- Nothing to do at this level, the pool is empty
   empty : ∀ {l n} {Σ : Store ls} {ps : Pools ls} -> PoolView {l} [] ps (suc n) -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , ps ⟩
 
+  -- The pool at this level is collpased, nothing to do.
   hole : ∀ {l n} {Σ : Store ls} {ps : Pools ls} -> PoolView {l} ∙ ps (suc n) -> ⟨ suc n , Σ , ps ⟩ ↪ ⟨ n , Σ , ps ⟩
 
   -- Skip a blocked thread
@@ -302,59 +261,3 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   -- restart the counter (I am assuming ps ≠ [])
   cycle : ∀ {Σ : Store ls} {ps : Pools ls} -> ⟨ zero , Σ , ps ⟩ ↪ ⟨ length ls , Σ , ps ⟩
-
---------------------------------------------------------------------------------
-
--- data _forks_ {ls : List Label} {h : Label} : ∀ {τ} {p₁ p₂ : Program ls τ} -> p₁ ⟼ p₂ -> Thread h -> Set where
---   fork : ∀ {l} {Σ : Store ls} -> (p : l ⊑ h) (t : Thread h) -> (fork {Σ = Σ} p t) forks t
-
--- fork-triggers-fork : ∀ {ls τ l} {t : Thread l} {p₁ p₂ : Program ls τ} -> (s : p₁ ⟼ p₂) -> s ↑ (fork t) -> s forks t
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (AppL x₁)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure Beta) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (IfCond x)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure IfTrue) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure IfFalse) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure Return) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure Throw) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure Bind) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure BindEx) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure Catch) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure CatchEx) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (label p)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (unlabel p)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (unlabelEx p)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (fmapCtx₁ x₁)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (fmapCtx₂ x)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure fmap) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure fmapEx) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (fmapCtx₁∙ x₁)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (fmapCtx₂∙ x)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure fmap∙) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure fmapEx∙) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ .∙ ⟩} (Pure Hole) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (relabelCtx p x)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (relabel p)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (relabelEx p)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (relabelCtx∙ p x)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (relabel∙ p)) ()
--- fork-triggers-fork {p₁ = ⟨ store ∥ ._ ⟩} (Pure (relabelEx∙ p)) ()
--- fork-triggers-fork (BindCtx s) ()
--- fork-triggers-fork (CatchCtx s) ()
--- fork-triggers-fork (unlabelCtx p s) ()
--- fork-triggers-fork (join p x) ()
--- fork-triggers-fork (joinEx p x) ()
--- fork-triggers-fork (new p q) ()
--- fork-triggers-fork (writeCtx p s) ()
--- fork-triggers-fork (write p q r₂) ()
--- fork-triggers-fork (writeEx p q r₂) ()
--- fork-triggers-fork (readCtx p s) ()
--- fork-triggers-fork (read p q r₂) ()
--- fork-triggers-fork (readEx p) ()
--- fork-triggers-fork (fork p t) MkE = fork p t
--- fork-triggers-fork (newMVar p q) ()
--- fork-triggers-fork (putMVarCtx s) ()
--- fork-triggers-fork (putMVar q r₂) ()
--- fork-triggers-fork putMVarEx ()
--- fork-triggers-fork (takeMVarCtx s) ()
--- fork-triggers-fork (takeMVar q r₂) ()
--- fork-triggers-fork takeMVarEx ()

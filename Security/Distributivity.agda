@@ -599,22 +599,3 @@ open Program
 εᵍ-dist lₐ (exit {t = t} {ts = ts} {ps = ps} q v isV) | no ¬p with ε-PoolView (no ¬p) v
 ... | v' rewrite ε-update∙-≡ ¬p q ps ts = hole v'
 εᵍ-dist lₐ cycle = cycle
--- εᵍ-dist lₐ (step {l} s x) with l ⊑? lₐ
--- εᵍ-dist lₐ (step s x) | yes p = {!step (ε-Mac-dist lₐ (yes p) s) ?!}
--- εᵍ-dist lₐ (step {t₂ = t} {ts = ts} {ps = ps} s x) | no ¬p rewrite εˢ-≡ lₐ ¬p s | ε-▻ᵖ-≡ (no ¬p) ps (ts ▻ t) = hole
--- εᵍ-dist lₐ (fork {l} s x) with l ⊑? lₐ
--- εᵍ-dist lₐ (fork s x) | yes p = {!fork (ε-Mac-dist lₐ (yes p) s)  ?!}
--- εᵍ-dist lₐ (fork {h = h} {ps = ps} {t₂ = t} {tⁿ = tⁿ} {ts = ts} s x)
---   | no ¬p rewrite εˢ-≡ lₐ ¬p s | ε-▻ᵖ-≡ (no ¬p) (ps ▻ᵖ (tⁿ ◅ [])) (ts ▻ t) = {!hole!}
-
--- -- ε-▻ᵖ-≡ (no (lemma (fork-⊑ s x) ¬p)) (ps ▻ᵖ (ts ▻ t)) (tⁿ ◅ []) = {!hole!}  -- s won't change the store because this is sensitive!
--- εᵍ-dist lₐ (empty {l} {ps = ps}) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps [] with l ⊑? lₐ
--- εᵍ-dist lₐ empty | yes p = empty
--- εᵍ-dist lₐ (empty {l} {ps = ps}) | no ¬p = hole
--- εᵍ-dist lₐ (hole {l} {ps = ps}) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps ∙ |  εᵗ∙≡∙ (l ⊑? lₐ) = hole
--- εᵍ-dist lₐ (skip {l} x) with l ⊑? lₐ
--- εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} x) | yes p rewrite ε-▻ᵖ-≡ (yes p) ps (ts ▻ t) | ε-▻-≡ p t ts = skip (ε-Blocked p x) 
--- εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} x) | no ¬p rewrite ε-▻ᵖ-≡ (no ¬p) ps (ts ▻ t) = hole
--- εᵍ-dist lₐ (exit {l} {ts = ts} {ps = ps} x) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps ts with l ⊑? lₐ
--- εᵍ-dist lₐ (exit {ts = ts} {ps = ps} x) | yes p = exit (ε-IsValue p x)
--- εᵍ-dist lₐ (exit {ts = ts} {ps = ps} x) | no ¬p = hole 
