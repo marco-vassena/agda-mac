@@ -240,9 +240,10 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   fork : ∀ {l h} {Σ₁ Σ₂ : Store ls} {ps : Pools} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l}
          (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩) ->  s ↑ (fork tⁿ) ->
-
-  -- In principle there is no problem if we create another pool thread just for the new thread
-         ⟨ Σ₁ , ((t₁ ◅ ts) ◅ ps) ⟩ ↪ ⟨ Σ₂ , ps ▻ᵖ (ts ▻ t₂) ▻ᵖ (tⁿ ◅ []) ⟩ 
+         -- Here I am actually changing the shape of ps, breaking distributivity.
+         -- I have to place the new thread in the right thread pool and
+         -- then show that after the erasure they are both collapesed to ∙
+         ⟨ Σ₁ , ((t₁ ◅ ts) ◅ ps) ⟩ ↪ ⟨ Σ₂ , ps ▻ᵖ (tⁿ ◅ []) ▻ᵖ (ts ▻ t₂) ⟩ 
 
   empty : ∀ {l} {Σ : Store ls} {ps : Pools} -> ⟨ Σ , ([] {l}) ◅ ps ⟩ ↪ ⟨ Σ , ps ▻ᵖ ([] {l})⟩
 
@@ -255,3 +256,31 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
   -- In the paper Σ changes in this rule. Why is that?
   exit : ∀ {l} {Σ : Store ls} {ts : Pool l} {ps : Pools} {t : Thread l} ->
            IsValue t ->  ⟨ Σ , ((t ◅ ts) ◅ ps) ⟩ ↪ ⟨ Σ ,  ps ▻ᵖ ts ⟩
+
+--------------------------------------------------------------------------------
+
+data _forks_ {ls : List Label} {h : Label} : ∀ {τ} {p₁ p₂ : Program ls τ} -> p₁ ⟼ p₂ -> Thread h -> Set where
+  fork : ∀ {l} {Σ : Store ls} -> (p : l ⊑ h) (t : Thread h) -> (fork {Σ = Σ} p t) forks t
+
+fork-triggers-fork : ∀ {ls τ l} {t : Thread l} {p₁ p₂ : Program ls τ} -> (s : p₁ ⟼ p₂) -> s ↑ (fork t) -> s forks t
+fork-triggers-fork (Pure x) ()
+fork-triggers-fork (BindCtx s) ()
+fork-triggers-fork (CatchCtx s) ()
+fork-triggers-fork (unlabelCtx p s) ()
+fork-triggers-fork (join p x) ()
+fork-triggers-fork (joinEx p x) ()
+fork-triggers-fork (new p q) ()
+fork-triggers-fork (writeCtx p s) ()
+fork-triggers-fork (write p q r₂) ()
+fork-triggers-fork (writeEx p q r₂) ()
+fork-triggers-fork (readCtx p s) ()
+fork-triggers-fork (read p q r₂) ()
+fork-triggers-fork (readEx p) ()
+fork-triggers-fork (fork p t) MkE = fork p t
+fork-triggers-fork (newMVar p q) ()
+fork-triggers-fork (putMVarCtx s) ()
+fork-triggers-fork (putMVar q r₂) ()
+fork-triggers-fork putMVarEx ()
+fork-triggers-fork (takeMVarCtx s) ()
+fork-triggers-fork (takeMVar q r₂) ()
+fork-triggers-fork takeMVarEx ()

@@ -398,32 +398,6 @@ blocked-no-value (onTake q r) ()
 -- fork-generated-by-fork (takeMVar q r₂) ()
 -- fork-generated-by-fork takeMVarEx ()
 
-data IsFork {ls : List Label} : ∀ {τ} {p₁ p₂ : Program ls τ} -> p₁ ⟼ p₂ -> Set where
-  fork : ∀ {l h} {Σ : Store ls} -> (p : l ⊑ h) (t : Thread h) -> IsFork (fork {Σ = Σ} p t)
-
-fork-triggers-fork : ∀ {ls τ l} {t : Thread l} {p₁ p₂ : Program ls τ} -> (s : p₁ ⟼ p₂) -> s ↑ (fork t) -> IsFork s
-fork-triggers-fork (Pure x) ()
-fork-triggers-fork (BindCtx s) ()
-fork-triggers-fork (CatchCtx s) ()
-fork-triggers-fork (unlabelCtx p s) ()
-fork-triggers-fork (join p x) ()
-fork-triggers-fork (joinEx p x) ()
-fork-triggers-fork (new p q) ()
-fork-triggers-fork (writeCtx p s) ()
-fork-triggers-fork (write p q r₂) ()
-fork-triggers-fork (writeEx p q r₂) ()
-fork-triggers-fork (readCtx p s) ()
-fork-triggers-fork (read p q r₂) ()
-fork-triggers-fork (readEx p) ()
-fork-triggers-fork (fork p t) MkE = fork p t
-fork-triggers-fork (newMVar p q) ()
-fork-triggers-fork (putMVarCtx s) ()
-fork-triggers-fork (putMVar q r₂) ()
-fork-triggers-fork putMVarEx ()
-fork-triggers-fork (takeMVarCtx s) ()
-fork-triggers-fork (takeMVar q r₂) ()
-fork-triggers-fork takeMVarEx ()
-
 unique-event : ∀ {l ls τ} {t : Thread l} {p₁ p₂ p₃ : Program ls τ} -> (s₁ : p₁ ⟼ p₂) (s₂ : p₁ ⟼ p₃) -> s₁ ↑ ∅ -> s₂ ↑ (fork t) -> ⊥
 unique-event s₁ s₂ x y with fork-triggers-fork s₂ y
 unique-event (Pure ()) .(fork p t) x₁ y | fork p t

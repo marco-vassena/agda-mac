@@ -480,8 +480,30 @@ open import Data.Sum
 
 -- After erasure what was blocked is either blocked or •
 -- blocked-ε : ∀
+ε-▻ᵖ-≡ : ∀ {l lₐ} (x : Dec (l ⊑ lₐ)) (ps : Pools) (ts : Pool l) -> ε-pools lₐ (ps ▻ᵖ ts) ≡ (ε-pools lₐ ps ▻ᵖ εᵗ x ts)
+ε-▻ᵖ-≡ {l} {lₐ} x [] ts rewrite εᵗ-extensional x (l ⊑? lₐ) ts = refl
+ε-▻ᵖ-≡ x (x₁ ◅ ps) ts rewrite ε-▻ᵖ-≡ x ps ts = refl
 
-open import Data.Sum
+ε-▻-≡ : ∀ {l lₐ} (p : l ⊑ lₐ) (t : Thread l) (ts : Pool l) -> εᵗ (yes p) (ts ▻ t) ≡ (εᵗ (yes p) ts ▻ ε-Mac lₐ (yes p) t)
+ε-▻-≡ p t [] = refl
+ε-▻-≡ p t (x ◅ ts) rewrite ε-▻-≡ p t ts = refl
+ε-▻-≡ p t ∙ = refl
+
+ε-IsValue : ∀ {τ l lₐ} {t : CTerm (Mac l τ)} -> (p : l ⊑ lₐ) -> IsValue t -> IsValue (ε-Mac lₐ (yes p) t)
+ε-IsValue p (Mac t) = Mac (ε _ t)
+ε-IsValue p (Macₓ e) = Macₓ (ε _ e)
+
+ε-Blocked : ∀ {l lₐ τ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Blocked Σ t -> Blocked (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t)
+ε-Blocked {l} {lₐ} p (onPut q r) with l ⊑? lₐ
+ε-Blocked p₁ (onPut q r) | yes p = onPut q (ε-TypedIx p₁ _ q r)
+ε-Blocked p (onPut q r) | no ¬p = ⊥-elim (¬p p)
+ε-Blocked {l} {lₐ} p (onTake q r) with l ⊑? lₐ
+ε-Blocked p₁ (onTake q r) | yes p = onTake q (ε-TypedIx p₁ _ q r)
+ε-Blocked p (onTake q r) | no ¬p = ⊥-elim (¬p p)
+
+fork-⊑ : ∀ {ls τ l h} {p₁ p₂ : Program ls (Mac l τ)} {t : Thread h }  -> (s : p₁ ⟼ p₂) -> s ↑ fork t -> l ⊑ h
+fork-⊑ s e with fork-triggers-fork s e
+fork-⊑ .(fork p t) e | fork p t = p
 
 -- I believe that the first three cases are fine, the issue is with the exit case.
 -- The problem is that we are removing a thread that has terminated from the thread pool,
@@ -495,17 +517,20 @@ open import Data.Sum
 εᵍ-dist : ∀ {ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> g₁ ↪ g₂ -> (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
 εᵍ-dist lₐ (step {l} s x) with l ⊑? lₐ
 εᵍ-dist lₐ (step s x) | yes p = {!step (ε-Mac-dist lₐ (yes p) s) ?!}
-εᵍ-dist lₐ (step s x) | no ¬p = {!hole!} -- s won't change the store because this is sensitive!
+εᵍ-dist lₐ (step {t₂ = t} {ts = ts} {ps = ps} s x) | no ¬p rewrite εˢ-≡ lₐ ¬p s | ε-▻ᵖ-≡ (no ¬p) ps (ts ▻ t) = hole
 εᵍ-dist lₐ (fork {l} s x) with l ⊑? lₐ
 εᵍ-dist lₐ (fork s x) | yes p = {!fork (ε-Mac-dist lₐ (yes p) s)  ?!}
-εᵍ-dist lₐ (fork s x) | no ¬p = {!!}  -- s won't change the store because this is sensitive!
-εᵍ-dist lₐ (empty {l}) with l ⊑? lₐ
-εᵍ-dist lₐ empty | yes p = {!!} -- empty lemma
-εᵍ-dist lₐ empty | no ¬p = {!!} -- hole lemma
-εᵍ-dist lₐ (hole {l}) rewrite εᵗ∙≡∙ (l ⊑? lₐ) = {!!} -- lemma hole
+εᵍ-dist lₐ (fork {h = h} {ps = ps} {t₂ = t} {tⁿ = tⁿ} {ts = ts} s x)
+  | no ¬p rewrite εˢ-≡ lₐ ¬p s | ε-▻ᵖ-≡ (no ¬p) (ps ▻ᵖ (tⁿ ◅ [])) (ts ▻ t) = {!hole!}
+
+-- ε-▻ᵖ-≡ (no (lemma (fork-⊑ s x) ¬p)) (ps ▻ᵖ (ts ▻ t)) (tⁿ ◅ []) = {!hole!}  -- s won't change the store because this is sensitive!
+εᵍ-dist lₐ (empty {l} {ps = ps}) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps [] with l ⊑? lₐ
+εᵍ-dist lₐ empty | yes p = empty
+εᵍ-dist lₐ (empty {l} {ps = ps}) | no ¬p = hole
+εᵍ-dist lₐ (hole {l} {ps = ps}) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps ∙ |  εᵗ∙≡∙ (l ⊑? lₐ) = hole
 εᵍ-dist lₐ (skip {l} x) with l ⊑? lₐ
-εᵍ-dist lₐ (skip x) | yes p = {!!}
-εᵍ-dist lₐ (skip x) | no ¬p = {!!}
-εᵍ-dist lₐ (exit {l} x) with l ⊑? lₐ
-εᵍ-dist lₐ (exit x) | yes p = {!exit ?!}
-εᵍ-dist lₐ (exit x) | no ¬p = {!hole !}
+εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} x) | yes p rewrite ε-▻ᵖ-≡ (yes p) ps (ts ▻ t) | ε-▻-≡ p t ts = skip (ε-Blocked p x) 
+εᵍ-dist lₐ (skip {t = t} {ts = ts} {ps = ps} x) | no ¬p rewrite ε-▻ᵖ-≡ (no ¬p) ps (ts ▻ t) = hole
+εᵍ-dist lₐ (exit {l} {ts = ts} {ps = ps} x) rewrite ε-▻ᵖ-≡ (l ⊑? lₐ) ps ts with l ⊑? lₐ
+εᵍ-dist lₐ (exit {ts = ts} {ps = ps} x) | yes p = exit (ε-IsValue p x)
+εᵍ-dist lₐ (exit {ts = ts} {ps = ps} x) | no ¬p = {!!} 
