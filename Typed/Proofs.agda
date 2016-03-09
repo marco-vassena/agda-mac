@@ -358,6 +358,12 @@ determinism :  ∀ {τ ls} {p₁ p₂ p₃ : Program τ ls} ->
 determinism {p₁ = ⟨ s₁ ∥ c₁ ⟩} {⟨ s₂ ∥ c₂ ⟩} {⟨ s₃ ∥ c₃ ⟩} st₁ st₂
   rewrite determinismS st₁ st₂ | determinismC st₁ st₂ = refl 
 
+determinism' : ∀ {τ ls} {Σ₁ Σ₂ Σ₃ : Store ls} {t₁ t₂ t₃ : CTerm τ} ->
+                 let p₁ = ⟨ Σ₁ ∥ t₁ ⟩
+                     p₂ = ⟨ Σ₂ ∥ t₂ ⟩
+                     p₃ = ⟨ Σ₃ ∥ t₃ ⟩ in p₁ ⟼ p₂ -> p₁ ⟼ p₃ -> p₂ ≡ p₃
+determinism' = determinism                     
+
 open import Data.Sum
 
 blocked-no-reduce : ∀ {ls l} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} -> Blocked Σ₁ t₁ -> ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ -> ⊥
@@ -372,55 +378,96 @@ blocked-no-value : ∀ {l ls} {Σ : Store ls} {t : Thread l} -> Blocked Σ t -> 
 blocked-no-value (onPut q r) ()
 blocked-no-value (onTake q r) ()
 
--- data _is-forked-by_ {ls : List Label} : ∀ {τ l} {p₁ p₂ : Program ls τ} -> Thread l -> p₁ ⟼ p₂ -> Set where
---   fork : ∀ {l h} {Σ : Store ls} -> (p : l ⊑ h) (t : Thread h) -> t is-forked-by (fork {Σ = Σ} p t)
+PoolView-≡ : ∀ {l ls} {q : l ∈ ls} {ps : Pools ls} {ts₁ ts₂ : Pool l} -> PoolView ts₁ ps q -> PoolView ts₂ ps q -> ts₁ ≡ ts₂
+PoolView-≡ Here Here = refl
+PoolView-≡ (There x) (There y) = PoolView-≡ x y
 
--- fork-generated-by-fork : ∀ {ls τ l} {t : Thread l} {p₁ p₂ : Program ls τ} -> (s : p₁ ⟼ p₂) -> s ↑ (fork t) -> t is-forked-by s
--- fork-generated-by-fork (Pure x) ()
--- fork-generated-by-fork (BindCtx s) ()
--- fork-generated-by-fork (CatchCtx s) ()
--- fork-generated-by-fork (unlabelCtx p s) ()
--- fork-generated-by-fork (join p x) ()
--- fork-generated-by-fork (joinEx p x) ()
--- fork-generated-by-fork (new p q) ()
--- fork-generated-by-fork (writeCtx p s) ()
--- fork-generated-by-fork (write p q r₂) ()
--- fork-generated-by-fork (writeEx p q r₂) ()
--- fork-generated-by-fork (readCtx p s) ()
--- fork-generated-by-fork (read p q r₂) ()
--- fork-generated-by-fork (readEx p) ()
--- fork-generated-by-fork (fork p t) MkE = fork p t
--- fork-generated-by-fork (newMVar p q) ()
--- fork-generated-by-fork (putMVarCtx s) ()
--- fork-generated-by-fork (putMVar q r₂) ()
--- fork-generated-by-fork putMVarEx ()
--- fork-generated-by-fork (takeMVarCtx s) ()
--- fork-generated-by-fork (takeMVar q r₂) ()
--- fork-generated-by-fork takeMVarEx ()
+single-event : ∀ {l ls τ} {t : Thread l} {p₁ p₂ p₃ : Program ls τ} -> p₁ ⟼ p₂ ↑ (fork t) -> ¬ (p₁ ⟼ p₃ ↑ ∅)
+single-event (fork p t s) (none nF s₁) = nF (fork p t)
 
-unique-event : ∀ {l ls τ} {t : Thread l} {p₁ p₂ p₃ : Program ls τ} -> (s₁ : p₁ ⟼ p₂) (s₂ : p₁ ⟼ p₃) -> s₁ ↑ ∅ -> s₂ ↑ (fork t) -> ⊥
-unique-event s₁ s₂ x y with fork-triggers-fork s₂ y
-unique-event (Pure ()) .(fork p t) x₁ y | fork p t
-unique-event (fork p t₁) .(fork p t₁) () y | fork .p .t₁
+unique-event : ∀ {ls τ e₁ e₂} {p₁ p₂ : Program ls τ} -> p₁ ⟼ p₂ ↑ e₁ -> p₁ ⟼ p₂ ↑ e₂ -> e₁ ≡ e₂
+unique-event (fork p t s) (fork .p .t s₁) = refl
+unique-event (fork p t s) (none x x₁) = ⊥-elim (x (fork p t))
+unique-event (none x x₁) (fork p t s) = ⊥-elim (x (fork p t))
+unique-event (none x x₁) (none x₂ x₃) = refl
 
--- Determinism for concurrent semantics 
+
+-- Determinism for concurrent semantics
+-- This proof is rather long because in the definition of ↪ the left hand side is (almost) always the same
+-- therefore dependent-pattern match does not help in ruling out spurious cases.
+-- It is not useful to refactor pools-unique and PoolView-≡ in one function because we still need to
+-- rewrite the proofs l ∈ ls as equal to infer determinism
 determinism↪ : ∀ {ls} {t₁ t₂ t₃ : Global ls} -> t₁ ↪ t₂ -> t₁ ↪ t₃ -> t₂ ≡ t₃
-determinism↪ (step s₁ x₁) (step s₂ x₂) rewrite determinismC s₁ s₂ | determinismS s₁ s₂ = refl
-determinism↪ (step s₁ x₁) (fork s₂ x₂) rewrite determinism s₁ s₂ = ⊥-elim (unique-event s₁ s₂ x₁ x₂)
-determinism↪ (step s₁ x) (skip x₁) = ⊥-elim (blocked-no-reduce x₁ s₁)
-determinism↪ (step s₁ x₁) (exit isV) = ⊥-elim (valueNotRedex _ isV (Step s₁))
-determinism↪ (fork s₁ x₁) (step s₂ x₂) = ⊥-elim (unique-event s₂ s₁ x₂ x₁)
-determinism↪ (fork s₁ x₁) (fork s₂ x₂) rewrite determinismC s₁ s₂ | determinismS s₁ s₂ = refl
-determinism↪ (fork s₁ x) (skip x₁) = ⊥-elim (blocked-no-reduce x₁ s₁)
-determinism↪ (fork s₁ _) (exit isV) = ⊥-elim (valueNotRedex _ isV (Step s₁))
-determinism↪ (skip x) (step s x₁) = ⊥-elim (blocked-no-reduce x s)
-determinism↪ (skip x) (fork s₁ x₁) = ⊥-elim (blocked-no-reduce x s₁)
-determinism↪ (skip x) (skip x₁) = refl
-determinism↪ (skip x) (exit v) = ⊥-elim (blocked-no-value x v)
-determinism↪ (exit isV) (step s x) = ⊥-elim (valueNotRedex _ isV (Step s))
-determinism↪ (exit isV) (fork s x) = ⊥-elim (valueNotRedex _ isV (Step s))
-determinism↪ (exit v) (skip x) = ⊥-elim (blocked-no-value x v)
-determinism↪ (exit x) (exit x₁) = refl
+determinism↪ (step {ps = ps} s q pv) (step s₁ q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+determinism↪ (step s q pv) (step s₁ q₁ pv₁) | refl rewrite determinismC (stepOf s) (stepOf s₁) | determinismS (stepOf s) (stepOf s₁) = refl
+determinism↪ (step {ps = ps} s q pv) (fork s₁ q₁ r pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+determinism↪ (step s q pv) (fork s₁ q₁ r pv₁) | refl rewrite determinism (stepOf s) (stepOf s₁) = ⊥-elim (single-event s₁ s)
+determinism↪ (step {ps = ps} s q pv) (empty q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (step {ps = ps} s q pv) (hole q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (step {ps = ps} s q pv) (skip q₁ pv₁ x) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (blocked-no-reduce x (stepOf s))
+determinism↪ (step {ps = ps} s q pv) (exit q₁ pv₁ isV) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (valueNotRedex _ isV (Step (stepOf s)))
+determinism↪ (fork {ps = ps} s q r pv) (step s₁ q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl rewrite determinism (stepOf s) (stepOf s₁) = ⊥-elim (single-event s s₁)
+determinism↪ (fork {ps = ps} s q r pv) (fork s₁ q₁ r₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl rewrite determinismS (stepOf s) (stepOf s₁) | determinismC (stepOf s) (stepOf s₁) with unique-event s s₁
+... | refl rewrite pools-unique r r₁ ps = refl
+determinism↪ (fork {ps = ps} s q r pv) (empty q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (fork {ps = ps} s q r pv) (hole q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (fork {ps = ps} s q r pv) (skip q₁ pv₁ x) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (blocked-no-reduce x (stepOf s))
+determinism↪ (fork {ps = ps} s q r pv) (exit q₁ pv₁ x) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (valueNotRedex _ x (Step (stepOf s)))
+determinism↪ (empty {ps = ps} q pv) (step s q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (empty {ps = ps} q pv) (fork s q₁ r pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (empty {ps = ps} q pv) (empty q₁ pv₁) = refl
+determinism↪ (empty q pv) (hole q₁ pv₁) = refl  -- Absurd but who cares
+determinism↪ (empty {ps = ps} q pv) (skip q₁ pv₁ x) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (empty {ps = ps} q pv) (exit q₁ pv₁ x) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (hole {ps = ps} q pv) (step s q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (hole {ps = ps} q pv) (fork s q₁ r pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (hole q pv) (empty q₁ pv₁) = refl
+determinism↪ (hole q pv) (hole q₁ pv₁) = refl
+determinism↪ (hole {ps = ps} q pv) (skip q₁ pv₁ x) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (hole {ps = ps} q pv) (exit q₁ pv₁ x) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (skip {ps = ps} q pv x) (step s q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (blocked-no-reduce x (stepOf s))
+determinism↪ (skip {ps = ps} q pv x) (fork s q₁ r pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (blocked-no-reduce x (stepOf s))
+determinism↪ (skip {ps = ps} q pv x) (empty q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (skip {ps = ps} q pv x) (hole q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (skip {ps = ps} q pv x) (skip q₁ pv₁ x₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = refl
+determinism↪ (skip {ps = ps} q pv x) (exit q₁ pv₁ x₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (blocked-no-value x x₁)
+determinism↪ (exit {ps = ps} q pv x) (step s q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (valueNotRedex _ x (Step (stepOf s)))
+determinism↪ (exit {ps = ps} q pv x) (fork s q₁ r pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (valueNotRedex _ x (Step (stepOf s)))
+determinism↪ (exit {ps = ps} q pv x) (empty q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (exit {ps = ps} q pv x) (hole q₁ pv₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | ()
+determinism↪ (exit {ps = ps} q pv x) (skip q₁ pv₁ x₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = ⊥-elim (blocked-no-value x₁ x)
+determinism↪ (exit {ps = ps} q pv x) (exit q₁ pv₁ x₁) rewrite pools-unique q q₁ ps with PoolView-≡ pv pv₁
+... | refl = refl
+determinism↪ cycle cycle = refl
 
 preservation : ∀ {ls} {s₁ s₂ : Store ls} {τ : Ty} {c₁ c₂ : CTerm τ} -> ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> τ ≡ τ
 preservation s = refl

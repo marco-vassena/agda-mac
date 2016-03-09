@@ -240,23 +240,26 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
   -- Sequential stop
   step : ∀ {l ll} {t₁ t₂ : Thread l} {ts : Pool l} {Σ₁ Σ₂ : Store ls} {ps : Pools ls} ->
           (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ ∅) -> (q : l ∈ ls) -> (pv : PoolView (t₁ ◅ ts) ps q) -> 
-          ⟨ l ∷ ♯ ll , Σ₁ , ps ⟩ ↪ ⟨ ll , Σ₂ , update q ps (ts ▻ t₂ ) ⟩
+          ⟨ l ∷ ll , Σ₁ , ps ⟩ ↪ ⟨ ll , Σ₂ , update q ps (ts ▻ t₂ ) ⟩
 
   -- A fork step spawns a new thread
   fork : ∀ {l h ll} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l} {ps : Pools ls} ->
            (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tⁿ)) -> (q : l ∈ ls) (r : h ∈ ls) -> (pv : PoolView (t₁ ◅ ts) ps q) ->
-           ⟨ l ∷ ll , Σ₁ , ps ⟩ ↪ ⟨ ♭ ll , Σ₂ , update q (forkInPool tⁿ r ps) (ts ▻ t₂) ⟩ 
+           ⟨ l ∷ ll , Σ₁ , ps ⟩ ↪ ⟨ ll , Σ₂ , update q (forkInPool tⁿ r ps) (ts ▻ t₂) ⟩ 
 
   -- Nothing to do at this level, the pool is empty
-  empty : ∀ {l ll} {Σ : Store ls} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView {l} [] ps q) -> ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ♭ ll , Σ , ps ⟩
+  empty : ∀ {l ll} {Σ : Store ls} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView {l} [] ps q) -> ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ll , Σ , ps ⟩
 
   -- The pool at this level is collpased, nothing to do.
-  hole : ∀ {l ll} {Σ : Store ls} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView {l} ∙ ps q) -> ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ♭ ll , Σ , ps ⟩
+  hole : ∀ {l ll} {Σ : Store ls} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView {l} ∙ ps q) -> ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ll , Σ , ps ⟩
 
   -- Skip a blocked thread
   skip : ∀ {l ll} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView (t ◅ ts) ps q) -> 
-          Blocked Σ t -> ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ♭ ll , Σ , update q ps (ts ▻ t) ⟩ 
+          Blocked Σ t -> ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ll , Σ , update q ps (ts ▻ t) ⟩ 
 
   -- In the paper Σ changes in this rule. Why is that?
   exit : ∀ {l ll} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} -> (q : l ∈ ls) (pv : PoolView (t ◅ ts) ps q) ->
-           IsValue t ->  ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ♭ ll , Σ ,  update q ps ts ⟩
+           IsValue t ->  ⟨ l ∷ ll , Σ , ps ⟩ ↪ ⟨ ll , Σ ,  update q ps ts ⟩
+
+  -- Restart
+  cycle : ∀ {Σ : Store ls} {ps : Pools ls} -> ⟨ [] , Σ , ps ⟩ ↪ ⟨ ls , Σ , ps ⟩

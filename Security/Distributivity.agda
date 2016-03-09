@@ -600,3 +600,4 @@ open Program
   rewrite ε-update-≡ (yes p) q ps ts = exit q (ε-PoolView (yes p) v) (ε-IsValue p isV)
 εᵍ-dist lₐ (exit {t = t} {ts = ts} {ps = ps} q v isV) | no ¬p with ε-PoolView (no ¬p) v
 ... | v' rewrite ε-update∙-≡ ¬p q ps ts = hole q v'
+εᵍ-dist lₐ cycle = cycle

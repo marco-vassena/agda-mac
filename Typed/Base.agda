@@ -4,7 +4,6 @@ open import Types public
 import Data.List as L
 open import Relation.Binary.PropositionalEquality hiding ([_] ; subst)
 open import Data.List.All
-open import Data.Stream using (Stream)
 
 mutual 
 
@@ -105,18 +104,15 @@ mutual
 
 --------------------------------------------------------------------------------
 
-store-unique : ∀ {l ls} -> Store ls -> (x y : l ∈ ls) -> x ≡ y
-store-unique = aux
-  where
-    unique-lemma : ∀ {l ls} -> l ∈ ls -> Unique l ls -> ⊥
-    unique-lemma Here (px ∷ q) = ⊥-elim (px refl)
-    unique-lemma (There p) (px ∷ q) = unique-lemma p q
+∈-not-unique : ∀ {l ls} -> l ∈ ls -> Unique l ls -> ⊥
+∈-not-unique Here (px ∷ q) = ⊥-elim (px refl)
+∈-not-unique (There p) (px ∷ q) = ∈-not-unique p q
 
-    aux : ∀ {l ls} -> Store ls -> (x y : l ∈ ls) -> x ≡ y
-    aux s Here Here = refl
-    aux (_∷_ {{u = u}} x s) Here (There y) = ⊥-elim (unique-lemma y u)
-    aux (_∷_ {{u = u}} x s) (There x₁) Here = ⊥-elim (unique-lemma x₁ u)
-    aux (l ∷ s) (There x) (There y) = cong There (aux s x y)
+store-unique : ∀ {l ls} -> Store ls -> (x y : l ∈ ls) -> x ≡ y
+store-unique s Here Here = refl
+store-unique (_∷_ {{u = u}} x s) Here (There y) = ⊥-elim (∈-not-unique y u)
+store-unique (_∷_ {{u = u}} x s) (There x₁) Here = ⊥-elim (∈-not-unique x₁ u)
+store-unique (l ∷ s) (There x) (There y) = cong There (store-unique s x y)
 
 --------------------------------------------------------------------------------
 
@@ -218,9 +214,15 @@ data Pools : List Label -> Set where
   [] : Pools []
   _◅_ : ∀ {l ls} {{u : Unique l ls}} -> Pool l -> Pools ls -> Pools (l ∷ ls)
 
+pools-unique : ∀ {l ls} -> (x y : l ∈ ls) -> Pools ls -> x ≡ y
+pools-unique Here Here (x ◅ p) = refl
+pools-unique Here (There y) (_◅_ {{u}} t p) = ⊥-elim (∈-not-unique y u)
+pools-unique (There x) Here (_◅_ {{u}} t p) = ⊥-elim (∈-not-unique x u)
+pools-unique (There x) (There y) (x₁ ◅ p) rewrite pools-unique x y p = refl
+
 -- The global configuration is a thread pool paired with some shared split memory Σ
 data Global (ls : List Label) : Set where
-  ⟨_,_,_⟩ : Stream Label -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
+  ⟨_,_,_⟩ : List Label -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
   
 -- Enqueue
 _▻_ : ∀ {l} -> Pool l -> Thread l -> Pool l
