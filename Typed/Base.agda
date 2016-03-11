@@ -220,10 +220,6 @@ pools-unique Here (There y) (_◅_ {{u}} t p) = ⊥-elim (∈-not-unique y u)
 pools-unique (There x) Here (_◅_ {{u}} t p) = ⊥-elim (∈-not-unique x u)
 pools-unique (There x) (There y) (x₁ ◅ p) rewrite pools-unique x y p = refl
 
--- The global configuration is a thread pool paired with some shared split memory Σ
-data Global (ls : List Label) : Set where
-  ⟨_,_,_⟩ : List Label -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
-  
 -- Enqueue
 _▻_ : ∀ {l} -> Pool l -> Thread l -> Pool l
 [] ▻ t = t ◅ []
