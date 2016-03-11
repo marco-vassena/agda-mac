@@ -1,7 +1,7 @@
-open import Typed.Event
+open import Typed.Communication
 open import Types
 
-module Typed.Concurrent (State : Set) (_⟶_↑_ :  State -> State -> Event -> Set) (sch : State -> Label × ℕ) where
+module Typed.Concurrent (State : Set) (_⟶_↑_ :  State -> State -> Message -> Set) where
 
 open import Data.List
 open import Typed.Base
@@ -79,24 +79,24 @@ ps₂ ← ps₁ [ h ]∹ tⁿ = NewPool tⁿ ps₁ ps₂
 data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   -- Sequential stop
-  step : ∀ {s₁ s₂} -> let (l , n) = sch s₁ in {t₁ t₂ : Thread l} {ts : Pool l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} {p : Pool l} ->
-
+  step : ∀ {s₁ s₂ l n} {t₁ t₂ : Thread l} {ts : Pool l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} {p : Pool l} ->
+  
             ps₁ [ l ][ n ]= t₁ ->
             
             ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ ∅ ->            
-            s₁ ⟶ s₂ ↑ (Step l n) ->
+            s₁ ⟶ s₂ ↑ (l , n , Step) ->
 
             ps₂ ← ps₁ [ l ][ n ]≔ t₂ ->
             
           ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₂ ⟩
 
   -- A fork step spawns a new thread
-  fork : ∀ {s₁ s₂ h} -> let (l , n ) = sch s₁ in {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l} {ps₁ ps₂ ps₃ : Pools ls} ->
+  fork : ∀ {s₁ s₂ l h n} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l} {ps₁ ps₂ ps₃ : Pools ls} ->
 
            ps₁ [ l ][ n ]= t₁ ->
            
            ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tⁿ) ->
-           s₁ ⟶ s₂ ↑ Fork l n tⁿ ->
+           s₁ ⟶ s₂ ↑ (l , n , (Fork tⁿ)) ->
 
            ps₂ ← ps₁ [ l ][ n ]≔ t₂ ->
            ps₃ ← ps₂ [ h ]∹ tⁿ ->
@@ -106,13 +106,16 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
   -- For this we need a particular proof that says that given l and n the pool at l is ‌∙
   -- The pool at this level is collapsed, nothing to do.
   -- TODO I am not sure about which event should be generated here.
-  hole : ∀ {s₁ s₂ e} -> let (l , n) = sch s₁ in {Σ : Store ls} {ps : Pools ls} -> ps [ l ]= ∙ -> s₁ ⟶ s₂ ↑ e -> ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
+  hole : ∀ {s₁ s₂ e l n} {Σ : Store ls} {ps : Pools ls} ->
+         ps [ l ]= ∙ ->
+         s₁ ⟶ s₂ ↑ (l , n , e) ->
+         ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
 
   -- Skip a blocked thread
   skip : ∀ {l n s₁ s₂} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} ->
           ps [ l ][ n ]= t ->
           Blocked Σ t ->
-          s₁ ⟶ s₂ ↑ NoStep l n ->
+          s₁ ⟶ s₂ ↑ (l , n , NoStep) ->
           ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
 
   -- Now we don't remove terminated threads anymore, so that all the indices are still valid.
@@ -120,7 +123,7 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
   exit : ∀ {l n s₁ s₂} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} ->
            ps [ l ][ n ]= t -> 
            IsValue t ->
-           s₁ ⟶ s₂ ↑ Done l n ->
+           s₁ ⟶ s₂ ↑ (l , n , Done) ->
            ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩ 
 
   -- TODO do we need an event Done_Exit ? How would it be different from the current exit?
