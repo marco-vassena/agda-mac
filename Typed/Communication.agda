@@ -2,13 +2,17 @@ module Typed.Communication where
 
 open import Typed.Base
 
+-- My own bulleted naturals
+data ℕ : Set where
+  zero : ℕ
+  suc : ℕ -> ℕ
+  ∙ : ℕ
+
 data Event : Set where
   NoStep : Event
   Step : Event 
   Done : Event
-  -- TODO The scheduler doesn't need the thread itself, but rather
-  -- the position of the spawned thread in the pool
-  Fork : ∀ {l} -> Thread l -> Event 
+  Fork : Label -> ℕ -> Event 
   
 
 record Message : Set where

@@ -14,7 +14,6 @@ postulate _⊑?_ : (l h : Label) -> Dec (l ⊑ h)
 postulate refl-⊑ : ∀ {l} -> l ⊑ l
 postulate trans-⊑ : ∀ {l₁ l₂ l₃} -> l₁ ⊑ l₂ -> l₂ ⊑ l₃ -> l₁ ⊑ l₃
 
-open import Data.Nat using (ℕ ; zero ; suc) public
 open import Data.List hiding (drop ; _∷ʳ_ ; [_]) public
 import Data.List as L
 open import Data.Vec using (Vec ; [] ; _∷_ ; lookup) public

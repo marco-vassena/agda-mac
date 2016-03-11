@@ -17,7 +17,7 @@ data Global (ls : List Label) : Set where
 -- Extracting the current thread
 
 data VIndex {l : Label} (t : Thread l) : ℕ -> Pool l -> Set where
-  Here : ∀ {ts : Pool l} -> VIndex t 0 (t ◅ ts)
+  Here : ∀ {ts : Pool l} -> VIndex t zero (t ◅ ts)
   There : ∀ {n} {ts : Pool l} {t' : Thread l} -> VIndex t n ts -> VIndex t (suc n) (t' ◅ ts)
 
 data LookupThread {l : Label} (t : Thread l) (n : ℕ) : ∀ {ls} -> Pools ls -> Set where
@@ -33,8 +33,9 @@ data LookupPool {l : Label} (p : Pool l) : ∀ {ls} -> Pools ls -> Set where
 
 data UpdateThread {l : Label} (t : Thread l) : ℕ -> Pool l -> Pool l -> Set where
   ∙ : ∀ {n} -> UpdateThread t n ∙ ∙
-  Here : ∀ {t₁ : Thread l} {ts : Pool l} -> UpdateThread t 0 (t₁ ◅ ts) (t ◅ ts)
-  There : ∀ {n} {t' : Thread l} {ts₁ ts₂ : Pool l} -> UpdateThread t n ts₁ ts₂ -> UpdateThread t n (t' ◅ ts₁) (t' ◅ ts₂)
+  new : UpdateThread t zero [] (t ◅ [])
+  upd : ∀ {t₁ : Thread l} {ts : Pool l} -> UpdateThread t zero (t₁ ◅ ts) (t ◅ ts)
+  skip : ∀ {n} {t' : Thread l} {ts₁ ts₂ : Pool l} -> UpdateThread t n ts₁ ts₂ -> UpdateThread t n (t' ◅ ts₁) (t' ◅ ts₂)
   
 data UpdatePool {l : Label} (t : Thread l) (n : ℕ) : ∀ {ls} -> Pools ls -> Pools ls -> Set where
   Here : ∀ {ls} {u : Unique l ls} {p₁ p₂ : Pool l} {ps : Pools ls} -> UpdateThread t n p₁ p₂ -> UpdatePool t n (p₁ ◅ ps) (p₂ ◅ ps)
@@ -51,6 +52,10 @@ data NewPool {l : Label} (t : Thread l) : ∀ {ls} -> Pools ls -> Pools ls -> Se
   this : ∀ {ls} {u : Unique l ls} {p₁ p₂ : Pool l} {ps : Pools ls} -> NewThread t p₁ p₂ -> NewPool t (p₁ ◅ ps) (p₂ ◅ ps)
   next : ∀ {l' ls} {u : Unique l' ls} {ps₁ ps₂ : Pools ls} {p' : Pool l'} -> NewPool t ps₁ ps₂ -> NewPool t (p' ◅ ps₁) (p' ◅ ps₂)
 
+lengthᵗ : ∀ {l} -> Pool l -> ℕ
+lengthᵗ [] = zero
+lengthᵗ (x ◅ p) = suc (lengthᵗ p)
+lengthᵗ ∙ = ∙
 
 --------------------------------------------------------------------------------
 
@@ -92,15 +97,16 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
           ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₂ ⟩
 
   -- A fork step spawns a new thread
-  fork : ∀ {s₁ s₂ l h n} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ps₁ ps₂ ps₃ : Pools ls} ->
+  fork : ∀ {s₁ s₂ l h n} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool h} ->
 
            ps₁ [ l ][ n ]= t₁ ->
+           ps₁ [ h ]= ts ->
            
            ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tⁿ) ->
-           s₁ ⟶ s₂ ↑ (l , n , (Fork tⁿ)) ->
+           s₁ ⟶ s₂ ↑ (l , n , (Fork h (lengthᵗ ts))) ->
 
            ps₂ ← ps₁ [ l ][ n ]≔ t₂ ->
-           ps₃ ← ps₂ [ h ]∹ tⁿ ->
+           ps₃ ← ps₂ [ h ][ lengthᵗ ts ]≔ tⁿ ->
          
            ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₃ ⟩
 
