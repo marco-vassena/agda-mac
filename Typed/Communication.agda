@@ -6,7 +6,9 @@ data Event : Set where
   NoStep : Event
   Step : Event 
   Done : Event
-  Fork : ∀ {l} -> Thread l -> Event
+  -- TODO The scheduler doesn't need the thread itself, but rather
+  -- the position of the spawned thread in the pool
+  Fork : ∀ {l} -> Thread l -> Event 
   
 
 record Message : Set where

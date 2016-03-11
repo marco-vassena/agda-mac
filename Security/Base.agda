@@ -7,7 +7,6 @@ open import Typed.Semantics
 open import Relation.Binary.PropositionalEquality hiding (subst)
 open import Data.List as L hiding (drop)
 
-
 εˢ : ∀ {ls} -> (lₐ : Label) -> Store ls -> Store ls
 
 -- Erasure function for open terms.
@@ -127,10 +126,6 @@ open import Data.List as L hiding (drop)
 ε-pools : ∀ {ls} -> Label -> Pools ls -> Pools ls
 ε-pools lₐ [] = []
 ε-pools lₐ (_◅_ {l = l} ts ps) = εᵗ (l ⊑? lₐ) ts ◅ (ε-pools lₐ ps)
-
--- Erasure of global configuration
-εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
-εᵍ lₐ ⟨ n , Σ , ps ⟩ = ⟨ n , εˢ lₐ Σ , ε-pools lₐ ps ⟩
 
 --------------------------------------------------------------------------------
 

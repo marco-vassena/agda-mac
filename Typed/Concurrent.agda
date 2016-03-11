@@ -1,6 +1,7 @@
 open import Typed.Communication
-open import Types
 
+
+-- TODO pack everything scheduler related in a single record called Scheduler
 module Typed.Concurrent (State : Set) (_⟶_↑_ :  State -> State -> Message -> Set) where
 
 open import Data.List
@@ -79,7 +80,7 @@ ps₂ ← ps₁ [ h ]∹ tⁿ = NewPool tⁿ ps₁ ps₂
 data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   -- Sequential stop
-  step : ∀ {s₁ s₂ l n} {t₁ t₂ : Thread l} {ts : Pool l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} {p : Pool l} ->
+  step : ∀ {s₁ s₂ l n} {t₁ t₂ : Thread l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} ->
   
             ps₁ [ l ][ n ]= t₁ ->
             
@@ -91,7 +92,7 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
           ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₂ ⟩
 
   -- A fork step spawns a new thread
-  fork : ∀ {s₁ s₂ l h n} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool l} {ps₁ ps₂ ps₃ : Pools ls} ->
+  fork : ∀ {s₁ s₂ l h n} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ps₁ ps₂ ps₃ : Pools ls} ->
 
            ps₁ [ l ][ n ]= t₁ ->
            
@@ -112,7 +113,7 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
          ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
 
   -- Skip a blocked thread
-  skip : ∀ {l n s₁ s₂} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} ->
+  skip : ∀ {l n s₁ s₂} {Σ : Store ls} {t : Thread l} {ps : Pools ls} ->
           ps [ l ][ n ]= t ->
           Blocked Σ t ->
           s₁ ⟶ s₂ ↑ (l , n , NoStep) ->
@@ -120,7 +121,7 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   -- Now we don't remove terminated threads anymore, so that all the indices are still valid.
   -- In the paper Σ changes in this rule. Why is that?
-  exit : ∀ {l n s₁ s₂} {Σ : Store ls} {t : Thread l} {ts : Pool l} {ps : Pools ls} ->
+  exit : ∀ {l n s₁ s₂} {Σ : Store ls} {t : Thread l} {ps : Pools ls} ->
            ps [ l ][ n ]= t -> 
            IsValue t ->
            s₁ ⟶ s₂ ↑ (l , n , Done) ->
