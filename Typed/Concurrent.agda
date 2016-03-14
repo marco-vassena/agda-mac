@@ -14,43 +14,36 @@ data Global (ls : List Label) : Set where
   ⟨_,_,_⟩ : State -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
   
 --------------------------------------------------------------------------------
--- Extracting the current thread
+-- Lookup threads and thread pools
 
-data VIndex {l : Label} (t : Thread l) : ∀ {n} -> ℕ -> Pool l n -> Set where
-  Here : ∀ {n} {ts : Pool l n} -> VIndex t zero (t ◅ ts)
-  There : ∀ {n₁ n₂} {ts : Pool l n₂} {t' : Thread l} -> VIndex t n₁ ts -> VIndex t (suc n₁) (t' ◅ ts)
-
-data LookupThread {l : Label} (t : Thread l) (n : ℕ) : ∀ {ls} -> Pools ls -> Set where
-  Here : ∀ {ls n'} {u : Unique l ls} {ps : Pools ls} {p : Pool l n'}  -> VIndex t n p -> LookupThread t n (p ◅ ps)
-  There : ∀ {ls n' l'} {u : Unique l' ls} {p' : Pool l' n'} {ps : Pools ls} -> LookupThread t n ps -> LookupThread t n (p' ◅ ps)  
+data LookupThread {l : Label} (t : Thread l) : ∀ {n} -> ℕ -> Pool l n -> Set where
+  Here : ∀ {n} {ts : Pool l n} -> LookupThread t zero (t ◅ ts)
+  There : ∀ {n₁ n₂} {ts : Pool l n₂} {t' : Thread l} -> LookupThread t n₁ ts -> LookupThread t (suc n₁) (t' ◅ ts)
 
 data LookupPool {l : Label} {n : ℕ} (p : Pool l n) : ∀ {ls} -> Pools ls -> Set where
   Here : ∀ {ls} {u : Unique l ls} {ps : Pools ls} -> LookupPool p (p ◅ ps)
   There : ∀ {l' n' ls} {u : Unique l' ls} {ps : Pools ls} {p' : Pool l' n'} -> LookupPool p ps -> LookupPool p (p' ◅ ps)
 
 --------------------------------------------------------------------------------
--- Updates to the thread pools
+-- Updates threads and thread pools
 
-data UpdateThread {l : Label} (t : Thread l) : ∀ {n₁ n₂} -> ℕ -> Pool l n₁ -> Pool l n₂ -> Set where
-  ∙ : ∀ {n n'} -> UpdateThread t {n'} {n'} n ∙ ∙
-  new : UpdateThread t zero [] (t ◅ [])
-  upd : ∀ {n} {t₁ : Thread l} {ts : Pool l n} -> UpdateThread t zero (t₁ ◅ ts) (t ◅ ts)
-  skip : ∀ {n n₁ n₂} {t' : Thread l} {ts₁ : Pool l n₁} {ts₂ : Pool l n₂} -> UpdateThread t n ts₁ ts₂ -> UpdateThread t n (t' ◅ ts₁) (t' ◅ ts₂)
-  
-data UpdatePool {l : Label} (t : Thread l) (n : ℕ) : ∀ {ls} -> Pools ls -> Pools ls -> Set where
-  Here : ∀ {ls n₁ n₂} {u : Unique l ls} {p₁ : Pool l n₁} {p₂ : Pool l n₂} {ps : Pools ls} -> UpdateThread t n p₁ p₂ -> UpdatePool t n (p₁ ◅ ps) (p₂ ◅ ps)
-  There : ∀ {l' n' ls} {u : Unique l' ls} {ps₁ ps₂ : Pools ls} {p' : Pool l' n'} -> UpdatePool t n ps₁ ps₂ -> UpdatePool t n (p' ◅ ps₁) (p' ◅ ps₂)
+data UpdateThread {l : Label} (t : Thread l) : ∀ {n} -> ℕ -> Pool l n -> Pool l n -> Set where
+  ∙ : ∀ {n} -> UpdateThread t n (∙ {n = n}) ∙
+  upd : ∀ {n} {ts : Pool l n} {t₁ : Thread l} -> UpdateThread t zero (t₁ ◅ ts) (t ◅ ts)
+  skip : ∀ {n} {ts₁ ts₂ : Pool l n} {t' : Thread l} -> UpdateThread t n ts₁ ts₂ -> UpdateThread t n (t' ◅ ts₁) (t' ◅ ts₂)
+
+data UpdatePool {l : Label} {n : ℕ} (p₂ : Pool l n) : ∀ {ls} -> Pools ls -> Pools ls -> Set where
+  Here : ∀ {ls} {u : Unique l ls} {p₁ : Pool l n} {ps : Pools ls} -> UpdatePool p₂ (p₁ ◅ ps) (p₂ ◅ ps)
+  There : ∀ {l' n' ls} {u : Unique l' ls} {ps₁ ps₂ : Pools ls} {p' : Pool l' n'} -> UpdatePool p₂ ps₁ ps₂ -> UpdatePool p₂ (p' ◅ ps₁) (p' ◅ ps₂)
 
 --------------------------------------------------------------------------------
+-- TODO remove!
+-- Allocate new thread in a pool
 
--- data NewThread {l : Label} (t : Thread l) : Pool l -> Pool l -> Set where
---   newT : NewThread t [] (t ◅ [])
---   skip : ∀ {ts₁ ts₂ : Pool l} {t' : Thread l} -> NewThread t ts₁ ts₂ -> NewThread t (t' ◅ ts₁) (t' ◅ ts₂)
---   ∙ : NewThread t ∙ ∙
-  
--- data NewPool {l : Label} (t : Thread l) : ∀ {ls} -> Pools ls -> Pools ls -> Set where
---   this : ∀ {ls} {u : Unique l ls} {p₁ p₂ : Pool l} {ps : Pools ls} -> NewThread t p₁ p₂ -> NewPool t (p₁ ◅ ps) (p₂ ◅ ps)
---   next : ∀ {l' ls} {u : Unique l' ls} {ps₁ ps₂ : Pools ls} {p' : Pool l'} -> NewPool t ps₁ ps₂ -> NewPool t (p' ◅ ps₁) (p' ◅ ps₂)
+data NewThread {l : Label} (t : Thread l) : ∀ {n} -> Pool l n -> Pool l (suc n) -> Set where
+  ∙ : ∀ {n} -> NewThread t (∙ {n = n}) ∙
+  newT : NewThread t [] (t ◅ [])
+  skip : ∀ {n} {ts₁ : Pool l n} {ts₂ : Pool l (suc n)} {t' : Thread l} -> NewThread t ts₁ ts₂ -> NewThread t (t' ◅ ts₁) (t' ◅ ts₂)
 
 --------------------------------------------------------------------------------
 
@@ -62,17 +55,19 @@ data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set whe
 --------------------------------------------------------------------------------
 -- Syntactic sugar
 
-_[_][_]=_ : ∀ {ls} -> Pools ls -> (l  : Label) -> ℕ -> Thread l -> Set
-ps [ l ][ n ]= t = LookupThread t n ps
-
 _[_]=_ : ∀ {ls n} -> Pools ls -> (l : Label) -> Pool l n -> Set
 ps [ l ]= p = LookupPool p ps
 
-_←_[_][_]≔_ : ∀ {ls} -> Pools ls -> Pools ls -> (l : Label) -> ℕ -> Thread l -> Set
-ps₂ ← ps₁ [ l ][ n ]≔ t = UpdatePool t n ps₁ ps₂
+_←_[_]≔_ : ∀ {ls n} -> Pools ls -> Pools ls -> (l : Label) -> Pool l n -> Set
+ps₂ ← ps₁ [ l ]≔ p  = UpdatePool p ps₁ ps₂
 
--- _←_[_]∹_ : ∀ {ls} -> Pools ls -> Pools ls -> (h : Label) -> Thread h -> Set
--- ps₂ ← ps₁ [ h ]∹ tⁿ = NewPool tⁿ ps₁ ps₂ 
+
+_[_]ᵗ=_ : ∀ {l n} -> Pool l n -> ℕ -> Thread l -> Set
+ts [ n ]ᵗ= t = LookupThread t n ts
+
+_←_[_]ᵗ≔_ : ∀ {l n} -> Pool l n -> Pool l n -> ℕ -> Thread l -> Set
+ts₂ ← ts₁ [ n ]ᵗ≔ t = UpdateThread t n ts₁ ts₂
+
 
 --------------------------------------------------------------------------------
 
@@ -80,28 +75,32 @@ ps₂ ← ps₁ [ l ][ n ]≔ t = UpdatePool t n ps₁ ps₂
 data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   -- Sequential stop
-  step : ∀ {s₁ s₂ l n} {t₁ t₂ : Thread l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} ->
+  step : ∀ {s₁ s₂ l n n'} {t₁ t₂ : Thread l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} {ts₁ ts₂ : Pool l n'} ->
   
-            ps₁ [ l ][ n ]= t₁ ->
+            ps₁ [ l ]= ts₁ ->
+            ts₁ [ n ]ᵗ= t₁ ->
             
             ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ ∅ ->            
             s₁ ⟶ s₂ ↑ (l , n , Step) ->
 
-            ps₂ ← ps₁ [ l ][ n ]≔ t₂ ->
+            ts₂ ← ts₁ [ n ]ᵗ≔ t₂ ->
+            ps₂ ← ps₁ [ l ]≔ ts₂ ->
             
           ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₂ ⟩
 
   -- A fork step spawns a new thread
-  fork : ∀ {s₁ s₂ l h n nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {t₁ t₂ : Thread l} {tⁿ : Thread h} {ts : Pool h nʰ} ->
-
-           ps₁ [ l ][ n ]= t₁ ->
-           ps₁ [ h ]= ts ->
+  fork : ∀ {s₁ s₂ l h n n' nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {ts₁ ts₂ : Pool l n'} {tsʰ : Pool h nʰ} {t₁ t₂ : Thread l} {tʰ : Thread h} ->
            
-           ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tⁿ) ->
+           ps₁ [ l ]= ts₁ ->
+           ts₁ [ n ]ᵗ= t₁ ->
+           ps₁ [ h ]= tsʰ ->
+           
+           ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tʰ) ->
            s₁ ⟶ s₂ ↑ (l , n , (Fork h nʰ)) ->
 
-           ps₂ ← ps₁ [ l ][ n ]≔ t₂ ->
-           ps₃ ← ps₂ [ h ][ nʰ ]≔ tⁿ ->
+           ts₂ ← ts₁ [ n ]ᵗ≔ t₂ ->
+           ps₂ ← ps₁ [ l ]≔ ts₂ ->
+           ps₃ ← ps₂ [ h ]≔ (tsʰ ▻ tʰ) -> 
          
            ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₃ ⟩
 
@@ -114,16 +113,21 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
          ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
 
   -- Skip a blocked thread
-  skip : ∀ {l n s₁ s₂} {Σ : Store ls} {t : Thread l} {ps : Pools ls} ->
-          ps [ l ][ n ]= t ->
+  skip : ∀ {l n n' s₁ s₂} {Σ : Store ls} {ps : Pools ls} {ts : Pool l n'} {t : Thread l} ->
+          ps [ l ]= ts ->
+          ts [ n ]ᵗ= t ->
+
           Blocked Σ t ->
           s₁ ⟶ s₂ ↑ (l , n , NoStep) ->
           ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
 
   -- Now we don't remove terminated threads anymore, so that all the indices are still valid.
   -- In the paper Σ changes in this rule. Why is that?
-  exit : ∀ {l n s₁ s₂} {Σ : Store ls} {t : Thread l} {ps : Pools ls} ->
-           ps [ l ][ n ]= t -> 
+  exit : ∀ {l n n' s₁ s₂} {Σ : Store ls} {ps : Pools ls} {ts : Pool l n'} {t : Thread l} ->
+
+           ps [ l ]= ts ->
+           ts [ n ]ᵗ= t ->
+
            IsValue t ->
            s₁ ⟶ s₂ ↑ (l , n , Done) ->
            ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩ 

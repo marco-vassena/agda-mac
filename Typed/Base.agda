@@ -210,6 +210,14 @@ data Pool (l : Label) : ℕ -> Set where
 
 infixr 3 _◅_
 
+-- Enqueue
+_▻_ : ∀ {n l} -> Pool l n -> Thread l -> Pool l (suc n)
+[] ▻ t = t ◅ []
+(x ◅ ts) ▻ t = x ◅ (ts ▻ t) 
+∙ ▻ t = ∙
+
+--------------------------------------------------------------------------------
+
 -- A list of pools 
 data Pools : List Label -> Set where
   [] : Pools []
@@ -220,12 +228,6 @@ pools-unique Here Here (x ◅ p) = refl
 pools-unique Here (There y) (_◅_ {{u}} t p) = ⊥-elim (∈-not-unique y u)
 pools-unique (There x) Here (_◅_ {{u}} t p) = ⊥-elim (∈-not-unique x u)
 pools-unique (There x) (There y) (x₁ ◅ p) rewrite pools-unique x y p = refl
-
--- Enqueue
-_▻_ : ∀ {n l} -> Pool l n -> Thread l -> Pool l (suc n)
-[] ▻ t = t ◅ []
-(x ◅ ts) ▻ t = x ◅ (ts ▻ t) 
-∙ ▻ t = ∙
 
 infixl 3 _▻_
 
