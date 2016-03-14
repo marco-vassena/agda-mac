@@ -115,9 +115,8 @@ open import Data.List as L hiding (drop)
 εᵖ : ∀ {ls τ} -> Label -> Program ls τ -> Program ls τ
 εᵖ lₐ ⟨ s ∥ c ⟩ = ⟨ εˢ lₐ s ∥ ε lₐ c ⟩
 
-
 -- -- Erasure of thread pool
-εᵗ : {l lₐ : Label} -> Dec (l ⊑ lₐ) -> Pool l -> Pool l
+εᵗ : ∀ {n} {l lₐ : Label} -> Dec (l ⊑ lₐ) -> Pool l n -> Pool l n
 εᵗ (yes p) [] = []
 εᵗ (yes p) (t ◅ ts) = (ε-Mac _ (yes p) t) ◅ (εᵗ (yes p) ts)
 εᵗ (yes p) ∙ = ∙

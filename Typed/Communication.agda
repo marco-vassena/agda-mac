@@ -1,12 +1,7 @@
 module Typed.Communication where
 
 open import Typed.Base
-
--- My own bulleted naturals
-data ℕ : Set where
-  zero : ℕ
-  suc : ℕ -> ℕ
-  ∙ : ℕ
+open import Data.Nat public
 
 data Event : Set where
   NoStep : Event

@@ -4,6 +4,7 @@ open import Types public
 import Data.List as L
 open import Relation.Binary.PropositionalEquality hiding ([_] ; subst)
 open import Data.List.All
+open import Data.Nat
 
 mutual 
 
@@ -202,17 +203,17 @@ Thread : Label -> Set
 Thread l = CTerm (Mac l （）)
 
 -- Pool of threads at a certain label
-data Pool (l : Label) : Set where
-  [] : Pool l
-  _◅_ : Thread l -> Pool l -> Pool l
-  ∙ : Pool l
+data Pool (l : Label) : ℕ -> Set where
+  [] : Pool l 0
+  _◅_ : ∀ {n} -> Thread l -> Pool l n -> Pool l (suc n)
+  ∙ : ∀ {n} -> Pool l n
 
 infixr 3 _◅_
 
 -- A list of pools 
 data Pools : List Label -> Set where
   [] : Pools []
-  _◅_ : ∀ {l ls} {{u : Unique l ls}} -> Pool l -> Pools ls -> Pools (l ∷ ls)
+  _◅_ : ∀ {l ls n} {{u : Unique l ls}} -> Pool l n -> Pools ls -> Pools (l ∷ ls)
 
 pools-unique : ∀ {l ls} -> (x y : l ∈ ls) -> Pools ls -> x ≡ y
 pools-unique Here Here (x ◅ p) = refl
@@ -221,7 +222,7 @@ pools-unique (There x) Here (_◅_ {{u}} t p) = ⊥-elim (∈-not-unique x u)
 pools-unique (There x) (There y) (x₁ ◅ p) rewrite pools-unique x y p = refl
 
 -- Enqueue
-_▻_ : ∀ {l} -> Pool l -> Thread l -> Pool l
+_▻_ : ∀ {n l} -> Pool l n -> Thread l -> Pool l (suc n)
 [] ▻ t = t ◅ []
 (x ◅ ts) ▻ t = x ◅ (ts ▻ t) 
 ∙ ▻ t = ∙
