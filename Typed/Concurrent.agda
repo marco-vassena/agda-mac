@@ -30,7 +30,7 @@ data LookupPool {l : Label} {n : ℕ} (p : Pool l n) : ∀ {ls} -> Pools ls -> S
 data UpdateThread {l : Label} (t : Thread l) : ∀ {n} -> ℕ -> Pool l n -> Pool l n -> Set where
   ∙ : ∀ {n} -> UpdateThread t n (∙ {n = n}) ∙
   upd : ∀ {n} {ts : Pool l n} {t₁ : Thread l} -> UpdateThread t zero (t₁ ◅ ts) (t ◅ ts)
-  skip : ∀ {n} {ts₁ ts₂ : Pool l n} {t' : Thread l} -> UpdateThread t n ts₁ ts₂ -> UpdateThread t n (t' ◅ ts₁) (t' ◅ ts₂)
+  skip : ∀ {n} {ts₁ ts₂ : Pool l n} {t' : Thread l} -> UpdateThread t n ts₁ ts₂ -> UpdateThread t (suc n) (t' ◅ ts₁) (t' ◅ ts₂)
 
 data UpdatePool {l : Label} {n : ℕ} (p₂ : Pool l n) : ∀ {ls} -> Pools ls -> Pools ls -> Set where
   Here : ∀ {ls} {u : Unique l ls} {p₁ : Pool l n} {ps : Pools ls} -> UpdatePool p₂ (p₁ ◅ ps) (p₂ ◅ ps)
