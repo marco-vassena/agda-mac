@@ -2,7 +2,7 @@ open import Typed.Communication
 
 
 -- TODO pack everything scheduler related in a single record called Scheduler
-module Typed.Concurrent (State : Set) (_⟶_↑_ :  State -> State -> Message -> Set) where
+module Typed.Concurrent (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set) where
 
 open import Data.List
 open import Typed.Base
@@ -72,10 +72,10 @@ ts₂ ← ts₁ [ n ]ᵗ≔ t = UpdateThread t n ts₁ ts₂
 --------------------------------------------------------------------------------
 
 -- Concurrent semantics
-data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
+data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global ls -> Set where
 
   -- Sequential stop
-  step : ∀ {s₁ s₂ l n n'} {t₁ t₂ : Thread l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} {ts₁ ts₂ : Pool l n'} ->
+  step : ∀ {s₁ s₂ n'} {t₁ t₂ : Thread l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} {ts₁ ts₂ : Pool l n'} ->
   
             ps₁ [ l ]= ts₁ ->
             ts₁ [ n ]ᵗ= t₁ ->
@@ -86,10 +86,10 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
             ts₂ ← ts₁ [ n ]ᵗ≔ t₂ ->
             ps₂ ← ps₁ [ l ]≔ ts₂ ->
             
-          ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₂ ⟩
+          l , n ⊢ ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₂ ⟩
 
   -- A fork step spawns a new thread
-  fork : ∀ {s₁ s₂ l h n n' nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {ts₁ ts₂ : Pool l n'} {tsʰ : Pool h nʰ} {t₁ t₂ : Thread l} {tʰ : Thread h} ->
+  fork : ∀ {s₁ s₂ h n' nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {ts₁ ts₂ : Pool l n'} {tsʰ : Pool h nʰ} {t₁ t₂ : Thread l} {tʰ : Thread h} ->
            
            ps₁ [ l ]= ts₁ ->
            ts₁ [ n ]ᵗ= t₁ ->
@@ -102,35 +102,34 @@ data _↪_ {ls : List Label} : Global ls -> Global ls -> Set where
            ps₂ ← ps₁ [ l ]≔ ts₂ ->
            ps₃ ← ps₂ [ h ]≔ (tsʰ ▻ tʰ) -> 
          
-           ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₃ ⟩
+           l , n ⊢ ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₃ ⟩
 
-  -- For this we need a particular proof that says that given l and n the pool at l is ‌∙
   -- The pool at this level is collapsed, nothing to do.
-  -- TODO I am not sure about which event should be generated here.
-  hole : ∀ {s₁ s₂ e l n n'} {Σ : Store ls} {ps : Pools ls} ->
+  -- TODO should I constraint the scheduler here or in a difference thread?
+  hole : ∀ {s n'} {Σ : Store ls} {ps : Pools ls} ->
          ps [ l ]= (∙ {n = n'}) ->
-         s₁ ⟶ s₂ ↑ (l , n , e) ->
-         ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
+         s ⟶ s ↑ (l , n , ∙) ->
+         l , n ⊢ ⟨ s , Σ , ps ⟩ ↪ ⟨ s , Σ , ps ⟩
 
   -- Skip a blocked thread
-  skip : ∀ {l n n' s₁ s₂} {Σ : Store ls} {ps : Pools ls} {ts : Pool l n'} {t : Thread l} ->
+  skip : ∀ {n' s₁ s₂} {Σ : Store ls} {ps : Pools ls} {ts : Pool l n'} {t : Thread l} ->
           ps [ l ]= ts ->
           ts [ n ]ᵗ= t ->
 
           Blocked Σ t ->
           s₁ ⟶ s₂ ↑ (l , n , NoStep) ->
-          ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
+          l , n ⊢ ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
 
   -- Now we don't remove terminated threads anymore, so that all the indices are still valid.
   -- In the paper Σ changes in this rule. Why is that?
-  exit : ∀ {l n n' s₁ s₂} {Σ : Store ls} {ps : Pools ls} {ts : Pool l n'} {t : Thread l} ->
+  exit : ∀ {n' s₁ s₂} {Σ : Store ls} {ps : Pools ls} {ts : Pool l n'} {t : Thread l} ->
 
-           ps [ l ]= ts ->
+           ps [ l ]= ts  ->
            ts [ n ]ᵗ= t ->
 
            IsValue t ->
            s₁ ⟶ s₂ ↑ (l , n , Done) ->
-           ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩ 
+           l , n ⊢ ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩ 
 
   -- TODO do we need an event Done_Exit ? How would it be different from the current exit?
   -- Bear in mind that our transitions are always of the form ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩ 

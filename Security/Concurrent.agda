@@ -1,17 +1,23 @@
+open import Types
 open import Typed.Communication renaming (Event to Eventˢ)
+open import Security.Base
+open import Relation.Binary.PropositionalEquality
 
-module Security.Concurrent (State : Set) (_⟶_↑_ :  State -> State -> Message -> Set) where
+module Security.Concurrent (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
+                           (ε-state : Label -> State -> State) -- Erasure function of the scheduler state
+                           (ε-sch-dist : ∀ {s₁ s₂ l lₐ} {m : Message l} -> (x : Dec (l ⊑ lₐ)) -> s₁ ⟶ s₂ ↑ m ->
+                                                                        (ε-state lₐ s₁) ⟶ (ε-state lₐ s₂) ↑ (εᴹ x m))
+                           (ε-sch-≡ : ∀ {s₁ s₂ l lₐ} {m : Message l} -> ¬ (l ⊑ lₐ) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ≡ (ε-state lₐ s₂))
+                           where
 
 open import Typed.Base
 open import Typed.Semantics
-open import Security.Base
 open import Security.Distributivity
 open import Typed.Concurrent State _⟶_↑_
-open import Relation.Binary.PropositionalEquality
 
 -- Erasure of global configuration
 εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
-εᵍ lₐ ⟨ n , Σ , ps ⟩ = ⟨ n , εˢ lₐ Σ , ε-pools lₐ ps ⟩
+εᵍ lₐ ⟨ s , Σ , ps ⟩ = ⟨ ε-state lₐ s , εˢ lₐ Σ , ε-pools lₐ ps ⟩
 
 --------------------------------------------------------------------------------
 
@@ -155,21 +161,23 @@ open Program
 
 --------------------------------------------------------------------------------
 
-εᵍ-dist : ∀ {ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> g₁ ↪ g₂ -> (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
-εᵍ-dist lₐ (step {l = l} r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ
-εᵍ-dist lₐ (step {l = l} {ts₂ = ts} r₁ r₂ st sc w₁ w₂) | yes p with ε-updateᵗ p w₁ | ε-updateᵖ p w₂
-... | x | y rewrite εᵗ-extensional (yes p) (l ⊑? lₐ) ts = step (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-↑ p st) sc x y
-εᵍ-dist lₐ (step r₁ r₂ st sc w₁ w₂) | no ¬p with ε-read∙ ¬p r₁
-... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ = hole x sc 
-εᵍ-dist lₐ (fork {l = l} r₁ r₂ r₃ st sc  w₁ w₂ w₃) with l ⊑? lₐ
-εᵍ-dist lₐ (fork {h = h} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p
-  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (h ⊑? lₐ) r₃) (ε-↑ p st) sc (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) (ε-update-▻ (h ⊑? lₐ) w₃)
-εᵍ-dist lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | no ¬p with ε-read∙ ¬p r₁
-... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-write-≡ (lemma (fork-⊑ st) ¬p) w₃ = hole x sc
-εᵍ-dist lₐ (hole r sc) = hole (ε-read-hole r) sc
-εᵍ-dist lₐ (skip {l = l} r₁ r₂ b sc ) with l ⊑? lₐ
-εᵍ-dist lₐ (skip r₁ r₂ b sc) | yes p = skip (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-Blocked p b) sc
-εᵍ-dist lₐ (skip r₁ r₂ b sc) | no ¬p = hole (ε-read∙ ¬p r₁) sc
-εᵍ-dist lₐ (exit {l = l} r₁ r₂ isV sc) with l ⊑? lₐ
-εᵍ-dist lₐ (exit r₁ r₂ isV sc) | yes p = exit (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-IsValue p isV) sc
-εᵍ-dist lₐ (exit r₁ r₂ isV sc) | no ¬p = hole (ε-read∙ ¬p r₁) sc
+εᵍ-dist : ∀ {l n ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> l , n ⊢ g₁ ↪ g₂ -> l , n ⊢ (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
+εᵍ-dist {l} lₐ (step r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
+εᵍ-dist {l} {n} lₐ (step {ts₂ = ts} r₁ r₂ st sc w₁ w₂) | yes p | sc' with ε-updateᵗ p w₁ | ε-updateᵖ p w₂ 
+... | x | y  rewrite εᵗ-extensional (yes p) (l ⊑? lₐ) ts = step (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-↑ p st) sc' x y
+εᵍ-dist {l} {n}  lₐ (step r₁ r₂ st sc w₁ w₂) | no ¬p | sc' with ε-read∙ ¬p r₁
+... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-sch-≡ ¬p sc = hole x sc'
+εᵍ-dist {l} lₐ (fork r₁ r₂ r₃ st sc  w₁ w₂ w₃) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
+εᵍ-dist {l} {n} lₐ (fork {h = h} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc'
+  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (h ⊑? lₐ) r₃) (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) (ε-update-▻ (h ⊑? lₐ) w₃)
+εᵍ-dist {l} {n} lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | no ¬p | sc' with ε-read∙ ¬p r₁ 
+... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-write-≡ (lemma (fork-⊑ st) ¬p) w₃ | ε-sch-≡ ¬p sc = hole x sc'
+εᵍ-dist {l} lₐ (hole r sc) with l ⊑? lₐ
+εᵍ-dist lₐ (hole r sc) | yes p = hole (ε-read-hole r) (ε-sch-dist (yes p) sc)
+εᵍ-dist lₐ (hole r sc) | no ¬p = hole (ε-read-hole r) (ε-sch-dist (no ¬p) sc)
+εᵍ-dist {l} lₐ (skip r₁ r₂ b sc ) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
+εᵍ-dist lₐ (skip r₁ r₂ b sc) | yes p | sc' = skip (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-Blocked p b) sc'
+εᵍ-dist lₐ (skip r₁ r₂ b sc) | no ¬p | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r₁) sc'
+εᵍ-dist {l} lₐ (exit r₁ r₂ isV sc) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
+εᵍ-dist lₐ (exit r₁ r₂ isV sc) | yes p | sc' = exit (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-IsValue p isV) sc'
+εᵍ-dist {l} {n} lₐ (exit r₁ r₂ isV sc) | no ¬p | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r₁) sc'

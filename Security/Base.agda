@@ -126,6 +126,12 @@ open import Data.List as L hiding (drop)
 ε-pools lₐ [] = []
 ε-pools lₐ (_◅_ {l = l} ts ps) = εᵗ (l ⊑? lₐ) ts ◅ (ε-pools lₐ ps)
 
+open import Typed.Communication
+
+εᴹ : ∀ {l lₐ} -> Dec (l ⊑ lₐ) -> Message l -> Message l
+εᴹ (yes p) (l , n , e) = l , n , e
+εᴹ (no ¬p) (l , n , e) = l , n , ∙
+
 --------------------------------------------------------------------------------
 
 ε-Mac-extensional : ∀ {τ Δ lᵈ lₐ} -> (x y : Dec (lᵈ ⊑ lₐ)) (t : Term Δ (Mac lᵈ τ)) -> ε-Mac lₐ x t ≡ ε-Mac lₐ y t

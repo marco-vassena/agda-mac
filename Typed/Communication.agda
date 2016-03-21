@@ -5,13 +5,10 @@ open import Data.Nat public
 
 data Event : Set where
   NoStep : Event
-  Step : Event 
+  Step : Event
   Done : Event
-  Fork : Label -> ℕ -> Event 
-  
+  Fork : Label -> ℕ -> Event
+  ∙ : Event
 
-record Message : Set where
-  constructor _,_,_
-  field getLabel : Label
-  field getThread# : ℕ
-  field getEvent : Event 
+data Message : Label -> Set where
+   _,_,_ : (l : Label) -> (n : ℕ) -> Event -> Message l
