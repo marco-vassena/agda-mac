@@ -161,6 +161,33 @@ open Program
 
 --------------------------------------------------------------------------------
 
+foo : ∀ {h lₐ n} -> (x : Dec (h ⊑ lₐ)) (t : Thread h) -> εᴱ lₐ (fork? t n) ≡ fork? (ε-Mac lₐ x t) n
+foo x t with is∙? t
+foo (yes p) .∙ | yes ∙ = refl
+foo (no ¬p) .∙ | yes ∙ = refl
+foo {h} {lₐ} (yes p) t | no ¬p with h ⊑? lₐ
+foo (yes p) (Var x) | no ¬p | yes p' = refl
+foo (yes p) (App t t₁) | no ¬p | yes p' = refl
+foo (yes p) (If t Then t₁ Else t₂) | no ¬p | yes p' = refl
+foo (yes p) (Return t) | no ¬p | yes p' = refl
+foo (yes p) (t >>= t₁) | no ¬p | yes p' = refl
+foo (yes p) (Throw t) | no ¬p | yes p' = refl
+foo (yes p) (Catch t t₁) | no ¬p | yes p' = refl
+foo (yes p) (Mac t) | no ¬p | yes p' = refl
+foo (yes p) (Macₓ t) | no ¬p | yes p' = refl
+foo (yes p) (unlabel x t) | no ¬p | yes p' = refl
+foo (yes p) (read x t) | no ¬p | yes p' = refl
+foo (yes p) (write x t t₁) | no ¬p | yes p' = refl
+foo (yes p) (fork x t) | no ¬p | yes p' = refl
+foo (yes p) (takeMVar t) | no ¬p | yes p' = refl
+foo (yes p) (putMVar t t₁) | no ¬p | yes p' = refl
+foo (yes p) ∙ | no ¬p | yes p' = ⊥-elim (¬p ∙)
+... | no ¬p' = ⊥-elim (¬p' p)
+foo {h} {lₐ} (no ¬p₁) t | no ¬p rewrite ε-Mac-CTerm≡∙ _ t ¬p₁ with h ⊑? lₐ
+... | yes p = ⊥-elim (¬p₁ p)
+... | no _ = refl
+
+-- TODO refactoring
 εᵍ-dist : ∀ {l n ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> l , n ⊢ g₁ ↪ g₂ -> l , n ⊢ (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
 εᵍ-dist {l} lₐ (step r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
 εᵍ-dist {l} {n} lₐ (step {ts₂ = ts} r₁ r₂ st sc w₁ w₂) | yes p | sc' with ε-updateᵗ p w₁ | ε-updateᵖ p w₂ 
@@ -168,10 +195,15 @@ open Program
 εᵍ-dist {l} {n}  lₐ (step r₁ r₂ st sc w₁ w₂) | no ¬p | sc' with ε-read∙ ¬p r₁
 ... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-sch-≡ ¬p sc = hole x sc'
 εᵍ-dist {l} lₐ (fork r₁ r₂ r₃ st sc  w₁ w₂ w₃) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
-εᵍ-dist {l} {n} lₐ (fork {h = h} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' with h ⊑? lₐ
-εᵍ-dist lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | yes p₁
-  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (yes p₁) r₃) (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) (ε-update-▻ (yes p₁) w₃)
-εᵍ-dist lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | no ¬p = step (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-↑ p {!st!}) {!!} {!!} {!!} 
+εᵍ-dist {l} {n} lₐ (fork {h = h} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' with h ⊑? lₐ | ε-update-▻ {ts = tsʰ} {t = tʰ} (h ⊑? lₐ) w₃
+εᵍ-dist lₐ (fork {h = h} {nʰ = nʰ} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | yes p₁ | u
+  rewrite foo {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional (yes p₁) (h ⊑? lₐ) tʰ
+  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (yes p₁) r₃)
+      (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) u
+εᵍ-dist lₐ (fork {h = h} {nʰ = nʰ} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | no ¬p | u
+  rewrite foo {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional (no ¬p) (h ⊑? lₐ) tʰ
+  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (no ¬p) r₃)
+      (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) u
 εᵍ-dist {l} {n} lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | no ¬p | sc' with ε-read∙ ¬p r₁ 
 ... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-write-≡ (trans-⋢ (fork-⊑ st) ¬p) w₃ | ε-sch-≡ ¬p sc = hole x sc'
 εᵍ-dist {l} lₐ (hole r sc) with l ⊑? lₐ

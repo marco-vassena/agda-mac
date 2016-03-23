@@ -71,8 +71,48 @@ ts₂ ← ts₁ [ n ]ᵗ≔ t = UpdateThread t n ts₁ ts₂
 
 --------------------------------------------------------------------------------
 
--- fork? : ∀ {l} -> Thread l -> C.Event 
--- fork? = ?
+data Is∙ {τ : Ty} : CTerm τ -> Set where
+  ∙ : Is∙ ∙
+
+is∙? : ∀ {τ} -> (c : CTerm τ) -> Dec (Is∙ c)
+is∙? （） = no (λ ())
+is∙? True = no (λ ())
+is∙? False = no (λ ())
+is∙? (Var x) = no (λ ())
+is∙? (Abs c) = no (λ ())
+is∙? (App c c₁) = no (λ ())
+is∙? (If c Then c₁ Else c₂) = no (λ ())
+is∙? (Return c) = no (λ ())
+is∙? (c >>= c₁) = no (λ ())
+is∙? ξ = no (λ ())
+is∙? (Throw c) = no (λ ())
+is∙? (Catch c c₁) = no (λ ())
+is∙? (Mac c) = no (λ ())
+is∙? (Macₓ c) = no (λ ())
+is∙? (Res c) = no (λ ())
+is∙? (Resₓ c) = no (λ ())
+is∙? (relabel x c) = no (λ ())
+is∙? (relabel∙ x c) = no (λ ())
+is∙? (label x c) = no (λ ())
+is∙? (unlabel x c) = no (λ ())
+is∙? (join x c) = no (λ ())
+is∙? zero = no (λ ())
+is∙? (suc c) = no (λ ())
+is∙? (read x c) = no (λ ())
+is∙? (write x c c₁) = no (λ ())
+is∙? (new x c) = no (λ ())
+is∙? (fmap c c₁) = no (λ ())
+is∙? (fmap∙ c c₁) = no (λ ())
+is∙? (fork x c) = no (λ ())
+is∙? (newMVar x) = no (λ ())
+is∙? (takeMVar c) = no (λ ())
+is∙? (putMVar c c₁) = no (λ ())
+is∙? ∙ = yes ∙
+
+fork? : ∀ {h} -> Thread h -> ℕ -> C.Event 
+fork? t n with is∙? t
+fork? t n | yes p = Step
+fork? {h} t n | no ¬p = Fork h n
 
 -- Concurrent semantics
 data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global ls -> Set where
@@ -99,7 +139,7 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
            ps₁ [ h ]= tsʰ ->
            
            ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tʰ) ->
-           s₁ ⟶ s₂ ↑ (l , n , (Fork h nʰ)) ->
+           s₁ ⟶ s₂ ↑ (l , n , fork? tʰ nʰ) ->
 
            ts₂ ← ts₁ [ n ]ᵗ≔ t₂ ->
            ps₂ ← ps₁ [ l ]≔ ts₂ ->
