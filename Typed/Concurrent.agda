@@ -1,4 +1,4 @@
-open import Typed.Communication
+open import Typed.Communication as C
 
 
 -- TODO pack everything scheduler related in a single record called Scheduler
@@ -71,6 +71,9 @@ ts₂ ← ts₁ [ n ]ᵗ≔ t = UpdateThread t n ts₁ ts₂
 
 --------------------------------------------------------------------------------
 
+-- fork? : ∀ {l} -> Thread l -> C.Event 
+-- fork? = ?
+
 -- Concurrent semantics
 data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global ls -> Set where
 
@@ -90,14 +93,13 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
 
   -- A fork step spawns a new thread
   fork : ∀ {s₁ s₂ h n' nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {ts₁ ts₂ : Pool l n'} {tsʰ : Pool h nʰ} {t₁ t₂ : Thread l} {tʰ : Thread h} ->
-           {{p : l ⊑ h}} ->
-           
+         
            ps₁ [ l ]= ts₁ ->
            ts₁ [ n ]ᵗ= t₁ ->
            ps₁ [ h ]= tsʰ ->
            
            ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tʰ) ->
-           s₁ ⟶ s₂ ↑ (l , n , (Fork h nʰ p)) ->
+           s₁ ⟶ s₂ ↑ (l , n , (Fork h nʰ)) ->
 
            ts₂ ← ts₁ [ n ]ᵗ≔ t₂ ->
            ps₂ ← ps₁ [ l ]≔ ts₂ ->
@@ -133,4 +135,4 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
            l , n ⊢ ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩ 
 
   -- TODO do we need an event Done_Exit ? How would it be different from the current exit?
-  -- Bear in mind that our transitions are always of the form ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩ 
+  -- Bear in mind that our transitions are always of the form ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩

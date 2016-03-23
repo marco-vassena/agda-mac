@@ -128,10 +128,10 @@ open import Data.List as L hiding (drop)
 
 open import Typed.Communication as C
 
-εᴱ : ∀ {l} -> Label -> C.Event l -> C.Event l
-εᴱ lₐ (Fork h n p) with h ⊑? lₐ
-εᴱ lₐ (Fork h n p₁) | yes p = Fork h n p₁
-εᴱ lₐ (Fork h n p) | no ¬p = Step
+εᴱ : Label -> C.Event -> C.Event
+εᴱ lₐ (Fork h n) with h ⊑? lₐ
+εᴱ lₐ (Fork h n) | yes p = Fork h n
+εᴱ lₐ (Fork h n) | no ¬p = Step
 εᴱ lₐ e = e
 
 εᴹ : ∀ {l lₐ} -> Dec (l ⊑ lₐ) -> Message l -> Message l
