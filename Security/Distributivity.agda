@@ -6,8 +6,6 @@ open import Typed.Semantics
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 open import Data.Product
 open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
-open import Data.Stream using (_∷_ ; Stream)
-open import Coinduction
 
 --------------------------------------------------------------------------------
 -- The main distributivity theorem: 
@@ -211,11 +209,6 @@ open import Coinduction
 εˢ-write-≡ ¬p (m ∷ s) Here r c rewrite εᵐ-write-≡ ¬p m r c = refl
 εˢ-write-≡ ¬p (x ∷ s) (There q) r c rewrite εˢ-write-≡ ¬p s q r c = refl               
 
--- TODO move to types.
--- TODO better name
-lemma : ∀ {a b c} -> a ⊑ b -> ¬ (a ⊑ c) -> ¬ (b ⊑ c)
-lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
-
 -- A sensitive, non-visible computation can only affect high memories of the store, which
 -- are collapsed when erased. Hence the erased memory are low-equivalent, i.e. their erasures
 -- are equivalent.
@@ -232,17 +225,17 @@ lemma a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
 εˢ-≡ lₐ ¬p (BindCtx s) = εˢ-≡ lₐ ¬p s
 εˢ-≡ lₐ ¬p (CatchCtx s) = εˢ-≡ lₐ ¬p s
 εˢ-≡ lₐ ¬p (unlabelCtx p (Pure x)) = refl
-εˢ-≡ lₐ ¬p (join p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (lemma p ¬p) ss = refl
-εˢ-≡ lₐ ¬p (joinEx p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (lemma p ¬p) ss = refl
-εˢ-≡ lₐ ¬p (new {s = s} p q) = εˢ-new-≡ (lemma p ¬p) s q _
+εˢ-≡ lₐ ¬p (join p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (trans-⋢ p ¬p) ss = refl
+εˢ-≡ lₐ ¬p (joinEx p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (trans-⋢ p ¬p) ss = refl
+εˢ-≡ lₐ ¬p (new {s = s} p q) = εˢ-new-≡ (trans-⋢ p ¬p) s q _
 εˢ-≡ lₐ ¬p (writeCtx p (Pure x)) = refl
-εˢ-≡ lₐ ¬p (write {s = s} p q r) = εˢ-write-≡ (lemma p ¬p) s q r _ 
+εˢ-≡ lₐ ¬p (write {s = s} p q r) = εˢ-write-≡ (trans-⋢ p ¬p) s q r _ 
 εˢ-≡ lₐ ¬p (writeEx p q r) = refl
 εˢ-≡ lₐ ¬p (readCtx p (Pure x)) = refl
 εˢ-≡ lₐ ¬p (read p q r) = refl
 εˢ-≡ lₐ ¬p (readEx p) = refl
 εˢ-≡ lₐ ¬p (fork p t) = refl
-εˢ-≡ lₐ ¬p (newMVar {Σ = Σ} p q) = εˢ-new-≡ (lemma p ¬p) Σ q _
+εˢ-≡ lₐ ¬p (newMVar {Σ = Σ} p q) = εˢ-new-≡ (trans-⋢ p ¬p) Σ q _
 εˢ-≡ lₐ ¬p (putMVarCtx (Pure x)) = refl
 εˢ-≡ lₐ ¬p (putMVar {Σ = Σ} q r) = εˢ-write-≡ ¬p Σ q r _ 
 εˢ-≡ lₐ ¬p putMVarEx = refl

@@ -90,13 +90,14 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
 
   -- A fork step spawns a new thread
   fork : ∀ {s₁ s₂ h n' nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {ts₁ ts₂ : Pool l n'} {tsʰ : Pool h nʰ} {t₁ t₂ : Thread l} {tʰ : Thread h} ->
+           {{p : l ⊑ h}} ->
            
            ps₁ [ l ]= ts₁ ->
            ts₁ [ n ]ᵗ= t₁ ->
            ps₁ [ h ]= tsʰ ->
            
            ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tʰ) ->
-           s₁ ⟶ s₂ ↑ (l , n , (Fork h nʰ)) ->
+           s₁ ⟶ s₂ ↑ (l , n , (Fork h nʰ p)) ->
 
            ts₂ ← ts₁ [ n ]ᵗ≔ t₂ ->
            ps₂ ← ps₁ [ l ]≔ ts₂ ->

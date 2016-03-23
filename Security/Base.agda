@@ -126,10 +126,16 @@ open import Data.List as L hiding (drop)
 ε-pools lₐ [] = []
 ε-pools lₐ (_◅_ {l = l} ts ps) = εᵗ (l ⊑? lₐ) ts ◅ (ε-pools lₐ ps)
 
-open import Typed.Communication
+open import Typed.Communication as C
+
+εᴱ : ∀ {l} -> Label -> C.Event l -> C.Event l
+εᴱ lₐ (Fork h n p) with h ⊑? lₐ
+εᴱ lₐ (Fork h n p₁) | yes p = Fork h n p₁
+εᴱ lₐ (Fork h n p) | no ¬p = Step
+εᴱ lₐ e = e
 
 εᴹ : ∀ {l lₐ} -> Dec (l ⊑ lₐ) -> Message l -> Message l
-εᴹ (yes p) (l , n , e) = l , n , e
+εᴹ {._} {lₐ} (yes p) (l , n , e) = l , n , εᴱ lₐ e
 εᴹ (no ¬p) (l , n , e) = l , n , ∙
 
 --------------------------------------------------------------------------------

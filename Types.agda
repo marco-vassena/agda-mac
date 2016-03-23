@@ -2,6 +2,7 @@ module Types where
 
 open import Relation.Nullary public
 open import Relation.Binary.PropositionalEquality
+open import Data.Empty public
 
 -- The security lattice (Label, _⊑_, _⊔_) is kept abstract
 -- It will turned in a parameter to the module, but
@@ -14,12 +15,14 @@ postulate _⊑?_ : (l h : Label) -> Dec (l ⊑ h)
 postulate refl-⊑ : ∀ {l} -> l ⊑ l
 postulate trans-⊑ : ∀ {l₁ l₂ l₃} -> l₁ ⊑ l₂ -> l₂ ⊑ l₃ -> l₁ ⊑ l₃
 
+trans-⋢  : ∀ {a b c} -> a ⊑ b -> ¬ (a ⊑ c) -> ¬ (b ⊑ c)
+trans-⋢ a⊑b ¬a⊑c b⊑c = ⊥-elim (¬a⊑c (trans-⊑ a⊑b b⊑c))
+
 open import Data.List hiding (drop ; _∷ʳ_ ; [_]) public
 import Data.List as L
 open import Data.Vec using (Vec ; [] ; _∷_ ; lookup) public
 open import Data.Fin using (Fin ; zero ; suc) public
 open import Data.Unit hiding (_≤_) public
-open import Data.Empty public
 open import Data.Product using (_×_ ; _,_)
 
 -- Types τ

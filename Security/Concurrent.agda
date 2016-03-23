@@ -168,10 +168,12 @@ open Program
 εᵍ-dist {l} {n}  lₐ (step r₁ r₂ st sc w₁ w₂) | no ¬p | sc' with ε-read∙ ¬p r₁
 ... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-sch-≡ ¬p sc = hole x sc'
 εᵍ-dist {l} lₐ (fork r₁ r₂ r₃ st sc  w₁ w₂ w₃) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
-εᵍ-dist {l} {n} lₐ (fork {h = h} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc'
-  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (h ⊑? lₐ) r₃) (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) (ε-update-▻ (h ⊑? lₐ) w₃)
+εᵍ-dist {l} {n} lₐ (fork {h = h} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' with h ⊑? lₐ
+εᵍ-dist lₐ (fork {{p = p'}} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | yes p₁
+  = fork {{p = p'}} (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (yes p₁) r₃) (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) (ε-update-▻ (yes p₁) w₃)
+εᵍ-dist lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | no ¬p = step (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-↑ p {!st!}) {!!} {!!} {!!} 
 εᵍ-dist {l} {n} lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | no ¬p | sc' with ε-read∙ ¬p r₁ 
-... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-write-≡ (lemma (fork-⊑ st) ¬p) w₃ | ε-sch-≡ ¬p sc = hole x sc'
+... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-write-≡ (trans-⋢ (fork-⊑ st) ¬p) w₃ | ε-sch-≡ ¬p sc = hole x sc'
 εᵍ-dist {l} lₐ (hole r sc) with l ⊑? lₐ
 εᵍ-dist lₐ (hole r sc) | yes p = hole (ε-read-hole r) (ε-sch-dist (yes p) sc)
 εᵍ-dist lₐ (hole r sc) | no ¬p = hole (ε-read-hole r) (ε-sch-dist (no ¬p) sc)
