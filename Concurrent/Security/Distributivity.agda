@@ -1,7 +1,6 @@
 open import Types
-open import Concurrent.Communication renaming (Event to Eventˢ)
+open import Concurrent.Communication
 open import Relation.Binary.PropositionalEquality
-
 open import Concurrent.Security.Erasure
 
 module Concurrent.Security.Distributivity
@@ -11,19 +10,17 @@ module Concurrent.Security.Distributivity
   (ε-sch-≡ : ∀ {s₁ s₂ l lₐ} {m : Message l} -> ¬ (l ⊑ lₐ) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ≡ (ε-state lₐ s₂))
   where
 
-open import Sequential.Semantics -- remove
-open import Concurrent.Calculus State
+open import Concurrent.Calculus
 open import Sequential.Security.Distributivity
 open import Concurrent.Semantics State _⟶_↑_
 
 --------------------------------------------------------------------------------
 
-  -- Erasure of global configuration
+-- Erasure of global configuration
 εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
 εᵍ lₐ ⟨ s , Σ , ps ⟩ = ⟨ ε-state lₐ s , εˢ lₐ Σ , ε-pools lₐ ps ⟩
 
--- TODO move to the right place
-εᵉ : Label -> Event -> Event
+εᵉ : Label -> Effect -> Effect
 εᵉ lₐ ∅ = ∅
 εᵉ lₐ (fork t) = fork (ε lₐ t)
 
@@ -131,57 +128,62 @@ open Program
 
 --------------------------------------------------------------------------------
 
-foo : ∀ {h lₐ n} -> (x : Dec (h ⊑ lₐ)) (t : Thread h) -> εᴱ lₐ (fork? t n) ≡ fork? (ε-Mac lₐ x t) n
-foo x t with is∙? t
-foo (yes p) .∙ | yes ∙ = refl
-foo (no ¬p) .∙ | yes ∙ = refl
-foo {h} {lₐ} (yes p) t | no ¬p with h ⊑? lₐ
-foo (yes p) (Var x) | no ¬p | yes p' = refl
-foo (yes p) (App t t₁) | no ¬p | yes p' = refl
-foo (yes p) (If t Then t₁ Else t₂) | no ¬p | yes p' = refl
-foo (yes p) (Return t) | no ¬p | yes p' = refl
-foo (yes p) (t >>= t₁) | no ¬p | yes p' = refl
-foo (yes p) (Throw t) | no ¬p | yes p' = refl
-foo (yes p) (Catch t t₁) | no ¬p | yes p' = refl
-foo (yes p) (Mac t) | no ¬p | yes p' = refl
-foo (yes p) (Macₓ t) | no ¬p | yes p' = refl
-foo (yes p) (unlabel x t) | no ¬p | yes p' = refl
-foo (yes p) (read x t) | no ¬p | yes p' = refl
-foo (yes p) (write x t t₁) | no ¬p | yes p' = refl
-foo (yes p) (fork x t) | no ¬p | yes p' = refl
-foo (yes p) (takeMVar t) | no ¬p | yes p' = refl
-foo (yes p) (putMVar t t₁) | no ¬p | yes p' = refl
-foo (yes p) ∙ | no ¬p | yes p' = ⊥-elim (¬p ∙)
+ε-fork? : ∀ {h lₐ n} -> (x : Dec (h ⊑ lₐ)) (t : Thread h) -> εᴱ lₐ (fork? t n) ≡ fork? (ε-Mac lₐ x t) n
+ε-fork? x t with is∙? t
+ε-fork? (yes p) .∙ | yes ∙ = refl
+ε-fork? (no ¬p) .∙ | yes ∙ = refl
+ε-fork? {h} {lₐ} (yes p) t | no ¬p with h ⊑? lₐ
+ε-fork? (yes p) (Var x) | no ¬p | yes p' = refl
+ε-fork? (yes p) (App t t₁) | no ¬p | yes p' = refl
+ε-fork? (yes p) (If t Then t₁ Else t₂) | no ¬p | yes p' = refl
+ε-fork? (yes p) (Return t) | no ¬p | yes p' = refl
+ε-fork? (yes p) (t >>= t₁) | no ¬p | yes p' = refl
+ε-fork? (yes p) (Throw t) | no ¬p | yes p' = refl
+ε-fork? (yes p) (Catch t t₁) | no ¬p | yes p' = refl
+ε-fork? (yes p) (Mac t) | no ¬p | yes p' = refl
+ε-fork? (yes p) (Macₓ t) | no ¬p | yes p' = refl
+ε-fork? (yes p) (unlabel x t) | no ¬p | yes p' = refl
+ε-fork? (yes p) (read x t) | no ¬p | yes p' = refl
+ε-fork? (yes p) (write x t t₁) | no ¬p | yes p' = refl
+ε-fork? (yes p) (fork x t) | no ¬p | yes p' = refl
+ε-fork? (yes p) (takeMVar t) | no ¬p | yes p' = refl
+ε-fork? (yes p) (putMVar t t₁) | no ¬p | yes p' = refl
+ε-fork? (yes p) ∙ | no ¬p | yes p' = ⊥-elim (¬p ∙)
 ... | no ¬p' = ⊥-elim (¬p' p)
-foo {h} {lₐ} (no ¬p₁) t | no ¬p rewrite ε-Mac-CTerm≡∙ _ t ¬p₁ with h ⊑? lₐ
+ε-fork? {h} {lₐ} (no ¬p₁) t | no ¬p rewrite ε-Mac-CTerm≡∙ _ t ¬p₁ with h ⊑? lₐ
 ... | yes p = ⊥-elim (¬p₁ p)
 ... | no _ = refl
 
 -- TODO refactoring
 εᵍ-dist : ∀ {l n ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> l , n ⊢ g₁ ↪ g₂ -> l , n ⊢ (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
+
 εᵍ-dist {l} lₐ (step r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
 εᵍ-dist {l} {n} lₐ (step {ts₂ = ts} r₁ r₂ st sc w₁ w₂) | yes p | sc' with ε-updateᵗ p w₁ | ε-updateᵖ p w₂ 
 ... | x | y  rewrite εᵗ-extensional (yes p) (l ⊑? lₐ) ts = step (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-↑ p st) sc' x y
 εᵍ-dist {l} {n}  lₐ (step r₁ r₂ st sc w₁ w₂) | no ¬p | sc' with ε-read∙ ¬p r₁
 ... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-sch-≡ ¬p sc = hole x sc'
+
 εᵍ-dist {l} lₐ (fork r₁ r₂ r₃ st sc  w₁ w₂ w₃) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
 εᵍ-dist {l} {n} lₐ (fork {h = h} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' with h ⊑? lₐ | ε-update-▻ {ts = tsʰ} {t = tʰ} (h ⊑? lₐ) w₃
 εᵍ-dist lₐ (fork {h = h} {nʰ = nʰ} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | yes p₁ | u
-  rewrite foo {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional (yes p₁) (h ⊑? lₐ) tʰ
+  rewrite ε-fork? {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional (yes p₁) (h ⊑? lₐ) tʰ
   = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (yes p₁) r₃)
       (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) u
 εᵍ-dist lₐ (fork {h = h} {nʰ = nʰ} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | no ¬p | u
-  rewrite foo {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional (no ¬p) (h ⊑? lₐ) tʰ
+  rewrite ε-fork? {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional (no ¬p) (h ⊑? lₐ) tʰ
   = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (no ¬p) r₃)
       (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) u
 εᵍ-dist {l} {n} lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | no ¬p | sc' with ε-read∙ ¬p r₁ 
 ... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-write-≡ (trans-⋢ (fork-⊑ st) ¬p) w₃ | ε-sch-≡ ¬p sc = hole x sc'
+
 εᵍ-dist {l} lₐ (hole r sc) with l ⊑? lₐ
 εᵍ-dist lₐ (hole r sc) | yes p = hole (ε-read-hole r) (ε-sch-dist (yes p) sc)
 εᵍ-dist lₐ (hole r sc) | no ¬p = hole (ε-read-hole r) (ε-sch-dist (no ¬p) sc)
+
 εᵍ-dist {l} lₐ (skip r₁ r₂ b sc ) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
 εᵍ-dist lₐ (skip r₁ r₂ b sc) | yes p | sc' = skip (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-Blocked p b) sc'
 εᵍ-dist lₐ (skip r₁ r₂ b sc) | no ¬p | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r₁) sc'
+
 εᵍ-dist {l} lₐ (exit r₁ r₂ isV sc) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
 εᵍ-dist lₐ (exit r₁ r₂ isV sc) | yes p | sc' = exit (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-IsValue p isV) sc'
 εᵍ-dist {l} {n} lₐ (exit r₁ r₂ isV sc) | no ¬p | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r₁) sc'

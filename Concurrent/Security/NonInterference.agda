@@ -19,7 +19,6 @@ module Concurrent.Security.NonInterference
 
 open import Concurrent.Determinism State _⟶_↑_ deterministic-scheduler
 open import Concurrent.Security.Distributivity State _⟶_↑_ ε-state ε-sch-dist ε-sch-≡
-open import Concurrent.Calculus State
 open import Concurrent.Semantics State _⟶_↑_
 
 

@@ -1,13 +1,13 @@
-open import Concurrent.Communication as C
+open import Concurrent.Communication
+open import Concurrent.Calculus public
 
 
 -- TODO pack everything scheduler related in a single record called Scheduler
 module Concurrent.Semantics (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set) where
 
+open import Data.Nat
 open import Data.List
-open import Concurrent.Calculus (State)
-open import Sequential
-
+open import Sequential.Semantics
 
 --------------------------------------------------------------------------------
 -- Lookup threads and thread pools
@@ -39,18 +39,7 @@ data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set whe
   onPut : ∀ {l n τ} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) -> Blocked Σ (putMVar (Res n) t)
   onTake : ∀ {l n τ} (q : l ∈ ls) (r : TypedIx τ E n (getMemory q Σ)) -> Blocked Σ (takeMVar {α = τ} (Res n))
 
-
 --------------------------------------------------------------------------------
--- TODO remove!
--- Allocate new thread in a pool
-
-data NewThread {l : Label} (t : Thread l) : ∀ {n} -> Pool l n -> Pool l (suc n) -> Set where
-  ∙ : ∀ {n} -> NewThread t (∙ {n = n}) ∙
-  newT : NewThread t [] (t ◅ [])
-  skip : ∀ {n} {ts₁ : Pool l n} {ts₂ : Pool l (suc n)} {t' : Thread l} -> NewThread t ts₁ ts₂ -> NewThread t (t' ◅ ts₁) (t' ◅ ts₂)
-
---------------------------------------------------------------------------------
-
 -- Syntactic sugar
 
 _[_]=_ : ∀ {ls n} -> Pools ls -> (l : Label) -> Pool l n -> Set
@@ -66,6 +55,41 @@ ts [ n ]ᵗ= t = LookupThread t n ts
 _←_[_]ᵗ≔_ : ∀ {l n} -> Pool l n -> Pool l n -> ℕ -> Thread l -> Set
 ts₂ ← ts₁ [ n ]ᵗ≔ t = UpdateThread t n ts₁ ts₂
 
+--------------------------------------------------------------------------------
+
+-- Effect triggered in the sequential setting
+data Effect : Set where
+  ∅ : Effect
+  fork : ∀ {l} -> Thread l -> Effect
+
+-- We need to tie the event data type with the small step semantics.
+-- I don't want to redefine the small step semantics with an additional index, neither
+-- I want to write a wrapper for each of them.
+-- Since fork is absolutely lazy, p₁ ⟼ p₂ generates a fork even iff p₁ is fork.
+-- Therefore we can use  that to determine which event we need to generate.
+-- Note that if we had a forkCtx rule this wouldn't be ok.
+-- Nevertheless we want to restrict the pair of programs that can genearte events to
+-- only those that denote possible step. That is why internally we store
+-- a proof (s : p₁ ⟼ p₂). The fact that s is existentially quantified is good
+-- because it means that we don't care about the actual step object: any step
+-- with the right type will do.
+
+open Program
+
+data IsFork : ∀ {τ} -> CTerm τ -> Set where
+  fork : ∀ {l h} -> (p : l ⊑ h) (t : Thread h) -> IsFork (fork p t)
+
+data _⟼_↑_ {ls : List Label} : ∀ {τ} (p₁ p₂ : Program ls τ) -> Effect -> Set where
+  fork : ∀ {l h} {p₂ : Program ls (Mac l （）)} {Σ : Store ls} ->
+         (p : l ⊑ h) (t : Thread h) (s : ⟨ Σ ∥ fork p t ⟩ ⟼ p₂) -> ⟨ Σ ∥ fork p t ⟩ ⟼ p₂ ↑ (fork t)
+  none : ∀ {τ} {p₁ p₂ : Program ls τ} -> ¬ IsFork (term p₁) -> p₁ ⟼ p₂ -> p₁ ⟼ p₂ ↑ ∅ 
+
+stepOf : ∀ {ls τ e} {p₁ p₂ : Program ls τ} -> p₁ ⟼ p₂ ↑ e -> p₁ ⟼ p₂
+stepOf (fork p t s) = s
+stepOf (none ¬f s) = s
+
+fork-⊑ : ∀ {ls τ l h} {p₁ p₂ : Program ls (Mac l τ)} {t : Thread h }  -> p₁ ⟼ p₂ ↑ fork t -> l ⊑ h
+fork-⊑ (fork p t s) = p
 
 --------------------------------------------------------------------------------
 
@@ -107,10 +131,16 @@ is∙? (takeMVar c) = no (λ ())
 is∙? (putMVar c c₁) = no (λ ())
 is∙? ∙ = yes ∙
 
-fork? : ∀ {h} -> Thread h -> ℕ -> C.Event 
+fork? : ∀ {h} -> Thread h -> ℕ -> Event 
 fork? t n with is∙? t
 fork? t n | yes p = Step
 fork? {h} t n | no ¬p = Fork h n
+
+-------------------------------------------------------------------------------
+-- The global configuration is a thread pool paired with some shared split memory Σ
+data Global (ls : List Label) : Set where
+  ⟨_,_,_⟩ : State -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
+ 
 
 -- Concurrent semantics
 data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global ls -> Set where
@@ -146,7 +176,6 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
            l , n ⊢ ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₃ ⟩
 
   -- The pool at this level is collapsed, nothing to do.
-  -- TODO should I constraint the scheduler here or in a difference thread?
   hole : ∀ {s n'} {Σ : Store ls} {ps : Pools ls} ->
          ps [ l ]= (∙ {n = n'}) ->
          s ⟶ s ↑ (l , n , ∙) ->

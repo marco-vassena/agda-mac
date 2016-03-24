@@ -1,12 +1,10 @@
-open import Types
-open import Concurrent.Communication as C
-
 module Concurrent.Security.Erasure where
 
-open import Sequential -- TODO remove
-open import Concurrent.Base
-open import Relation.Binary.PropositionalEquality
+open import Concurrent.Calculus
+open import Concurrent.Semantics
 open import Sequential.Security.Distributivity
+open import Concurrent.Communication
+open import Relation.Binary.PropositionalEquality
 
 -- -- Erasure of thread pool
 εᵗ : ∀ {n} {l lₐ : Label} -> Dec (l ⊑ lₐ) -> Pool l n -> Pool l n
@@ -19,7 +17,7 @@ open import Sequential.Security.Distributivity
 ε-pools lₐ [] = []
 ε-pools lₐ (_◅_ {l = l} ts ps) = εᵗ (l ⊑? lₐ) ts ◅ (ε-pools lₐ ps)
 
-εᴱ : Label -> C.Event -> C.Event
+εᴱ : Label -> Event -> Event
 εᴱ lₐ (Fork h n) with h ⊑? lₐ
 εᴱ lₐ (Fork h n) | yes p = Fork h n
 εᴱ lₐ (Fork h n) | no ¬p = Step
@@ -54,7 +52,4 @@ open import Data.Sum
 ε-IsValue : ∀ {τ l lₐ} {t : CTerm (Mac l τ)} -> (p : l ⊑ lₐ) -> IsValue t -> IsValue (ε-Mac lₐ (yes p) t)
 ε-IsValue p (Mac t) = Mac (ε _ t)
 ε-IsValue p (Macₓ e) = Macₓ (ε _ e)
-
-fork-⊑ : ∀ {ls τ l h} {p₁ p₂ : Program ls (Mac l τ)} {t : Thread h }  -> p₁ ⟼ p₂ ↑ fork t -> l ⊑ h
-fork-⊑ (fork p t s) = p
 
