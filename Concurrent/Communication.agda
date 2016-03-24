@@ -1,7 +1,6 @@
-module Typed.Communication where
+module Concurrent.Communication where
 
-
-open import Typed.Base
+open import Types
 open import Data.Nat public
 
 data Event : Set where

@@ -1,8 +1,8 @@
-module Security.Sequential.Distributivity where
+module Sequential.Security.Distributivity where
 
 
-open import Security.Base public
-open import Typed.Semantics
+open import Sequential.Security.Erasure public
+open import Sequential.Semantics
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 open import Data.Product
 open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
@@ -156,31 +156,31 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 
 --------------------------------------------------------------------------------
 
-ε-Mac-dist : ∀ {lᵈ τ ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac lᵈ τ)} (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) ->
-                ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> ⟨ (εˢ lₐ s₁) ∥ ε-Mac lₐ x c₁ ⟩ ⟼ ⟨ εˢ lₐ s₂ ∥ ε-Mac lₐ x c₂ ⟩
+ε-Mac-dist : ∀ {lᵈ τ ls} {Σ₁ Σ₂ : Store ls} {c₁ c₂ : CTerm (Mac lᵈ τ)} (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) ->
+                ⟨ Σ₁ ∥ c₁ ⟩ ⟼ ⟨ Σ₂ ∥ c₂ ⟩ -> ⟨ (εˢ lₐ Σ₁) ∥ ε-Mac lₐ x c₁ ⟩ ⟼ ⟨ εˢ lₐ Σ₂ ∥ ε-Mac lₐ x c₂ ⟩
 
-ε-Mac-distₓ⋆ : ∀ {lᵈ τ ls} {s₁ s₂ : Store ls} {c₁ : CTerm (Mac lᵈ τ)} {e : CTerm Exception} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) ->
-              ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ (Macₓ e) ⟩ ->
-              ⟨ εˢ lₐ s₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⟼⋆ ⟨ εˢ lₐ s₂ ∥ Macₓ (ε lₐ e) ⟩
+ε-Mac-distₓ⋆ : ∀ {lᵈ τ ls} {Σ₁ Σ₂ : Store ls} {c₁ : CTerm (Mac lᵈ τ)} {e : CTerm Exception} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) ->
+              ⟨ Σ₁ ∥ c₁ ⟩ ⟼⋆ ⟨ Σ₂ ∥ (Macₓ e) ⟩ ->
+              ⟨ εˢ lₐ Σ₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⟼⋆ ⟨ εˢ lₐ Σ₂ ∥ Macₓ (ε lₐ e) ⟩
 ε-Mac-distₓ⋆ lₐ p [] = []
 ε-Mac-distₓ⋆ lₐ p (s ∷ ss) = (ε-Mac-dist lₐ (yes p) s) ∷ (ε-Mac-distₓ⋆ lₐ p ss)
 
-ε-Mac-distₓ⇓ : ∀ {lᵈ τ ls} {s₁ s₂ : Store ls} {c₁ : CTerm (Mac lᵈ τ)} {e : CTerm Exception} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) ->
-             ⟨ s₁ ∥ c₁ ⟩ ⇓ ⟨ s₂ ∥ Macₓ e ⟩ ->
-             ⟨ εˢ lₐ  s₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⇓ ⟨ εˢ lₐ s₂ ∥ Macₓ (ε lₐ e) ⟩
+ε-Mac-distₓ⇓ : ∀ {lᵈ τ ls} {Σ₁ Σ₂ : Store ls} {c₁ : CTerm (Mac lᵈ τ)} {e : CTerm Exception} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) ->
+             ⟨ Σ₁ ∥ c₁ ⟩ ⇓ ⟨ Σ₂ ∥ Macₓ e ⟩ ->
+             ⟨ εˢ lₐ  Σ₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⇓ ⟨ εˢ lₐ Σ₂ ∥ Macₓ (ε lₐ e) ⟩
 ε-Mac-distₓ⇓ lₐ p (BigStep (Macₓ e) ss) = BigStep (Macₓ (ε lₐ e)) (ε-Mac-distₓ⋆ lₐ p ss)
 
 
-ε-Mac-dist⋆ : ∀ {lᵈ τ ls} {s₁ s₂ : Store ls} {c₁ : CTerm (Mac lᵈ τ)} {c₂ : CTerm τ} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) ->
-              ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ (Mac c₂) ⟩ ->
-              ⟨ εˢ lₐ s₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⟼⋆ ⟨ εˢ lₐ s₂ ∥ Mac (ε lₐ c₂) ⟩
+ε-Mac-dist⋆ : ∀ {lᵈ τ ls} {Σ₁ Σ₂ : Store ls} {c₁ : CTerm (Mac lᵈ τ)} {c₂ : CTerm τ} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) ->
+              ⟨ Σ₁ ∥ c₁ ⟩ ⟼⋆ ⟨ Σ₂ ∥ (Mac c₂) ⟩ ->
+              ⟨ εˢ lₐ Σ₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⟼⋆ ⟨ εˢ lₐ Σ₂ ∥ Mac (ε lₐ c₂) ⟩
 ε-Mac-dist⋆ lₐ p [] = []
 ε-Mac-dist⋆ lₐ p (s ∷ ss) = (ε-Mac-dist lₐ (yes p) s) ∷ (ε-Mac-dist⋆ lₐ p ss)
 
 
-ε-Mac-dist⇓ : ∀ {lᵈ τ ls} {s₁ s₂ : Store ls} {c₁ : CTerm (Mac lᵈ τ)} {c₂ : CTerm τ} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) ->
-             ⟨ s₁ ∥ c₁ ⟩ ⇓ ⟨ s₂ ∥ Mac c₂ ⟩ ->
-             ⟨ εˢ lₐ  s₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⇓ ⟨ εˢ lₐ s₂ ∥ Mac (ε lₐ c₂) ⟩
+ε-Mac-dist⇓ : ∀ {lᵈ τ ls} {Σ₁ Σ₂ : Store ls} {c₁ : CTerm (Mac lᵈ τ)} {c₂ : CTerm τ} -> (lₐ : Label) (p : lᵈ ⊑ lₐ) ->
+             ⟨ Σ₁ ∥ c₁ ⟩ ⇓ ⟨ Σ₂ ∥ Mac c₂ ⟩ ->
+             ⟨ εˢ lₐ  Σ₁ ∥ ε-Mac lₐ (yes p) c₁ ⟩ ⇓ ⟨ εˢ lₐ Σ₂ ∥ Mac (ε lₐ c₂) ⟩
 ε-Mac-dist⇓ lₐ p (BigStep (Mac c₂) ss) = BigStep (Mac (ε lₐ c₂)) (ε-Mac-dist⋆ lₐ p ss)
 
 --------------------------------------------------------------------------------
@@ -190,7 +190,7 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 εᵐ-new-≡ ¬p m c | yes p = ⊥-elim (¬p p)
 εᵐ-new-≡ ¬p₁ m c | no ¬p = refl
 
-εᵐ-write-≡ :  ∀ {l lₐ τ n s₁ s₂} -> ¬ l ⊑ lₐ -> (m : Memory l) (r : TypedIx τ s₁ n m) (c : Cell τ s₂) -> εᵐ lₐ (l ⊑? lₐ) m ≡ εᵐ lₐ (l ⊑? lₐ) (m [ r ]≔ c)
+εᵐ-write-≡ :  ∀ {l lₐ τ n Σ₁ Σ₂} -> ¬ l ⊑ lₐ -> (m : Memory l) (r : TypedIx τ Σ₁ n m) (c : Cell τ Σ₂) -> εᵐ lₐ (l ⊑? lₐ) m ≡ εᵐ lₐ (l ⊑? lₐ) (m [ r ]≔ c)
 εᵐ-write-≡ {l} {lₐ} ¬p m r c with l ⊑? lₐ
 εᵐ-write-≡ ¬p m r c | yes p = ⊥-elim (¬p p)
 εᵐ-write-≡ ¬p₁ m r c | no ¬p = refl 
@@ -203,7 +203,7 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 εˢ-new-≡ ¬p (m ∷ s) Here c rewrite εᵐ-new-≡ ¬p m c = refl
 εˢ-new-≡ ¬p (x ∷ s) (There q) c rewrite εˢ-new-≡ ¬p s q c = refl
 
-εˢ-write-≡ : ∀ {l lₐ ls n τ s₁ s₂} -> ¬ (l ⊑ lₐ) -> (Σ : Store ls) (q : l ∈ ls) (r : TypedIx τ s₁ n (getMemory q Σ)) (c : Cell τ s₂) ->
+εˢ-write-≡ : ∀ {l lₐ ls n τ Σ₁ Σ₂} -> ¬ (l ⊑ lₐ) -> (Σ : Store ls) (q : l ∈ ls) (r : TypedIx τ Σ₁ n (getMemory q Σ)) (c : Cell τ Σ₂) ->
                εˢ lₐ Σ ≡ εˢ lₐ (Σ [ q ][ r ]≔ c)
 εˢ-write-≡ ¬p [] () r c
 εˢ-write-≡ ¬p (m ∷ s) Here r c rewrite εᵐ-write-≡ ¬p m r c = refl
@@ -212,12 +212,12 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 -- A sensitive, non-visible computation can only affect high memories of the store, which
 -- are collapsed when erased. Hence the erased memory are low-equivalent, i.e. their erasures
 -- are equivalent.
-εˢ-≡ : ∀ {τ h ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac h τ)} -> (lₐ : Label) -> ¬ (h ⊑ lₐ) ->
-            ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ -> εˢ lₐ s₁ ≡ εˢ lₐ s₂
+εˢ-≡ : ∀ {τ h ls} {Σ₁ Σ₂ : Store ls} {c₁ c₂ : CTerm (Mac h τ)} -> (lₐ : Label) -> ¬ (h ⊑ lₐ) ->
+            ⟨ Σ₁ ∥ c₁ ⟩ ⟼ ⟨ Σ₂ ∥ c₂ ⟩ -> εˢ lₐ Σ₁ ≡ εˢ lₐ Σ₂
 
 -- The same conclusion can be derived for multiple steps, applying the single-step lemma multiple times.
-εˢ-≡⋆ : ∀ {τ h ls} {s₁ s₂ : Store ls} {c₁ c₂ : CTerm (Mac h τ)} -> (lₐ : Label) -> ¬ (h ⊑ lₐ) ->
-            ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> εˢ lₐ s₁ ≡ εˢ lₐ s₂
+εˢ-≡⋆ : ∀ {τ h ls} {Σ₁ Σ₂ : Store ls} {c₁ c₂ : CTerm (Mac h τ)} -> (lₐ : Label) -> ¬ (h ⊑ lₐ) ->
+            ⟨ Σ₁ ∥ c₁ ⟩ ⟼⋆ ⟨ Σ₂ ∥ c₂ ⟩ -> εˢ lₐ Σ₁ ≡ εˢ lₐ Σ₂
 εˢ-≡⋆ lₐ ¬p [] = refl
 εˢ-≡⋆ lₐ ¬p (s ∷ ss) rewrite εˢ-≡ lₐ ¬p s | εˢ-≡⋆ lₐ ¬p ss =  refl
 
@@ -348,13 +348,13 @@ readˢ-≡∙ ¬p (x ∷ s) (There q) r = readˢ-≡∙ ¬p s q r
 -- Write lemmas
 --------------------------------------------------------------------------------
   
-writeᵐ-≡ : ∀ {l lₐ τ n s₁ s₂} -> (c : Cell τ s₁) (p : l ⊑ lₐ) (m : Memory l) (r : TypedIx τ s₂ n m) ->
+writeᵐ-≡ : ∀ {l lₐ τ n Σ₁ Σ₂} -> (c : Cell τ Σ₁) (p : l ⊑ lₐ) (m : Memory l) (r : TypedIx τ Σ₂ n m) ->
              (εᵐ lₐ (yes p) m [ εᵐ-TypedIx p m r ]≔ εᶜ lₐ c) ≡ εᵐ lₐ (yes p) (m [ r ]≔ c) 
 writeᵐ-≡ c p ._ Here = refl
 writeᵐ-≡ c p ._ (There r) rewrite writeᵐ-≡ c p _ r = refl
 writeᵐ-≡ c p .∙ ∙ = refl
 
-writeˢ-≡ : ∀ {l lₐ ls τ n s₁ s₂} -> (c : Cell τ s₁) (p : l ⊑ lₐ) (q : l ∈ ls) (Σ : Store ls) (r : TypedIx τ s₂ n (getMemory q Σ)) ->
+writeˢ-≡ : ∀ {l lₐ ls τ n Σ₁ Σ₂} -> (c : Cell τ Σ₁) (p : l ⊑ lₐ) (q : l ∈ ls) (Σ : Store ls) (r : TypedIx τ Σ₂ n (getMemory q Σ)) ->
            εˢ lₐ (Σ [ q ][ r ]≔ c) ≡ εˢ lₐ Σ [ q ][ ε-TypedIx p Σ q r ]≔ εᶜ lₐ c
 writeˢ-≡ {l} {lₐ}  c p Here (x ∷ s) r with l ⊑? lₐ
 writeˢ-≡ c p₁ Here (m ∷ s) r | yes p rewrite writeᵐ-≡ c p m r = refl
@@ -443,7 +443,7 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 εᵖ-dist {（）} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
 εᵖ-dist {Bool} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
 εᵖ-dist {τ => τ₁} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
-εᵖ-dist {Mac lᵈ τ} {p₁ = ⟨ s₁ ∥ c₁ ⟩} {p₂ = ⟨ s₂ ∥ c₂ ⟩} lₐ s = ε-Mac-dist lₐ (lᵈ ⊑? lₐ) s
+εᵖ-dist {Mac lᵈ τ} {p₁ = ⟨ Σ₁ ∥ c₁ ⟩} {p₂ = ⟨ Σ₂ ∥ c₂ ⟩} lₐ s = ε-Mac-dist lₐ (lᵈ ⊑? lₐ) s
 εᵖ-dist {Res l τ} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
 εᵖ-dist {Exception} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s) 
 εᵖ-dist {Nat} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)

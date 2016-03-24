@@ -1,9 +1,8 @@
 -- This module defines the erasure function, auxiliary lemmas and definitions.
 
-module Security.Base where
+module Sequential.Security.Erasure where
 
-open import Typed.Base
-open import Typed.Semantics
+open import Sequential.Semantics
 open import Relation.Binary.PropositionalEquality hiding (subst)
 open import Data.List as L hiding (drop)
 
@@ -114,29 +113,6 @@ open import Data.List as L hiding (drop)
 -- Programs are erased, by erasing its store and its closed term.
 εᵖ : ∀ {ls τ} -> Label -> Program ls τ -> Program ls τ
 εᵖ lₐ ⟨ s ∥ c ⟩ = ⟨ εˢ lₐ s ∥ ε lₐ c ⟩
-
--- -- Erasure of thread pool
-εᵗ : ∀ {n} {l lₐ : Label} -> Dec (l ⊑ lₐ) -> Pool l n -> Pool l n
-εᵗ (yes p) [] = []
-εᵗ (yes p) (t ◅ ts) = (ε-Mac _ (yes p) t) ◅ (εᵗ (yes p) ts)
-εᵗ (yes p) ∙ = ∙
-εᵗ (no ¬p) ts = ∙
-
-ε-pools : ∀ {ls} -> Label -> Pools ls -> Pools ls
-ε-pools lₐ [] = []
-ε-pools lₐ (_◅_ {l = l} ts ps) = εᵗ (l ⊑? lₐ) ts ◅ (ε-pools lₐ ps)
-
-open import Typed.Communication as C
-
-εᴱ : Label -> C.Event -> C.Event
-εᴱ lₐ (Fork h n) with h ⊑? lₐ
-εᴱ lₐ (Fork h n) | yes p = Fork h n
-εᴱ lₐ (Fork h n) | no ¬p = Step
-εᴱ lₐ e = e
-
-εᴹ : ∀ {l lₐ} -> Dec (l ⊑ lₐ) -> Message l -> Message l
-εᴹ {._} {lₐ} (yes p) (l , n , e) = l , n , εᴱ lₐ e
-εᴹ (no ¬p) (l , n , e) = l , n , ∙
 
 --------------------------------------------------------------------------------
 

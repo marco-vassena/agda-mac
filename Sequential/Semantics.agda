@@ -1,7 +1,7 @@
-module Typed.Semantics where
+module Sequential.Semantics where
 
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
-open import Typed.Base public
+open import Sequential.Calculus public
 import Data.List as L
 open import Data.List.All
 open import Data.Stream using (_∷_ ; Stream)

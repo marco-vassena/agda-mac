@@ -1,18 +1,12 @@
-open import Typed.Communication as C
+open import Concurrent.Communication as C
 
 
 -- TODO pack everything scheduler related in a single record called Scheduler
-module Typed.Concurrent (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set) where
+module Concurrent.Semantics (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set) where
 
 open import Data.List
-open import Typed.Base
-open import Typed.Semantics
+open import Sequential
 
---------------------------------------------------------------------------------
--- The global configuration is a thread pool paired with some shared split memory Σ
-data Global (ls : List Label) : Set where
-  ⟨_,_,_⟩ : State -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
-  
 --------------------------------------------------------------------------------
 -- Lookup threads and thread pools
 

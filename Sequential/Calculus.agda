@@ -1,4 +1,4 @@
-module Typed.Base where
+module Sequential.Calculus where
 
 open import Types public
 import Data.List as L

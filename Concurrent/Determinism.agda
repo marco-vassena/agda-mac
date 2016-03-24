@@ -1,8 +1,9 @@
-open import Typed.Communication renaming (_,_,_ to ⟪_,_,_⟫)
+open import Sequential.Communication renaming (_,_,_ to ⟪_,_,_⟫)
 open import Relation.Binary.PropositionalEquality as E
 open import Data.Product
 
-module Typed.Determinism.Concurrent
+module Concurrent.Determinism where
+
   (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
   (deterministic-scheduler : ∀ {s₁ s₂ s₃ l n e} ->
                                    s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ ->
@@ -12,9 +13,9 @@ module Typed.Determinism.Concurrent
 
 
 open import Data.List.All
-open import Typed.Semantics
-open import Typed.Determinism.Sequential
-import Typed.Concurrent as C
+open import Concurrent.Semantics
+import Concurrent.Communication as C
+
 open C State _⟶_↑_ 
 
 read-∈ : ∀ {l ls n} {ts : Pool l n} {ps : Pools ls} -> ps [ l ]= ts -> l ∈ ls

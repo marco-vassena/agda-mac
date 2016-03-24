@@ -1,11 +1,7 @@
-module Security.Sequential.NonInterference where
+module Sequential.Security.NonInterference where
 
-open import Typed.Base
-open import Typed.Semantics
-open import Typed.Proofs
-open import Security.Sequential.Distributivity hiding (εˢ-≡)
-open import Typed.Determinism.Sequential
-open import Typed.Semantics
+open import Sequential.Security.Distributivity hiding (εˢ-≡)
+open import Sequential.Determinism
 
 open import Relation.Binary.PropositionalEquality
 open import Data.Sum
@@ -15,16 +11,16 @@ open Program
 --------------------------------------------------------------------------------
 -- Store low-equivalnce
 
-data _≈ˢ_ {{lₐ : Label}} {ls : List Label} (s₁ s₂ : Store ls) : Set where
-  εˢ-≡ : εˢ lₐ s₁ ≡ εˢ lₐ s₂ -> s₁ ≈ˢ s₂
+data _≈ˢ_ {{lₐ : Label}} {ls : List Label} (Σ₁ Σ₂ : Store ls) : Set where
+  εˢ-≡ : εˢ lₐ Σ₁ ≡ εˢ lₐ Σ₂ -> Σ₁ ≈ˢ Σ₂
 
 refl-≈ˢ : ∀ {l ls} {s : Store ls} -> s ≈ˢ s
 refl-≈ˢ = εˢ-≡ refl
 
-sym-≈ˢ : ∀ {l ls} {s₁ s₂ : Store ls} -> s₁ ≈ˢ s₂ -> s₂ ≈ˢ s₁
+sym-≈ˢ : ∀ {l ls} {Σ₁ Σ₂ : Store ls} -> Σ₁ ≈ˢ Σ₂ -> Σ₂ ≈ˢ Σ₁
 sym-≈ˢ (εˢ-≡ x) = εˢ-≡ (sym x)
 
-trans-≈ˢ : ∀ {l ls} {s₁ s₂ s₃ : Store ls} -> s₁ ≈ˢ s₂ -> s₂ ≈ˢ s₃ -> s₁ ≈ˢ s₃
+trans-≈ˢ : ∀ {l ls} {Σ₁ Σ₂ s₃ : Store ls} -> Σ₁ ≈ˢ Σ₂ -> Σ₂ ≈ˢ s₃ -> Σ₁ ≈ˢ s₃
 trans-≈ˢ (εˢ-≡ x) (εˢ-≡ x₁) = εˢ-≡ (trans x x₁)
 
 --------------------------------------------------------------------------------
@@ -81,9 +77,9 @@ lift-≈ᵖ {p₁ = ⟨ x ∥ x₁ ⟩} {⟨ x₂ ∥ x₃ ⟩} eq = εᵖ-≡ (
 -- and the semantics is deterministic then the reduced erased terms are equivalent (ε lₐ p₁' ≡ ε lₐ p₂')
 -- This implies that p₁' and p₂' are low-equivalent (p₁ ≈ᵖ p₂).
 simulation : ∀ {l ls τ} {p₁ p₂ p₁' p₂' : Program ls τ} -> p₁ ≈ᵖ p₂ -> p₁ ⟼ p₁' -> p₂ ⟼ p₂' -> p₁' ≈ᵖ p₂'
-simulation {l} eq s₁ s₂ = lift-≈ᵖ (aux (unlift-≈ᵖ eq) (εᵖ-dist l s₁) (εᵖ-dist l s₂))
+simulation {l} eq Σ₁ Σ₂ = lift-≈ᵖ (aux (unlift-≈ᵖ eq) (εᵖ-dist l Σ₁) (εᵖ-dist l Σ₂))
   where aux : ∀ {τ ls} {p₁ p₂ p₃ p₄ : Program ls τ} -> p₁ ≡ p₂ -> p₁ ⟼ p₃ -> p₂ ⟼ p₄ -> p₃ ≡ p₄
-        aux refl s₁ s₂ = determinism s₁ s₂
+        aux refl Σ₁ Σ₂ = determinism Σ₁ Σ₂
 
 
 -- Given two l-equivalent terms if one is a value then either also the other is a value or it is ∙
@@ -124,7 +120,7 @@ simulation⋆ {lₐ} {τ} (εᵖ-≡ x y) [] isV₁ (s ∷ ss) isV₂ | inj₂ �
 simulation⋆ (εᵖ-≡ x y) (s ∷ ss) isV₁ [] isV₂ with inspectValue isV₂ y
 simulation⋆ (εᵖ-≡ x y) (s ∷ ss) isV₁ [] isV₂ | inj₁ isVε = ⊥-elim (valueNotRedex _ isVε (Step (εᵖ-dist _ s)))
 simulation⋆ {lₐ} (εᵖ-≡ x y) (s ∷ ss) isV₁ [] isV₂ | inj₂ ε≡∙ = sym-≈ᵖ (trans-≈ᵖ (sym-≈ᵖ (εᵖ-≡ x y)) (lift-≈ᵖ (∙⟼⋆∙ (εᵖ-dist⋆ lₐ (s ∷ ss)) ε≡∙)))
-simulation⋆ eq (s₁ ∷ ss₁) isV₁ (s₂ ∷ ss₂) isV₂ = simulation⋆ (simulation eq s₁ s₂) ss₁ isV₁ ss₂ isV₂
+simulation⋆ eq (Σ₁ ∷ ss₁) isV₁ (Σ₂ ∷ ss₂) isV₂ = simulation⋆ (simulation eq Σ₁ Σ₂) ss₁ isV₁ ss₂ isV₂
 
 non-interference  : ∀ {l ls τ} {p₁ p₂ v₁ v₂ : Program ls τ} -> p₁ ≈ᵖ p₂ -> p₁ ⇓ v₁ -> p₂ ⇓ v₂ -> v₁ ≈ᵖ v₂
 non-interference eq (BigStep isV₁ ss₁) (BigStep isV₂ ss₂) = simulation⋆ eq ss₁ isV₁ ss₂ isV₂

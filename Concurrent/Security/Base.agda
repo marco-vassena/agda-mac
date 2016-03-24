@@ -15,6 +15,31 @@ open import Typed.Semantics
 open import Security.Sequential.Distributivity
 open import Typed.Concurrent State _⟶_↑_
 
+-- -- Erasure of thread pool
+εᵗ : ∀ {n} {l lₐ : Label} -> Dec (l ⊑ lₐ) -> Pool l n -> Pool l n
+εᵗ (yes p) [] = []
+εᵗ (yes p) (t ◅ ts) = (ε-Mac _ (yes p) t) ◅ (εᵗ (yes p) ts)
+εᵗ (yes p) ∙ = ∙
+εᵗ (no ¬p) ts = ∙
+
+ε-pools : ∀ {ls} -> Label -> Pools ls -> Pools ls
+ε-pools lₐ [] = []
+ε-pools lₐ (_◅_ {l = l} ts ps) = εᵗ (l ⊑? lₐ) ts ◅ (ε-pools lₐ ps)
+
+open import Sequential.Communication as C
+
+εᴱ : Label -> C.Event -> C.Event
+εᴱ lₐ (Fork h n) with h ⊑? lₐ
+εᴱ lₐ (Fork h n) | yes p = Fork h n
+εᴱ lₐ (Fork h n) | no ¬p = Step
+εᴱ lₐ e = e
+
+εᴹ : ∀ {l lₐ} -> Dec (l ⊑ lₐ) -> Message l -> Message l
+εᴹ {._} {lₐ} (yes p) (l , n , e) = l , n , εᴱ lₐ e
+εᴹ (no ¬p) (l , n , e) = l , n , ∙
+
+
+
 -- Erasure of global configuration
 εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
 εᵍ lₐ ⟨ s , Σ , ps ⟩ = ⟨ ε-state lₐ s , εˢ lₐ Σ , ε-pools lₐ ps ⟩
