@@ -1,9 +1,12 @@
-module Security.NonInterference where
+module Security.Sequential.NonInterference where
 
 open import Typed.Base
 open import Typed.Semantics
 open import Typed.Proofs
-open import Security.Distributivity hiding (εˢ-≡)
+open import Security.Sequential.Distributivity hiding (εˢ-≡)
+open import Typed.Determinism.Sequential
+open import Typed.Semantics
+
 open import Relation.Binary.PropositionalEquality
 open import Data.Sum
 
@@ -125,20 +128,3 @@ simulation⋆ eq (s₁ ∷ ss₁) isV₁ (s₂ ∷ ss₂) isV₂ = simulation⋆
 
 non-interference  : ∀ {l ls τ} {p₁ p₂ v₁ v₂ : Program ls τ} -> p₁ ≈ᵖ p₂ -> p₁ ⇓ v₁ -> p₂ ⇓ v₂ -> v₁ ≈ᵖ v₂
 non-interference eq (BigStep isV₁ ss₁) (BigStep isV₂ ss₂) = simulation⋆ eq ss₁ isV₁ ss₂ isV₂
-
---------------------------------------------------------------------------------
--- Concurrent calculus
---------------------------------------------------------------------------------
-
--- Global l-equivalence
-
-data _≈ᵍ_ {{lₐ : Label}} {ls : List Label} (g₁ g₂ : Global ls) : Set where
-  εᵍ-≡ : εᵍ lₐ g₁ ≡ εᵍ lₐ g₂ -> g₁ ≈ᵍ g₂
-
-unlift-≈ᵍ : ∀ {lₐ ls} {g₁ g₂ : Global ls} -> g₁ ≈ᵍ g₂ -> εᵍ lₐ g₁ ≡ εᵍ lₐ g₂
-unlift-≈ᵍ (εᵍ-≡ x) = x
-
-simulation↪ : ∀ {ls} {{lₐ : Label}} {g₁ g₂ g₁' g₂' : Global ls} -> g₁ ≈ᵍ g₂ -> g₁ ↪ g₁' -> g₂ ↪ g₂' -> g₁' ≈ᵍ g₂'
-simulation↪ {{lₐ}} p s₁ s₂ = εᵍ-≡ (aux (unlift-≈ᵍ p) (εᵍ-dist lₐ s₁) (εᵍ-dist lₐ s₂))
-  where aux : ∀ {ls} {t₁ t₂ t₃ t₄ : Global ls} -> t₁ ≡ t₂ -> t₁ ↪ t₃ -> t₂ ↪ t₄ -> t₃ ≡ t₄
-        aux refl s₁ s₂ = determinism↪ s₁ s₂

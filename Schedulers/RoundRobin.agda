@@ -102,3 +102,8 @@ determinism (fork p₁) (fork p₂) = refl
 determinism done done = refl
 determinism skip skip = refl
 determinism hole hole = refl
+
+
+open import Typed.Determinism.Concurrent (State) (_⟶_↑_) (determinism)
+open import Security.Concurrent State _⟶_↑_ εˢ ε-sch-dist ε-sch-≡
+

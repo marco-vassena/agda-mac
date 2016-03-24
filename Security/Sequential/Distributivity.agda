@@ -1,4 +1,4 @@
-module Security.Distributivity where
+module Security.Sequential.Distributivity where
 
 
 open import Security.Base public
