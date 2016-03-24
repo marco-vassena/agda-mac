@@ -1,7 +1,9 @@
-module Concurrent.Calculus where
+module Concurrent.Calculus (State : Set) where
 
 open import Data.List
-open import Sequential
+open import Sequential -- TODO remove
+
+-- Define here Pools!
 
 -------------------------------------------------------------------------------
 -- The global configuration is a thread pool paired with some shared split memory Σ

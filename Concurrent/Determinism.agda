@@ -1,9 +1,8 @@
-open import Sequential.Communication renaming (_,_,_ to ⟪_,_,_⟫)
+open import Concurrent.Communication renaming (_,_,_ to ⟪_,_,_⟫)
 open import Relation.Binary.PropositionalEquality as E
 open import Data.Product
 
-module Concurrent.Determinism where
-
+module Concurrent.Determinism
   (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
   (deterministic-scheduler : ∀ {s₁ s₂ s₃ l n e} ->
                                    s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ ->
@@ -11,10 +10,11 @@ module Concurrent.Determinism where
                                    s₂ ≡ s₃ ) where
 
 
+open import Concurrent.Calculus State
 
 open import Data.List.All
-open import Concurrent.Semantics
-import Concurrent.Communication as C
+import Concurrent.Semantics as C
+open import Sequential -- TODO remove
 
 open C State _⟶_↑_ 
 

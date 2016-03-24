@@ -1,49 +1,33 @@
 open import Types
-open import Typed.Communication renaming (Event to Eventˢ)
-open import Security.Base
+open import Concurrent.Communication renaming (Event to Eventˢ)
 open import Relation.Binary.PropositionalEquality
 
-module Security.Concurrent.Distributivity
+open import Concurrent.Security.Erasure
+
+module Concurrent.Security.Distributivity
   (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
   (ε-state : Label -> State -> State) -- Erasure function of the scheduler state
   (ε-sch-dist : ∀ {s₁ s₂ l lₐ} {m : Message l} -> (x : Dec (l ⊑ lₐ)) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ⟶ (ε-state lₐ s₂) ↑ (εᴹ x m))
   (ε-sch-≡ : ∀ {s₁ s₂ l lₐ} {m : Message l} -> ¬ (l ⊑ lₐ) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ≡ (ε-state lₐ s₂))
   where
 
-open import Typed.Base
-open import Typed.Semantics
-open import Security.Sequential.Distributivity
-open import Typed.Concurrent State _⟶_↑_
-
--- Erasure of global configuration
-εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
-εᵍ lₐ ⟨ s , Σ , ps ⟩ = ⟨ ε-state lₐ s , εˢ lₐ Σ , ε-pools lₐ ps ⟩
+open import Sequential.Semantics -- remove
+open import Concurrent.Calculus State
+open import Sequential.Security.Distributivity
+open import Concurrent.Semantics State _⟶_↑_
 
 --------------------------------------------------------------------------------
 
-open import Data.Sum
+  -- Erasure of global configuration
+εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
+εᵍ lₐ ⟨ s , Σ , ps ⟩ = ⟨ ε-state lₐ s , εˢ lₐ Σ , ε-pools lₐ ps ⟩
 
-εᵗ-extensional : ∀ {n l lₐ} (x y : Dec (l ⊑ lₐ)) (ts : Pool l n) -> εᵗ x ts ≡ εᵗ y ts
-εᵗ-extensional (yes p) (yes p₁) [] = refl
-εᵗ-extensional (yes p) (yes p₁) (x ◅ ts)
-  rewrite ε-Mac-extensional (yes p) (yes p₁) x | εᵗ-extensional (yes p) (yes p₁) ts = refl
-εᵗ-extensional (yes p) (yes p₁) ∙ = refl
-εᵗ-extensional (yes p) (no ¬p) ts = ⊥-elim (¬p p)
-εᵗ-extensional (no ¬p) (yes p) ts = ⊥-elim (¬p p)
-εᵗ-extensional (no ¬p) (no ¬p₁) ts = refl
+-- TODO move to the right place
+εᵉ : Label -> Event -> Event
+εᵉ lₐ ∅ = ∅
+εᵉ lₐ (fork t) = fork (ε lₐ t)
 
-εᵗ∙≡∙ : ∀ {l lₐ} -> (x : Dec (l ⊑ lₐ)) -> (n : ℕ) -> εᵗ x ∙ ≡ (∙ {n = n})
-εᵗ∙≡∙ (yes p) _ = refl
-εᵗ∙≡∙ (no ¬p) _ = refl
-
-ε-▻-≡ : ∀ {n l lₐ} (p : l ⊑ lₐ) (t : Thread l) (ts : Pool l n) -> εᵗ (yes p) (ts ▻ t) ≡ (εᵗ (yes p) ts ▻ ε-Mac lₐ (yes p) t)
-ε-▻-≡ p t [] = refl
-ε-▻-≡ p t (x ◅ ts) rewrite ε-▻-≡ p t ts = refl
-ε-▻-≡ p t ∙ = refl
-
-ε-IsValue : ∀ {τ l lₐ} {t : CTerm (Mac l τ)} -> (p : l ⊑ lₐ) -> IsValue t -> IsValue (ε-Mac lₐ (yes p) t)
-ε-IsValue p (Mac t) = Mac (ε _ t)
-ε-IsValue p (Macₓ e) = Macₓ (ε _ e)
+open Program
 
 ε-Blocked : ∀ {l lₐ τ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Blocked Σ t -> Blocked (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t)
 ε-Blocked {l} {lₐ} p (onPut q r) with l ⊑? lₐ
@@ -52,20 +36,6 @@ open import Data.Sum
 ε-Blocked {l} {lₐ} p (onTake q r) with l ⊑? lₐ
 ε-Blocked p₁ (onTake q r) | yes p = onTake q (ε-TypedIx p₁ _ q r)
 ε-Blocked p (onTake q r) | no ¬p = ⊥-elim (¬p p)
-
-fork-⊑ : ∀ {ls τ l h} {p₁ p₂ : Program ls (Mac l τ)} {t : Thread h }  -> p₁ ⟼ p₂ ↑ fork t -> l ⊑ h
-fork-⊑ (fork p t s) = p
-
-εᵗ-yes-≡ : ∀ {n l lₐ} -> (p : l ⊑ lₐ) (ts : Pool l n) (t : Thread l) -> εᵗ (yes p) (ts ▻ t) ≡ (εᵗ (yes p) ts ▻ ε-Mac _ (yes p) t)
-εᵗ-yes-≡ p [] t = refl
-εᵗ-yes-≡ p (x ◅ ts) t rewrite εᵗ-yes-≡ p ts t = refl
-εᵗ-yes-≡ p ∙ t = refl
-
-εᵉ : Label -> Event -> Event
-εᵉ lₐ ∅ = ∅
-εᵉ lₐ (fork t) = fork (ε lₐ t)
-
-open Program
 
 ε-IsFork : ∀ {lₐ τ l} {t : CTerm (Mac l τ)}(x : Dec (l ⊑ lₐ)) -> ¬ (IsFork t) -> ¬ (IsFork (ε-Mac lₐ x t))
 ε-IsFork {t = t} x nF y = aux x t nF y

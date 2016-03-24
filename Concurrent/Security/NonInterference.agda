@@ -1,10 +1,9 @@
 open import Types
-open import Typed.Communication renaming (_,_,_ to ⟪_,_,_⟫)
-open import Security.Base
+open import Concurrent.Communication renaming (_,_,_ to ⟪_,_,_⟫)
 open import Relation.Binary.PropositionalEquality
+open import Concurrent.Security.Erasure
 
-module Security.Concurrent.NonInterference
-
+module Concurrent.Security.NonInterference
   (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
   (ε-state : Label -> State -> State) -- Erasure function of the scheduler state
   (ε-sch-dist : ∀ {s₁ s₂ l lₐ} {m : Message l} -> (x : Dec (l ⊑ lₐ)) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ⟶ (ε-state lₐ s₂) ↑ (εᴹ x m))
@@ -18,9 +17,10 @@ module Security.Concurrent.NonInterference
   where
 
 
-open import Typed.Determinism.Concurrent State _⟶_↑_ deterministic-scheduler
-open import Security.Concurrent.Distributivity State _⟶_↑_ ε-state ε-sch-dist ε-sch-≡
-open import Typed.Concurrent State _⟶_↑_
+open import Concurrent.Determinism State _⟶_↑_ deterministic-scheduler
+open import Concurrent.Security.Distributivity State _⟶_↑_ ε-state ε-sch-dist ε-sch-≡
+open import Concurrent.Calculus State
+open import Concurrent.Semantics State _⟶_↑_
 
 
 -- Global l-equivalence

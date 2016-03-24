@@ -5,7 +5,9 @@ open import Concurrent.Communication as C
 module Concurrent.Semantics (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set) where
 
 open import Data.List
+open import Concurrent.Calculus (State)
 open import Sequential
+
 
 --------------------------------------------------------------------------------
 -- Lookup threads and thread pools
@@ -31,6 +33,14 @@ data UpdatePool {l : Label} {n : ℕ} (p₂ : Pool l n) : ∀ {ls} -> Pools ls -
   There : ∀ {l' n' ls} {u : Unique l' ls} {ps₁ ps₂ : Pools ls} {p' : Pool l' n'} -> UpdatePool p₂ ps₁ ps₂ -> UpdatePool p₂ (p' ◅ ps₁) (p' ◅ ps₂)
 
 --------------------------------------------------------------------------------
+
+-- The proof that a term is blocked
+data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set where
+  onPut : ∀ {l n τ} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) -> Blocked Σ (putMVar (Res n) t)
+  onTake : ∀ {l n τ} (q : l ∈ ls) (r : TypedIx τ E n (getMemory q Σ)) -> Blocked Σ (takeMVar {α = τ} (Res n))
+
+
+--------------------------------------------------------------------------------
 -- TODO remove!
 -- Allocate new thread in a pool
 
@@ -41,12 +51,6 @@ data NewThread {l : Label} (t : Thread l) : ∀ {n} -> Pool l n -> Pool l (suc n
 
 --------------------------------------------------------------------------------
 
--- The proof that a term is blocked
-data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set where
-  onPut : ∀ {l n τ} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) -> Blocked Σ (putMVar (Res n) t)
-  onTake : ∀ {l n τ} (q : l ∈ ls) (r : TypedIx τ E n (getMemory q Σ)) -> Blocked Σ (takeMVar {α = τ} (Res n))
-
---------------------------------------------------------------------------------
 -- Syntactic sugar
 
 _[_]=_ : ∀ {ls n} -> Pools ls -> (l : Label) -> Pool l n -> Set
