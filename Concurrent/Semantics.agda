@@ -145,7 +145,7 @@ data Global (ls : List Label) : Set where
 -- Concurrent semantics
 data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global ls -> Set where
 
-  -- Sequential stop
+  -- Sequential step
   step : ∀ {s₁ s₂ n'} {t₁ t₂ : Thread l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} {ts₁ ts₂ : Pool l n'} ->
   
             ps₁ [ l ]= ts₁ ->
@@ -177,6 +177,10 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
 
   -- The pool at this level is collapsed, nothing to do.
   hole : ∀ {s n'} {Σ : Store ls} {ps : Pools ls} ->
+
+  -- TODO we can also model this as ⟨ Σ ∣ ∙ ⟩ → ⟨ Σ ∣ ∙ ⟩ ↑ ∙
+  -- Is this maybe more intutive?
+  
          ps [ l ]= (∙ {n = n'}) ->
          s ⟶ s ↑ (l , n , ∙) ->
          l , n ⊢ ⟨ s , Σ , ps ⟩ ↪ ⟨ s , Σ , ps ⟩

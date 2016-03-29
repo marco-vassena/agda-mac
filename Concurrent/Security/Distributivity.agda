@@ -154,7 +154,6 @@ open Program
 ... | yes p = ⊥-elim (¬p₁ p)
 ... | no _ = refl
 
--- TODO refactoring
 εᵍ-dist : ∀ {l n ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> l , n ⊢ g₁ ↪ g₂ -> l , n ⊢ (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
 
 εᵍ-dist {l} lₐ (step r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
@@ -163,19 +162,14 @@ open Program
 εᵍ-dist {l} {n}  lₐ (step r₁ r₂ st sc w₁ w₂) | no ¬p | sc' with ε-read∙ ¬p r₁
 ... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-sch-≡ ¬p sc = hole x sc'
 
-εᵍ-dist {l} lₐ (fork r₁ r₂ r₃ st sc  w₁ w₂ w₃) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
-εᵍ-dist {l} {n} lₐ (fork {h = h} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' with h ⊑? lₐ | ε-update-▻ {ts = tsʰ} {t = tʰ} (h ⊑? lₐ) w₃
-εᵍ-dist lₐ (fork {h = h} {nʰ = nʰ} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | yes p₁ | u
-  rewrite ε-fork? {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional (yes p₁) (h ⊑? lₐ) tʰ
-  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (yes p₁) r₃)
-      (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) u
-εᵍ-dist lₐ (fork {h = h} {nʰ = nʰ} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc' | no ¬p | u
-  rewrite ε-fork? {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional (no ¬p) (h ⊑? lₐ) tʰ
-  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ (no ¬p) r₃)
-      (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) u
+εᵍ-dist {l} lₐ (fork r₁ r₂ r₃ st sc  w₁ w₂ w₃) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc   
+εᵍ-dist {l} {n} lₐ (fork {h = h} {nʰ = nʰ} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc'
+  with h ⊑? lₐ | ε-update-▻ {ts = tsʰ} {t = tʰ} (h ⊑? lₐ) w₃ 
+... | x | u rewrite ε-fork? {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional x (h ⊑? lₐ) tʰ
+  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ x r₃) (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) u
 εᵍ-dist {l} {n} lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | no ¬p | sc' with ε-read∙ ¬p r₁ 
 ... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-write-≡ (trans-⋢ (fork-⊑ st) ¬p) w₃ | ε-sch-≡ ¬p sc = hole x sc'
-
+  
 εᵍ-dist {l} lₐ (hole r sc) with l ⊑? lₐ
 εᵍ-dist lₐ (hole r sc) | yes p = hole (ε-read-hole r) (ε-sch-dist (yes p) sc)
 εᵍ-dist lₐ (hole r sc) | no ¬p = hole (ε-read-hole r) (ε-sch-dist (no ¬p) sc)

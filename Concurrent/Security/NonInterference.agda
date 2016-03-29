@@ -38,3 +38,6 @@ simulation↪ : ∀ {ls l n} {{lₐ : Label}} {g₁ g₂ g₁' g₂' : Global ls
 simulation↪ {{lₐ}} p s₁ s₂ = εᵍ-≡ (aux (unlift-≈ᵍ p) (εᵍ-dist lₐ s₁) (εᵍ-dist lₐ s₂))
   where aux : ∀ {ls l n} {t₁ t₂ t₃ t₄ : Global ls} -> t₁ ≡ t₂ -> l , n ⊢ t₁ ↪ t₃ -> l , n ⊢ t₂ ↪ t₄ -> t₃ ≡ t₄
         aux refl s₁ s₂ = determinism↪ s₁ s₂
+
+
+-- TODO prove non-interference for multiple steps.

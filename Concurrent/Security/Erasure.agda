@@ -6,7 +6,7 @@ open import Sequential.Security.Distributivity
 open import Concurrent.Communication
 open import Relation.Binary.PropositionalEquality
 
--- -- Erasure of thread pool
+-- Erasure of thread pool
 εᵗ : ∀ {n} {l lₐ : Label} -> Dec (l ⊑ lₐ) -> Pool l n -> Pool l n
 εᵗ (yes p) [] = []
 εᵗ (yes p) (t ◅ ts) = (ε-Mac _ (yes p) t) ◅ (εᵗ (yes p) ts)

@@ -1,7 +1,7 @@
 module Schedulers.RoundRobin where
 
 open import Types
-open import Typed.Communication renaming (_,_,_ to ⟪_,_,_⟫)
+open import Concurrent.Communication renaming (_,_,_ to ⟪_,_,_⟫)
 open import Data.Product
 open import Data.Nat
 open import Data.List
@@ -22,7 +22,7 @@ data _⟶_↑_ : ∀ {l} -> State -> State -> Message l -> Set where
   skip : ∀ {s l n} -> ((l , n) ∷ s) ⟶ s ++ [ (l , n) ] ↑ ⟪ l , n , NoStep ⟫
   hole : ∀ {s l n} -> s ⟶ s ↑ ⟪ l , n , ∙ ⟫
 
-open import Security.Base hiding (εˢ)
+open import Concurrent.Security.Erasure
 open import Relation.Binary.PropositionalEquality hiding ([_])
 
 εˢ-append-yes : ∀ {l lₐ} {{n}} -> (xs : State) -> l ⊑ lₐ -> εˢ lₐ xs ++ [ l , n ] ≡ εˢ lₐ (xs ++ [ l , n ])
@@ -104,6 +104,5 @@ determinism skip skip = refl
 determinism hole hole = refl
 
 
-open import Typed.Determinism.Concurrent (State) (_⟶_↑_) (determinism)
-open import Security.Concurrent State _⟶_↑_ εˢ ε-sch-dist ε-sch-≡
-
+open import Concurrent.Determinism (State) (_⟶_↑_) (determinism)
+open import Concurrent.Security.NonInterference State _⟶_↑_ εˢ ε-sch-dist ε-sch-≡
