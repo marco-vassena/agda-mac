@@ -7,7 +7,7 @@ module Concurrent.Semantics (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> Stat
 
 open import Data.Nat
 open import Data.List
-open import Sequential.Semantics
+open import Sequential.Semantics 
 
 --------------------------------------------------------------------------------
 -- Lookup threads and thread pools
@@ -138,9 +138,23 @@ fork? {h} t n | no ¬p = Fork h n
 
 -------------------------------------------------------------------------------
 -- The global configuration is a thread pool paired with some shared split memory Σ
-data Global (ls : List Label) : Set where
-  ⟨_,_,_⟩ : State -> (Σ : Store ls) -> (ps : Pools ls) -> Global ls
- 
+record Global (ls : List Label) : Set where
+  constructor ⟨_,_,_⟩
+  field state : State
+  field storeᵍ : Store ls
+  field pools : Pools ls
+
+open Global
+open import Relation.Binary.PropositionalEquality
+
+state-≡ : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ≡ g₂ -> state g₁ ≡ state g₂
+state-≡ refl = refl
+
+storeᵍ-≡ : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ≡ g₂ -> storeᵍ g₁ ≡ storeᵍ g₂
+storeᵍ-≡ refl = refl
+
+pools-≡ : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ≡ g₂ -> pools g₁ ≡ pools g₂
+pools-≡ refl = refl
 
 -- Concurrent semantics
 data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global ls -> Set where
@@ -207,3 +221,21 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
 
   -- TODO do we need an event Done_Exit ? How would it be different from the current exit?
   -- Bear in mind that our transitions are always of the form ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
+
+
+open import Data.Product
+
+Ids : Set
+Ids = List (Label × ℕ)
+
+-- Transitive closure of the concurrent small step
+data _⊢_↪⋆_ {ls : List Label} : Ids -> Global ls -> Global ls -> Set where
+
+  -- Zero steps
+  [] : ∀ {g} -> [] ⊢ g ↪⋆ g 
+
+  -- More steps
+  _∷_ : ∀ {l n lns g₁ g₂ g₃} ->
+             l , n ⊢ g₁ ↪ g₂ ->
+             lns ⊢ g₂ ↪⋆ g₃ ->
+             ((l , n) ∷ lns) ⊢ g₁ ↪⋆ g₃
