@@ -225,17 +225,11 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
 
 open import Data.Product
 
-Ids : Set
-Ids = List (Label × ℕ)
-
 -- Transitive closure of the concurrent small step
-data _⊢_↪⋆_ {ls : List Label} : Ids -> Global ls -> Global ls -> Set where
+data _↪⋆_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   -- Zero steps
-  [] : ∀ {g} -> [] ⊢ g ↪⋆ g 
+  [] : ∀ {g} -> g ↪⋆ g 
 
   -- More steps
-  _∷_ : ∀ {l n lns g₁ g₂ g₃} ->
-             l , n ⊢ g₁ ↪ g₂ ->
-             lns ⊢ g₂ ↪⋆ g₃ ->
-             ((l , n) ∷ lns) ⊢ g₁ ↪⋆ g₃
+  _∷_ : ∀ {l n g₁ g₂ g₃} -> l , n ⊢ g₁ ↪ g₂ -> g₂ ↪⋆ g₃ -> g₁ ↪⋆ g₃
