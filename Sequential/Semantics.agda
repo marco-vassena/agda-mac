@@ -179,3 +179,13 @@ mutual
   NormalForm s₁ c = ¬ Redex s₁ c
 
 --------------------------------------------------------------------------------
+
+data Stuck {ls : List Label} {τ : Ty} (Σ : Store ls) (t : CTerm τ) : Set where
+  stuck : ∀ {Σ' : Store ls} {t' : CTerm τ} -> ¬ (⟨ Σ ∥ t ⟩ ⟼ ⟨ Σ' ∥ t' ⟩) -> ¬ (IsValue t) -> Stuck Σ t
+
+data PStatus {ls : List Label} {τ : Ty} (Σ : Store ls) (t : CTerm τ) : Set where
+  V : IsValue t -> PStatus Σ t
+  R : Redex Σ t -> PStatus Σ t
+  S : Stuck Σ t -> PStatus Σ t
+  
+postulate programStatus : ∀ {τ ls} -> (Σ : Store ls) (t : CTerm τ) -> PStatus Σ t
