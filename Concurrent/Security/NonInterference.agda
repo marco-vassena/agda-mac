@@ -28,20 +28,31 @@ open import Sequential.Security.NonInterference hiding (_≈ᵖ_ ; non-interfere
 
 open Global
 
---- TODO it seems that for some auxiliary lemmas we need a more structural definition of low equivalence
 data _≈ᴾ_ {{lₐ : Label}} {ls : List Label} (ps₁ ps₂ : Pools ls) : Set where
   εᵖ-≡ : εᵖ lₐ ps₁ ≡ εᵖ lₐ ps₂ -> ps₁ ≈ᴾ ps₂
 
 _≈ᴾ-⟨_⟩_ : ∀ {ls} -> Pools ls -> Label -> Pools ls -> Set
 g₁ ≈ᴾ-⟨ lₐ ⟩ g₂ = g₁ ≈ᴾ g₂
 
+sym-≈ᴾ : ∀ {ls lₐ} {p₁ p₂ : Pools ls} -> p₁ ≈ᴾ p₂ -> p₂ ≈ᴾ p₁
+sym-≈ᴾ (εᵖ-≡ x) = εᵖ-≡ (sym x)
+
+trans-≈ᴾ : ∀ {ls lₐ} {p₁ p₂ p₃ : Pools ls} -> p₁ ≈ᴾ p₂ -> p₂ ≈ᴾ p₃ -> p₁ ≈ᴾ p₃
+trans-≈ᴾ (εᵖ-≡ x) (εᵖ-≡ y) = εᵖ-≡ (trans x y)
 
 data _≈ᵀ_ {{lₐ : Label}} (s₁ s₂ : State) : Set where
   ε-≡ : ε-state lₐ s₁ ≡ ε-state lₐ s₂ -> s₁ ≈ᵀ s₂
 
 _≈ᵀ-⟨_⟩_ : State -> Label -> State -> Set
 s₁ ≈ᵀ-⟨ lₐ ⟩ s₂ = s₁ ≈ᵀ s₂
- 
+
+sym-≈ᵀ : ∀ {lₐ} {s₁ s₂ : State} -> s₁ ≈ᵀ s₂ -> s₂ ≈ᵀ s₁
+sym-≈ᵀ (ε-≡ x) = ε-≡ (sym x)
+
+trans-≈ᵀ : ∀ {lₐ} {s₁ s₂ s₃ : State} -> s₁ ≈ᵀ s₂ -> s₂ ≈ᵀ s₃ -> s₁ ≈ᵀ s₃
+trans-≈ᵀ (ε-≡ x) (ε-≡ y) = ε-≡ (trans x y)
+
+
 -- Global l-equivalence
 data _≈ᵍ_ {{lₐ : Label}} {ls : List Label} (g₁ g₂ : Global ls) : Set where
   ⟨_,_,_⟩ : state g₁ ≈ᵀ state g₂ -> storeᵍ g₁ ≈ˢ storeᵍ g₂ -> pools g₁ ≈ᴾ pools g₂ -> g₁ ≈ᵍ g₂
@@ -50,6 +61,11 @@ data _≈ᵍ_ {{lₐ : Label}} {ls : List Label} (g₁ g₂ : Global ls) : Set w
 -- data _≈ᵍ_ {{lₐ : Label}} {ls : List Label} (g₁ g₂ : Global ls) : Set where
 --   εᵍ-≡ : εᵍ lₐ g₁ ≡ εᵍ lₐ g₂ -> g₁ ≈ᵍ g₂
 
+sym-≈ᵍ : ∀ {ls lₐ} {g₁ g₂ : Global ls} -> g₁ ≈ᵍ g₂ -> g₂ ≈ᵍ g₁
+sym-≈ᵍ ⟨ x , y , z ⟩ = ⟨ (sym-≈ᵀ x) , (sym-≈ˢ y) , (sym-≈ᴾ z) ⟩
+
+trans-≈ᵍ : ∀ {ls lₐ} {g₁ g₂ g₃ : Global ls} -> g₁ ≈ᵍ g₂ -> g₂ ≈ᵍ g₃ -> g₁ ≈ᵍ g₃
+trans-≈ᵍ ⟨ x₁ , y₁ , z₁ ⟩ ⟨ x₂ , y₂ , z₂ ⟩ = ⟨ trans-≈ᵀ x₁ x₂ , trans-≈ˢ y₁ y₂ , trans-≈ᴾ z₁ z₂ ⟩
 
 --- Syntactic sugar to avoid ambiguities
 _≈ᵍ-⟨_⟩_ : ∀ {ls} -> Global ls -> Label -> Global ls -> Set
@@ -78,8 +94,6 @@ open import Sequential.Semantics
 data Stuck {ls : List Label} {τ : Ty} (Σ : Store ls) (t : CTerm τ) : Set where
   stuck : ∀ {Σ' : Store ls} {t' : CTerm τ} -> ¬ (⟨ Σ ∥ t ⟩ ⟼ ⟨ Σ' ∥ t' ⟩) -> ¬ (IsValue t) -> Stuck Σ t
 
--- Stuck c = {!!}
-
 data PStatus {ls : List Label} {τ : Ty} (Σ : Store ls) (t : CTerm τ) : Set where
   V : IsValue t -> PStatus Σ t
   R : Redex Σ t -> PStatus Σ t
@@ -95,20 +109,9 @@ high-step ¬p (hole r sc) = ⟨ ε-≡ (ε-sch-≡ ¬p sc) , εˢ-≡ refl , ε�
 high-step ¬p (skip r₁ r₂ b sc) = ⟨ ε-≡ (ε-sch-≡ ¬p sc) , εˢ-≡ refl , εᵖ-≡ refl ⟩
 high-step ¬p (exit r₁ r₂ isV sc) = ⟨ ε-≡ (ε-sch-≡ ¬p sc) , εˢ-≡ refl , εᵖ-≡ refl ⟩
 
--- lemma : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
--- lemma (step r₁ r₂ st sc w₁ w₂) eq = {!!}
--- lemma (fork x x₁ x₂ x₃ x₄ x₅ x₆ x₇) eq = {!!}
--- lemma (hole x x₁) eq = _ , (eq , [])
--- lemma (skip x x₁ x₂ x₃) eq = {!!}
--- lemma (exit x x₁ x₂ x₃) eq = {!!}
-
-lemma : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × l , n ⊢ g₁' ↪ g₂' )
-lemma (yes p) s eq = {!!}
-lemma (no ¬p) (step x x₁ x₂ x₃ x₄ x₅) eq = {!!}
-lemma (no ¬p) (fork x x₁ x₂ x₃ x₄ x₅ x₆ x₇) eq = {!!}
-lemma (no ¬p) (hole x x₁) eq = {!!}
-lemma (no ¬p) (skip x x₁ x₂ x₃) eq = {!!}
-lemma (no ¬p) (exit x x₁ x₂ x₃) eq = {!!}
+lemma : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
+lemma (yes p) eq s = {!!}
+lemma {g₁' = g₁'} (no ¬p) eq s = g₁' , trans-≈ᵍ (sym-≈ᵍ (high-step ¬p s)) eq , []
 
 -- -- I don't see how we can deduce from the hypothesis that a g₂' exists.
 -- -- I can use distributivity and produce a step in the erased world, but how do I get back and get g₂' from it?
