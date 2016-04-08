@@ -15,11 +15,6 @@ module Concurrent.Security.NonInterference
                                    s₁ ⟶ s₃ ↑ ⟪ l , n , e ⟫ ->
                                    s₂ ≡ s₃ )
 
-
-  (non-interference-scheduler : ∀ {s₁ s₁' s₂ l n e lₐ} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> ε-state lₐ s₁ ≡ ε-state lₐ s₁' ->
-                                      ∃ λ s₂' -> (ε-state lₐ s₂ ≡ ε-state lₐ s₂') × (s₁' ⟶ s₂' ↑ ⟪ l , n , e ⟫))
-
-
   where
 
 
@@ -207,19 +202,60 @@ getPool Here (ts ◅ ps) = HP Here
 getPool (There r) (ts ◅ ps) with getPool r ps
 getPool (There r) (ts₁ ◅ ps) | HP x = HP (There x)
 
+open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state
+
+-- TODO move this as a parameter to the module
+postulate scheduler-ni : ∀ {s₁ s₁' s₂ l lₐ} {m : Message l} -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ lₐ ⟩ s₁' ->
+                           ∃ λ s₂' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' × {!!} , lₐ ⊢ s₁' ⟶⋆ s₂' ↑ m
+
+-- This lemma needs to be proved.
+-- It gets called when the two configurations are finally aligned (run the same low step).
+-- 
+postulate lemma₃ : ∀ {ls l lₐ s₂' n e} {g₁ g₂ g₁' : Global ls} ->
+                     let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
+                         ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
+                         ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁' in
+                     g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' -> s₁' ⟶ s₂' ↑ ⟪ l , n , e ⟫  ->
+                     l , n ⊢ g₁ ↪ g₂ -> ∃ (λ Σ₂' -> ∃ (λ ps₂' -> l , n ⊢ g₁' ↪ ⟨ s₂' , Σ₂' , ps₂' ⟩ ×  g₂ ≈ᵍ-⟨ lₐ ⟩ ⟨ s₂' , Σ₂' , ps₂' ⟩)) 
+
+-- How can we enforce that the scheduler chooses a valid thread id?
+-- Here I need something more refined e.g. ps[ l ][ n ]= t
+-- Maybe I should merge directly ps[ l ]= ts and ts [ n ]= t in a single data-type
+postulate threadToRun : ∀ {ls} (l : Label) (n : ℕ) (g₁ : Global ls) -> Thread l
+
+-- TODO here I definitevely need the proof ps [ l ][ n ]= t where ps = pools g₁
+-- This shouldn't be too bad. Depending on the status and the reduction only one rule apply!
+-- postulate nextStep : ∀ {ls l } {Σ : Store ls} {t : Thread l} -> (n : ℕ) -> PStatus Σ t -> (g₁ : Global ls) -> ∃ λ g₂ -> l , n ⊢ g₁ ↪ g₂
+postulate nextEvent : ∀ {ls l } {Σ : Store ls} {t : Thread l} -> PStatus Σ t -> Event
+
+lemma₂ : ∀ {ls l n n' e lₐ  s₂'} {g₁ g₂ g₁' : Global ls} ->
+           let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
+               ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
+               ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁' in l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' -> n' , lₐ ⊢ s₁' ⟶⋆ s₂' ↑ ⟪ l , n , e ⟫ ->
+                 ∃ (λ Σ₂' -> ∃ (λ ps₂' -> ⟨ s₁' , Σ₁' , ps₁' ⟩ ↪⋆ ⟨ s₂' , Σ₂' , ps₂' ⟩ ×  g₂ ≈ᵍ-⟨ lₐ ⟩ ⟨ s₂' , Σ₂' , ps₂' ⟩)) 
+lemma₂ sc eq₁ eq₂ (aligned s) with lemma₃ eq₁ eq₂ s sc
+... | Σ₂' , ps₂' , s' , eq' = Σ₂' , (ps₂' , ((s' ∷ []) , eq'))
+lemma₂ {g₁ = ⟨ s₁ , _ , _ ⟩} {g₂ = ⟨ s₂ , _ , _ ⟩}  {g₁' = g₁' } sc ⟨ eq1 , eq2 , eq3 ⟩ eq₂ (high {h} {n} ¬p k)
+  with nextEvent (programStatus (storeᵍ g₁') (threadToRun h n g₁'))
+... | e with k e  -- Here I should generate the next global step depending on the status
+... | s₂' , s , x with lemma₂ sc ⟨ trans-≈ᵀ eq1 (ε-sch-≡ ¬p s) , eq2 , eq3 ⟩ eq₂ x
+... | Σ₂' , ps₂' , ss ,  eq' = Σ₂' , (ps₂' , (({!s!} ∷ ss) , eq')) 
+
+
 lemma : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
-lemma (yes p) eq (step x x₁ x₂ x₃ x₄ x₅) = {!!}
-lemma (yes p) eq (fork x x₁ x₂ x₃ x₄ x₅ x₆ x₇) = {!!}
-lemma (yes p) eq (hole x x₁) = {!!}
-lemma (yes p) eq (skip x x₁ x₂ x₃) = {!!}
-lemma {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ (exit r₁ r₂ isV sc) with getPool (read-∈ r₁) ps₁'
-... | HP r₁' with read-≈' p (read-≌ᴾ eq₃ r₁ r₁') r₂
-... | t , eq' , r₂' with non-interference-scheduler p sc eq₁
-... | s₂' , eq₁' , sc' = _ , (⟨ eq₁' , eq₂ , eq₃ ⟩ , ((exit r₁' r₂' (valueᴸ p isV eq') sc') ∷ []))
+lemma {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s with getSchedulerStep s
+... | e , sc with scheduler-ni sc eq₁
+... | s₂' , eq₁' , ss  with lemma₂ s ⟨ eq₁ , eq₂ , eq₃ ⟩ eq₁' ss
+... | Σ₂' , ps₂' , gs , eq₂' = ⟨ s₂' , Σ₂' , ps₂' ⟩ , eq₂' , gs
 lemma {g₁' = g₁'} (no ¬p) eq s = g₁' , trans-≈ᵍ (sym-≈ᵍ (high-step ¬p s)) eq , []
 
--- -- -- I don't see how we can deduce from the hypothesis that a g₂' exists.
--- -- -- I can use distributivity and produce a step in the erased world, but how do I get back and get g₂' from it?
+--  with getPool (read-∈ r₁) ps₁'
+-- ... | HP r₁' with read-≈' p (read-≌ᴾ eq₃ r₁ r₁') r₂
+-- ... | t , eq' , r₂' with scheduler-ni sc eq₁
+-- with 
+-- non-interference-scheduler p sc eq₁
+-- ... | s₂' , eq₁' , sc' = _ , (⟨ eq₁' , eq₂ , eq₃ ⟩ , ((exit r₁' r₂' (valueᴸ p isV eq') sc') ∷ []))
+
 -- -- non-interference : ∀ {ls l n} {g₁ g₁' g₂ : Global ls} -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × (l , n ⊢ g₁' ↪ g₂'))
 -- -- non-interference {g₁ = g₁} {g₁'} {g₂} lₐ (εᵍ-≡ x) s with εᵍ-dist lₐ s
 -- -- ... | r = {!!} , ({!!} , {!r!})

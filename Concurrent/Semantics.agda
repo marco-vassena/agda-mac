@@ -192,7 +192,7 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
   -- The pool at this level is collapsed, nothing to do.
   hole : ∀ {s n'} {Σ : Store ls} {ps : Pools ls} ->
 
-  -- TODO we can also model this as ⟨ Σ ∣ ∙ ⟩ → ⟨ Σ ∣ ∙ ⟩ ↑ ∙
+    -- TODO we can also model this as ⟨ Σ ∣ ∙ ⟩ → ⟨ Σ ∣ ∙ ⟩ ↑ ∙
   -- Is this maybe more intutive?
   
          ps [ l ]= (∙ {n = n'}) ->
@@ -222,6 +222,14 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
   -- TODO do we need an event Done_Exit ? How would it be different from the current exit?
   -- Bear in mind that our transitions are always of the form ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
 
+open import Data.Product hiding (_,_)
+
+getSchedulerStep : ∀ {ls l n} {g₁ g₂ : Global ls} -> l , n ⊢ g₁ ↪ g₂ -> ∃ λ e -> (state g₁) ⟶ (state g₂) ↑ (l , n , e)
+getSchedulerStep (step x x₁ x₂ x₃ x₄ x₅) = , x₃
+getSchedulerStep (fork x x₁ x₂ x₃ x₄ x₅ x₆ x₇) = _ Σ., x₄
+getSchedulerStep (hole x x₁) = ∙ Σ., x₁
+getSchedulerStep (skip x x₁ x₂ x₃) = NoStep Σ., x₃
+getSchedulerStep (exit x x₁ x₂ x₃) = Done Σ., x₃
 
 open import Data.Product
 
