@@ -156,20 +156,47 @@ mutual
 
 open import Function
 
-non-interference : ∀ {s₁ s₁' s₂ l n e lₐ} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> s₁ ≈ˢ-⟨ lₐ ⟩ s₁' ->
-                         ∃ λ s₂' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' × (s₁' ⟶ s₂' ↑ ⟪ l , n , e ⟫)
-non-interference p hole nil = [] , (nil , hole)
-non-interference {s₁' = _ ∷ s₁'} p (step {s} {l} {n}) (consᴸ p₁ eq) with cong (flip _++_ [ (l , n) ]) (≈ˢ-≡ eq)
-... | eq' rewrite εˢ-append-yes {{n}} s p | εˢ-append-yes {{n}} s₁' p | ≈ˢ-≡ eq =  _ , ≡-≈ˢ eq' , step
-non-interference p step (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
-non-interference {s₁' = (h , n') ∷ s₁'} p step (cons₂ᴴ ¬p eq) with non-interference p step eq
-... | s₂' , eq' , sc' = {!sc'!}
--- with ∷-≡ (≈ˢ-≡ x)
--- ... | a , b = {!!}
-non-interference p (fork p₁) eq = {!!}
-non-interference p done eq = {!!}
-non-interference p skip eq = {!!}
-non-interference p hole eq = {!!}
+open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ hiding  ( _≈ˢ-⟨_⟩_  ; _≈ˢ_)
 
+++-≈ˢ : ∀ {s₁ s₂ lₐ x} -> s₁ ≈ˢ s₂ -> (s₁ ++ x) ≈ˢ (s₂ ++ x)
+++-≈ˢ {x = x} nil = ≡-≈ˢ refl
+++-≈ˢ (consᴸ p x₁) = consᴸ p (++-≈ˢ x₁)
+++-≈ˢ (cons₁ᴴ ¬p x₁) = cons₁ᴴ ¬p (++-≈ˢ x₁)
+++-≈ˢ (cons₂ᴴ ¬p x₁) = cons₂ᴴ ¬p (++-≈ˢ x₁)
+
+lemma' : ∀ {s₁ s₂ n l h} {m : Message l} -> s₁ ⟶ s₂ ↑ m -> (s₁ ++ [ h , n ]) ⟶ s₂ ↑ m
+lemma' {s₁ = (l , n) ∷ s} {s₂ = .(s ++ [ l , n ])} step = {!step!}
+lemma' (fork p) = {!!}
+lemma' done = {!!}
+lemma' skip = {!!}
+lemma' hole = {!!}
+
+lemma : ∀ {n lₐ s₁ s₂ h n' l} {m : Message l} -> n , lₐ ⊢ s₁ ⟶⋆ s₂ ↑ m -> n , lₐ ⊢ (s₁ ++ [ h , n' ]) ⟶⋆ s₂ ↑ m
+lemma (aligned x) = aligned (lemma' x)
+lemma (high x x₁) = high x {!!}
+--  where aux : (e : Event) -> 
+scheduler-ni : ∀ {s₁ s₁' s₂ l lₐ} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ lₐ ⟩ s₁' ->
+                           ∃ λ s₂' -> ∃ λ n -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' × n , lₐ ⊢ s₁' ⟶⋆ s₂' ↑ m
+scheduler-ni p hole nil = [] , (zero , (nil , (aligned hole)))
+scheduler-ni p step (consᴸ p' eq) = _ , (zero , (++-≈ˢ eq , (aligned step)))
+scheduler-ni p (fork p') (consᴸ p₁ eq) = _ , (0 , ({!!}  , (aligned (fork p')))) -- induction
+scheduler-ni p done (consᴸ p' eq) = _ , (zero , (eq , (aligned done)))
+scheduler-ni p skip (consᴸ p' eq) = _ , (zero , (++-≈ˢ eq , (aligned skip)))
+scheduler-ni p hole (consᴸ p' eq) = _ , (zero , (consᴸ p' eq , (aligned hole))) -- {!!} , ({!!} , ({!!} , (aligned {!s!})))
+scheduler-ni p step (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+scheduler-ni p (fork p₁) (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+scheduler-ni p done (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+scheduler-ni p skip (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+scheduler-ni p hole (cons₁ᴴ ¬p x) = _ , (zero , ((cons₁ᴴ ¬p x) , (aligned hole))) 
+scheduler-ni {s₁' = (h , n') ∷ s₁'} p s (cons₂ᴴ ¬p x) with scheduler-ni p s x
+scheduler-ni {s₁} {s₁' = (h , n') ∷ s₁'} {s₂} {l} {lₐ} {m = m} p s (cons₂ᴴ ¬p x) | s₃ , n , eq' , ss = s₃ , (suc n , (eq' , high ¬p aux))
+  where aux : (e : Event) -> ∃ λ s₂ -> ((h , n') ∷ s₁') ⟶ s₂ ↑ ⟪ h , n' , e ⟫  × n , lₐ ⊢ s₂ ⟶⋆ s₃ ↑ m
+        aux NoStep = {!!} , (skip , {!ss!}) -- Here it doesn't work because ss is s₁' ⟶ s₃, but now I have also to take care of (h , n) in the end
+        -- In other words s₁' ⟶ s₃' does not imply that s₁' ++ [ h , n ] ⟶ s₃
+        aux Step = {!!} , (step , {!ss!})
+        aux Done = {!!} , (done , ss)
+        aux (Fork h₁ n₁) = {!!} , ({!fork!} , {!!})
+        aux ∙ = {!!} , (hole , {!!}) -- Here I don't make any progress
+        
 open import Concurrent.Determinism (State) (_⟶_↑_) (determinism)
 -- open import Concurrent.Security.NonInterference State _⟶_↑_ εˢ ε-sch-dist ε-sch-≡
