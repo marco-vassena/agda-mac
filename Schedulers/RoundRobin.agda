@@ -156,7 +156,13 @@ mutual
 
 open import Function
 
-open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ hiding  ( _≈ˢ-⟨_⟩_  ; _≈ˢ_)
+offset : ∀ {s₁ s₂ lₐ} -> s₁ ≈ˢ-⟨ lₐ ⟩ s₂ -> ℕ
+offset nil = 0
+offset (consᴸ p x) = 0
+offset (cons₁ᴴ ¬p x) = suc (offset x)
+offset (cons₂ᴴ ¬p x) = suc (offset x) 
+
+open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ _≈ˢ-⟨_⟩_ offset
 
 ++-≈ˢ : ∀ {s₁ s₂ lₐ x} -> s₁ ≈ˢ s₂ -> (s₁ ++ x) ≈ˢ (s₂ ++ x)
 ++-≈ˢ {x = x} nil = ≡-≈ˢ refl
@@ -173,13 +179,6 @@ open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ hiding  ( _≈ˢ-
 ++'-≈ˢ ¬p (cons₁ᴴ ¬p₁ x) = cons₁ᴴ ¬p₁ (++'-≈ˢ ¬p x)
 ++'-≈ˢ ¬p (cons₂ᴴ ¬p₁ x) = cons₂ᴴ ¬p₁ (++'-≈ˢ ¬p x)
 
--- I don't need the offset, but the number of rounds to wait
-offset : ∀ {s₁ s₂ lₐ} -> s₁ ≈ˢ-⟨ lₐ ⟩ s₂ -> ℕ
-offset nil = 0
-offset (consᴸ p x) = 0
-offset (cons₁ᴴ ¬p x) = suc (offset x)
-offset (cons₂ᴴ ¬p x) = suc (offset x) 
-
 ≤-offset-++ : ∀ {s₁ s₂ l m h lₐ} {{n : ℕ}} -> (¬p : ¬ (h ⊑ lₐ)) (p : l ⊑ lₐ) -> (eq : ((l , m) ∷ s₁) ≈ˢ-⟨ lₐ ⟩ s₂) -> offset (++'-≈ˢ {{n}} ¬p eq) ≤ offset eq
 ≤-offset-++ ¬p p (consᴸ p₁ x) = z≤n
 ≤-offset-++ ¬p p (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
@@ -188,20 +187,6 @@ offset (cons₂ᴴ ¬p x) = suc (offset x)
 refl-≤ : ∀ {n} -> n ≤ n
 refl-≤ {zero} = z≤n
 refl-≤ {suc n} = s≤s refl-≤
-
-open import Data.Sum
-
---------------------------------------------------------------------------------
--- TODO move to Concurrent.Security.Scheduler
-
-data CloseUpStep {h lₐ s₁ s₁'} (m : Message h) (eq : s₁ ≈ˢ-⟨ lₐ ⟩ s₁') : Set where
-  cus : ∀ {s₂'} -> s₁' ⟶ s₂' ↑ m -> (eq' : s₁ ≈ˢ-⟨ lₐ ⟩ s₂' ) -> offset eq > offset eq' -> CloseUpStep m eq
-
-data Aligner {l lₐ s₁ s₁'} (m : Message l) (s₂ : State) (eq : s₁ ≈ˢ-⟨ lₐ ⟩ s₁') : Set where
-  aligned : ∀ {s₂'} ->  s₁' ⟶ s₂' ↑ m -> Aligner m s₂ eq
-  high : ∀ {h n} -> ¬ (h ⊑ lₐ) -> ({e : Event} -> e ≢ ∙ -> CloseUpStep ⟪ h , n , e ⟫ eq) -> Aligner m s₂ eq
-
---------------------------------------------------------------------------------
 
 aux : ∀ {s h l n n' s₁' lₐ} -> (eq : ((l , n') ∷ s) ≈ˢ-⟨ lₐ ⟩ s₁') -> l ⊑ lₐ -> (¬p : ¬ (h ⊑ lₐ)) ->
            {e : Event} -> e ≢ ∙ -> CloseUpStep {s₁' = (h , n) ∷ s₁'} ⟪ h , n , e ⟫ (cons₂ᴴ ¬p eq)
@@ -229,49 +214,6 @@ align {s₁' = (h , n) ∷ s₁'} p (fork p₁) (cons₂ᴴ ¬p eq) = high ¬p (
 align {s₁' = (h , n) ∷ s₁'} p done (cons₂ᴴ ¬p eq) = high ¬p (aux eq p ¬p )
 align {s₁' = (h , n) ∷ s₁'} p skip (cons₂ᴴ ¬p eq) = high ¬p (aux eq p ¬p )
 align {s₁' = (h , n) ∷ s₁'} p hole (cons₂ᴴ ¬p eq) = aligned hole
-
--- confluent : ∀ {s₁ s₁' s₂ l lₐ } {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ lₐ ⟩ s₁' ->
---                   ∃ λ n -> Confluent m lₐ s₁' s₂ n
-                  
---                   -- s₂ ≈ˢ-⟨ lₐ ⟩ s₂' × n , lₐ ⊢ s₁' ⟶⋆ s₂' ↑ m
--- confluent p hole nil = zero , aligned hole refl
--- confluent p step (consᴸ p₁ eq) = zero , aligned step (++-≡ˢ eq)
--- confluent p (fork p₁) (consᴸ p₂ eq) = zero , (aligned (fork p₁) {!!}) -- lemma
--- confluent p done (consᴸ p₁ eq) = 0 , aligned done (≈ˢ-≡ eq)
--- confluent p skip (consᴸ p₁ eq) = 0 , (aligned skip (++-≡ˢ eq))
--- confluent p hole (consᴸ p₁ eq) = 0 , (aligned hole (≈ˢ-≡ (consᴸ p₁ eq)))
--- confluent p step (cons₁ᴴ ¬p eq) = ⊥-elim (¬p p)
--- confluent p (fork p₁) (cons₁ᴴ ¬p eq) = ⊥-elim (¬p p)
--- confluent p done (cons₁ᴴ ¬p eq) = ⊥-elim (¬p p)
--- confluent p skip (cons₁ᴴ ¬p eq) = ⊥-elim (¬p p)
--- confluent p hole (cons₁ᴴ ¬p eq) = 0 , (aligned hole (≈ˢ-≡ (cons₁ᴴ ¬p eq)))
--- confluent {s₁} {s₁' = (h , n') ∷ s₁'} {s₂} {l} {lₐ} {m = m} p s (cons₂ᴴ ¬p eq) with confluent p s eq
--- ... | n , x = {!!} , (high ¬p {!aux!}) --  (suc n) , (high ¬p aux)
---   where aux : {e : Event} -> e ≢ ∙ -> ∃ (λ s₃ → ((h , n') ∷ s₁') ⟶ s₃ ↑ ⟪ h , n' , e ⟫ × Confluent m lₐ s₃ s₂ n)
---         aux {e} e≠∙ = {!!}
-        
--- scheduler-ni : ∀ {s₁ s₁' s₂ l lₐ} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ lₐ ⟩ s₁' ->
---                            ∃ λ s₂' -> ∃ λ n -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' × n , lₐ ⊢ s₁' ⟶⋆ s₂' ↑ m
--- scheduler-ni p hole nil = [] , (zero , (nil , (aligned hole)))
--- scheduler-ni p step (consᴸ p' eq) = _ , (zero , (++-≈ˢ eq , (aligned step)))
--- scheduler-ni p (fork p') (consᴸ p₁ eq) = _ , (0 , ({!!}  , (aligned (fork p')))) -- induction
--- scheduler-ni p done (consᴸ p' eq) = _ , (zero , (eq , (aligned done)))
--- scheduler-ni p skip (consᴸ p' eq) = _ , (zero , (++-≈ˢ eq , (aligned skip)))
--- scheduler-ni p hole (consᴸ p' eq) = _ , (zero , (consᴸ p' eq , (aligned hole))) -- {!!} , ({!!} , ({!!} , (aligned {!s!})))
--- scheduler-ni p step (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
--- scheduler-ni p (fork p₁) (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
--- scheduler-ni p done (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
--- scheduler-ni p skip (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
--- scheduler-ni p hole (cons₁ᴴ ¬p x) = _ , (zero , ((cons₁ᴴ ¬p x) , (aligned hole))) 
--- scheduler-ni {s₁' = (h , n') ∷ s₁'} p s (cons₂ᴴ ¬p x) with scheduler-ni p s x
--- scheduler-ni {s₁} {s₁' = (h , n') ∷ s₁'} {s₂} {l} {lₐ} {m = m} p s (cons₂ᴴ ¬p x) | s₃ , n , eq' , ss = s₃ , (suc n , (eq' , high ¬p aux))
---   where aux : (e : Event) -> ∃ λ s₂ -> ((h , n') ∷ s₁') ⟶ s₂ ↑ ⟪ h , n' , e ⟫  × n , lₐ ⊢ s₂ ⟶⋆ s₃ ↑ m
---         aux NoStep = {!2!} , (skip , {!ss!}) -- Here it doesn't work because ss is s₁' ⟶ s₃, but now I have also to take care of (h , n) in the end
---         -- In other words s₁' ⟶ s₃' does not imply that s₁' ++ [ h , n ] ⟶ s₃
---         aux Step = {!!} , (step , {!ss!})
---         aux Done = {!!} , (done , ss)
---         aux (Fork h₁ n₁) = {!!} , ({!fork!} , {!!})
---         aux ∙ = {!!} , (hole , {!!}) -- Here I don't make any progress
         
 open import Concurrent.Determinism (State) (_⟶_↑_) (determinism)
 -- open import Concurrent.Security.NonInterference State _⟶_↑_ εˢ ε-sch-dist ε-sch-≡
