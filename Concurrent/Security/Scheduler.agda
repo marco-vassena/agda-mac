@@ -18,11 +18,10 @@ _≈ˢ_ {{lₐ}} s₁ s₂ = (ε lₐ s₁) ≡ (ε lₐ s₂)
 _≈ˢ-⟨_⟩_ : State -> Label -> State -> Set
 s₁ ≈ˢ-⟨ lₐ ⟩ s₂ = s₁ ≈ˢ s₂
 
+-- The proof that eventually the scheduler will trigger the message m
+data Confluent {l} (m : Message l) (lₐ : Label) (s : State) (sᶠ : State) : ℕ -> Set where
+  aligned : ∀ {s₂} -> s ⟶ s₂ ↑ m -> sᶠ ≈ˢ-⟨ lₐ ⟩ s₂  -> Confluent m lₐ s sᶠ 0
+  high : ∀ {h n n'} -> ¬ (h ⊑ lₐ) -> (∀ {e} -> e ≢ ∙ -> ∃ (λ s₂ → s ⟶ s₂ ↑ ⟪ h , n , e ⟫ × Confluent m lₐ s sᶠ n')) -> Confluent m lₐ s sᶠ (suc n')
 
-data Aligner {l} (m : Message l) (lₐ : Label) (s₁ : State) : State -> ℕ -> Set where
-  aligned : ∀ {s₂} -> s₁ ⟶ s₂ ↑ m -> Aligner m lₐ s₁ s₂ 0
-  high : ∀ {h n n' s₃} -> ¬ (h ⊑ lₐ) -> ((e : Event) -> ∃ (λ s₂ → s₁ ⟶ s₂ ↑ ⟪ h , n , e ⟫ × Aligner m lₐ s₂ s₃ n')) -> Aligner m lₐ s₁ s₃ (suc n')
-
-
-_,_⊢_⟶⋆_↑_ : ∀ {l} -> ℕ -> Label -> State -> State -> Message l -> Set
-n , lₐ ⊢ s₁ ⟶⋆ s₂ ↑ m = Aligner m lₐ s₁ s₂ n
+-- _,_⊢_⟶⋆_↑_ : ∀ {l} -> ℕ -> Label -> State -> State -> Message l -> Set
+-- n , lₐ ⊢ s₁ ⟶⋆ s₂ ↑ m = Aligner m lₐ s₁ s₂ n
