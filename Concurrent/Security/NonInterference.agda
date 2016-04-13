@@ -7,7 +7,11 @@ open import Data.Product
 module Concurrent.Security.NonInterference
   (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
   (ε-state : Label -> State -> State) -- Erasure function of the scheduler state
+  (_≈ᵀ-⟨_⟩_ : State -> Label -> State -> Set)
+  (offset : {lₐ : Label} {s₁ s₂ : State} -> s₁ ≈ᵀ-⟨ lₐ ⟩ s₂ -> ℕ)
+
   (ε-sch-dist : ∀ {s₁ s₂ l lₐ} {m : Message l} -> (x : Dec (l ⊑ lₐ)) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ⟶ (ε-state lₐ s₂) ↑ (εᴹ x m))
+  -- TODO as long as ≈ is isomorphic to ≡ we can just stick to one of them!
   (ε-sch-≡ : ∀ {s₁ s₂ l lₐ} {m : Message l} -> ¬ (l ⊑ lₐ) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ≡ (ε-state lₐ s₂))
 
   (deterministic-scheduler : ∀ {s₁ s₂ s₃ l n e} ->
@@ -114,23 +118,29 @@ trans-≈ᴾ a b = ≡-≈ᴾ (trans (≈ᴾ-≡ a) (≈ᴾ-≡ b))
 -- data _≈ᵀ_ {{lₐ : Label}} (s₁ s₂ : State) : Set where
 --   ε-≡ : ε-state lₐ s₁ ≡ ε-state lₐ s₂ -> s₁ ≈ᵀ s₂
 
+
 _≈ᵀ_ : {{lₐ : Label}} (s₁ s₂ : State) -> Set
-_≈ᵀ_ {{lₐ}} s₁ s₂ = ε-state lₐ s₁ ≡ ε-state lₐ s₂
+_≈ᵀ_ {{lₐ}} s₁ s₂ = s₁ ≈ᵀ-⟨ lₐ ⟩ s₂
 
-_≈ᵀ-⟨_⟩_ : State -> Label -> State -> Set
-s₁ ≈ᵀ-⟨ lₐ ⟩ s₂ = s₁ ≈ᵀ s₂
+-- We need ≈ᵀ to be an isomoprphic to the ε based defintion
+-- Then we can even prove that it is an equivalence relation
 
-sym-≈ᵀ : ∀ {lₐ} {s₁ s₂ : State} -> s₁ ≈ᵀ s₂ -> s₂ ≈ᵀ s₁
-sym-≈ᵀ x = sym x
+postulate ≈ᵀ-≡ : ∀ {lₐ s₁ s₂} -> s₁ ≈ᵀ s₂ -> ε-state lₐ s₁ ≡ ε-state lₐ s₂
+postulate ≡-≈ᵀ : ∀ {lₐ s₁ s₂} -> ε-state lₐ s₁ ≡ ε-state lₐ s₂ -> s₁ ≈ᵀ s₂
 
-trans-≈ᵀ : ∀ {lₐ} {s₁ s₂ s₃ : State} -> s₁ ≈ᵀ s₂ -> s₂ ≈ᵀ s₃ -> s₁ ≈ᵀ s₃
-trans-≈ᵀ x y = trans x y
+
+postulate sym-≈ᵀ : ∀ {lₐ} {s₁ s₂ : State} -> s₁ ≈ᵀ s₂ -> s₂ ≈ᵀ s₁
+-- sym-≈ᵀ x = sym x
+
+postulate trans-≈ᵀ : ∀ {lₐ} {s₁ s₂ s₃ : State} -> s₁ ≈ᵀ s₂ -> s₂ ≈ᵀ s₃ -> s₁ ≈ᵀ s₃
+-- trans-≈ᵀ x y = trans x y
+
 
 --------------------------------------------------------------------------------
 
 -- Global l-equivalence
 data _≈ᵍ_ {{lₐ : Label}} {ls : List Label} (g₁ g₂ : Global ls) : Set where
-  ⟨_,_,_⟩ : state g₁ ≈ᵀ state g₂ -> storeᵍ g₁ ≈ˢ storeᵍ g₂ -> pools g₁ ≈ᴾ pools g₂ -> g₁ ≈ᵍ g₂
+  ⟨_,_,_⟩ : state g₁ ≈ᵀ  state g₂ -> storeᵍ g₁ ≈ˢ storeᵍ g₂ -> pools g₁ ≈ᴾ pools g₂ -> g₁ ≈ᵍ g₂
 
 sym-≈ᵍ : ∀ {ls lₐ} {g₁ g₂ : Global ls} -> g₁ ≈ᵍ g₂ -> g₂ ≈ᵍ g₁
 sym-≈ᵍ ⟨ x , y , z ⟩ = ⟨ (sym-≈ᵀ x) , (sym-≈ˢ y) , (sym-≈ᴾ z) ⟩
@@ -144,10 +154,10 @@ g₁ ≈ᵍ-⟨ lₐ ⟩ g₂ = g₁ ≈ᵍ g₂
  
 unlift-≈ᵍ : ∀ {lₐ ls} {g₁ g₂ : Global ls} -> g₁ ≈ᵍ g₂ -> εᵍ lₐ g₁ ≡ εᵍ lₐ g₂
 unlift-≈ᵍ {g₁ = ⟨ state , storeᵍ , pools ⟩} {⟨ state₁ , storeᵍ₁ , pools₁ ⟩} ⟨ x , εˢ-≡ y , z ⟩
-  rewrite x | y | ≈ᴾ-≡ z =  refl
+  rewrite ≈ᵀ-≡ x | y | ≈ᴾ-≡ z =  refl
 
 lift-≈ᵍ :  ∀ {lₐ ls} {g₁ g₂ : Global ls}  -> εᵍ lₐ g₁ ≡ εᵍ lₐ g₂ -> g₁ ≈ᵍ g₂
-lift-≈ᵍ {g₁ = ⟨ state , storeᵍ , pools ⟩} {⟨ state₁ , storeᵍ₁ , pools₁ ⟩} eq = ⟨ state-≡ eq , εˢ-≡ (storeᵍ-≡ eq) , ≡-≈ᴾ (pools-≡ eq) ⟩
+lift-≈ᵍ {g₁ = ⟨ state , storeᵍ , pools ⟩} {⟨ state₁ , storeᵍ₁ , pools₁ ⟩} eq = ⟨ ≡-≈ᵀ (state-≡ eq) , εˢ-≡ (storeᵍ-≡ eq) , ≡-≈ᴾ (pools-≡ eq) ⟩
 
 -- TODO I might need to use structural low-equivalence also for stores
 
@@ -164,12 +174,12 @@ open import Data.Product
 open import Sequential.Semantics
 
 high-step : ∀ {lₐ l ls n} {g₁ g₂ : Global ls} -> ¬ (l ⊑ lₐ) -> l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₂
-high-step ¬p (step r₁ r₂ st sc w₁ w₂) = ⟨ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (ε-write-≡ ¬p w₂) ⟩
+high-step ¬p (step r₁ r₂ st sc w₁ w₂) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (ε-write-≡ ¬p w₂) ⟩
 high-step ¬p (fork r₁ r₂ r₃ st sc  w₁ w₂ w₃)
-  = ⟨ (ε-sch-≡ ¬p sc) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (trans (ε-write-≡ ¬p w₂) (ε-write-≡ (trans-⋢ (fork-⊑ st) ¬p) w₃)) ⟩
-high-step ¬p (hole r sc) = ⟨ (ε-sch-≡ ¬p sc) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
-high-step ¬p (skip r₁ r₂ b sc) = ⟨ (ε-sch-≡ ¬p sc) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
-high-step ¬p (exit r₁ r₂ isV sc) = ⟨ (ε-sch-≡ ¬p sc) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
+  = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (trans (ε-write-≡ ¬p w₂) (ε-write-≡ (trans-⋢ (fork-⊑ st) ¬p) w₃)) ⟩
+high-step ¬p (hole r sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
+high-step ¬p (skip r₁ r₂ b sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
+high-step ¬p (exit r₁ r₂ isV sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
 
 read-≈ : ∀ {l lₐ i n m} {ts₁ : Pool l n} {ts₂ : Pool l m} {t₁ t₂ : Thread l} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> ts₁ [ i ]ᵗ= t₁ -> ts₂ [ i ]ᵗ= t₂ -> t₁ ≈-⟨ lₐ ⟩ t₂
 read-≈ p (high ¬p) a b = ⊥-elim (¬p p)
@@ -202,21 +212,21 @@ getPool Here (ts ◅ ps) = HP Here
 getPool (There r) (ts ◅ ps) with getPool r ps
 getPool (There r) (ts₁ ◅ ps) | HP x = HP (There x)
 
-open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state
+open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_⟩_ offset
 
 -- TODO move this as a parameter to the module
-postulate scheduler-ni : ∀ {s₁ s₁' s₂ l lₐ} {m : Message l} -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ lₐ ⟩ s₁' ->
-                           ∃ λ s₂' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' × {!!} , lₐ ⊢ s₁' ⟶⋆ s₂' ↑ m
+-- postulate scheduler-ni : ∀ {s₁ s₁' s₂ l lₐ} {m : Message l} -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ lₐ ⟩ s₁' ->
+--                            ∃ λ s₂' -> (s₂ ≈ˢ-⟨ lₐ ⟩ s₂' × {!!} , lₐ ⊢ s₁' ⟶⋆ s₂' ↑ m
 
 -- This lemma needs to be proved.
 -- It gets called when the two configurations are finally aligned (run the same low step).
 -- 
-postulate lemma₃ : ∀ {ls l lₐ s₂' n e} {g₁ g₂ g₁' : Global ls} ->
-                     let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
-                         ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
-                         ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁' in
-                     g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' -> s₁' ⟶ s₂' ↑ ⟪ l , n , e ⟫  ->
-                     l , n ⊢ g₁ ↪ g₂ -> ∃ (λ Σ₂' -> ∃ (λ ps₂' -> l , n ⊢ g₁' ↪ ⟨ s₂' , Σ₂' , ps₂' ⟩ ×  g₂ ≈ᵍ-⟨ lₐ ⟩ ⟨ s₂' , Σ₂' , ps₂' ⟩)) 
+-- postulate lemma₃ : ∀ {ls l lₐ s₂' n e} {g₁ g₂ g₁' : Global ls} ->
+--                      let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
+--                          ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
+--                          ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁' in
+--                      g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' -> s₁' ⟶ s₂' ↑ ⟪ l , n , e ⟫  ->
+--                      l , n ⊢ g₁ ↪ g₂ -> ∃ (λ Σ₂' -> ∃ (λ ps₂' -> l , n ⊢ g₁' ↪ ⟨ s₂' , Σ₂' , ps₂' ⟩ ×  g₂ ≈ᵍ-⟨ lₐ ⟩ ⟨ s₂' , Σ₂' , ps₂' ⟩)) 
 
 -- How can we enforce that the scheduler chooses a valid thread id?
 -- Here I need something more refined e.g. ps[ l ][ n ]= t
@@ -228,25 +238,48 @@ postulate threadToRun : ∀ {ls} (l : Label) (n : ℕ) (g₁ : Global ls) -> Thr
 -- postulate nextStep : ∀ {ls l } {Σ : Store ls} {t : Thread l} -> (n : ℕ) -> PStatus Σ t -> (g₁ : Global ls) -> ∃ λ g₂ -> l , n ⊢ g₁ ↪ g₂
 postulate nextEvent : ∀ {ls l } {Σ : Store ls} {t : Thread l} -> PStatus Σ t -> Event
 
-lemma₂ : ∀ {ls l n n' e lₐ  s₂'} {g₁ g₂ g₁' : Global ls} ->
-           let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
-               ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
-               ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁' in l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' -> n' , lₐ ⊢ s₁' ⟶⋆ s₂' ↑ ⟪ l , n , e ⟫ ->
-                 ∃ (λ Σ₂' -> ∃ (λ ps₂' -> ⟨ s₁' , Σ₁' , ps₁' ⟩ ↪⋆ ⟨ s₂' , Σ₂' , ps₂' ⟩ ×  g₂ ≈ᵍ-⟨ lₐ ⟩ ⟨ s₂' , Σ₂' , ps₂' ⟩)) 
-lemma₂ sc eq₁ eq₂ (aligned s) with lemma₃ eq₁ eq₂ s sc
-... | Σ₂' , ps₂' , s' , eq' = Σ₂' , (ps₂' , ((s' ∷ []) , eq'))
-lemma₂ {g₁ = ⟨ s₁ , _ , _ ⟩} {g₂ = ⟨ s₂ , _ , _ ⟩}  {g₁' = g₁' } sc ⟨ eq1 , eq2 , eq3 ⟩ eq₂ (high {h} {n} ¬p k)
-  with nextEvent (programStatus (storeᵍ g₁') (threadToRun h n g₁'))
-... | e with k e  -- Here I should generate the next global step depending on the status
-... | s₂' , s , x with lemma₂ sc ⟨ trans-≈ᵀ eq1 (ε-sch-≡ ¬p s) , eq2 , eq3 ⟩ eq₂ x
-... | Σ₂' , ps₂' , ss ,  eq' = Σ₂' , (ps₂' , (({!s!} ∷ ss) , eq')) 
+-- lemma₂ : ∀ {ls l n n' e lₐ  s₂'} {g₁ g₂ g₁' : Global ls} ->
+--            let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
+--                ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
+--                ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁' in l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' -> n' , lₐ ⊢ s₁' ⟶⋆ s₂' ↑ ⟪ l , n , e ⟫ ->
+--                  ∃ (λ Σ₂' -> ∃ (λ ps₂' -> ⟨ s₁' , Σ₁' , ps₁' ⟩ ↪⋆ ⟨ s₂' , Σ₂' , ps₂' ⟩ ×  g₂ ≈ᵍ-⟨ lₐ ⟩ ⟨ s₂' , Σ₂' , ps₂' ⟩)) 
+-- lemma₂ sc eq₁ eq₂ (aligned s) with lemma₃ eq₁ eq₂ s sc
+-- ... | Σ₂' , ps₂' , s' , eq' = Σ₂' , (ps₂' , ((s' ∷ []) , eq'))
+-- lemma₂ {g₁ = ⟨ s₁ , _ , _ ⟩} {g₂ = ⟨ s₂ , _ , _ ⟩}  {g₁' = g₁' } sc ⟨ eq1 , eq2 , eq3 ⟩ eq₂ (high {h} {n} ¬p k)
+--   with nextEvent (programStatus (storeᵍ g₁') (threadToRun h n g₁'))
+-- ... | e with k e  -- Here I should generate the next global step depending on the status
+-- ... | s₂' , s , x with lemma₂ sc ⟨ trans-≈ᵀ eq1 (ε-sch-≡ ¬p s) , eq2 , eq3 ⟩ eq₂ x
+-- ... | Σ₂' , ps₂' , ss ,  eq' = Σ₂' , (ps₂' , (({!s!} ∷ ss) , eq')) 
 
+postulate scheduler-ni : ∀ {s₁ s₂ s₁' l lₐ} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> (eq : s₁ ≈ᵀ-⟨ lₐ ⟩ s₁') -> Aligner m s₂ eq
+
+data NI {ls} (lₐ : Label) (g₁' g₂ : Global ls) : Set where
+  isNI : ∀ {g₂'} -> g₁' ↪⋆ g₂' -> g₂ ≈ᵍ-⟨ lₐ ⟩ g₂' -> NI lₐ g₁' g₂
+
+-- lemma₂ : ∀ {ls l n n' e lₐ  s₂'} {g₁ g₂ g₁' : Global ls} ->
+--            let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
+--                ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
+--                ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁' in l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> Aligner m s₂ eq 
+--                  ∃ (λ Σ₂' -> ∃ (λ ps₂' -> ⟨ s₁' , Σ₁' , ps₁' ⟩ ↪⋆ ⟨ s₂' , Σ₂' , ps₂' ⟩ ×  g₂ ≈ᵍ-⟨ lₐ ⟩ ⟨ s₂' , Σ₂' , ps₂' ⟩)) 
+
+lemma₂ : ∀ {ls l n n' lₐ} {s₁ s₁' s₂ : State} {Σ₁ Σ₁' Σ₂ : Store ls} {ps₁ ps₁' ps₂ : Pools ls} {m : Message l} -> l ⊑ lₐ ->
+                 l , n ⊢ ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₂ ⟩ ->
+                 (eq₁ : s₁ ≈ᵀ-⟨ lₐ ⟩ s₁') ->
+                 Σ₁ ≈ˢ-⟨ lₐ ⟩ Σ₁' -> ps₁ ≈ᴾ-⟨ lₐ ⟩ ps₁' ->
+                 Aligner m s₂ eq₁ -> n' > offset eq₁ -> NI lₐ ⟨ s₁' , Σ₁' , ps₁' ⟩ ⟨ s₂ , Σ₂ , ps₂ ⟩ 
+lemma₂ p s eq₁ eq₂ eq₃ (aligned x) g = {!!}
+lemma₂ p s eq₁ eq₂ eq₃ (high ¬p k) g with k {NoStep} (λ ()) -- As an example
+lemma₂ p s eq₁ eq₂ eq₃ (high ¬p k) g | cus hs eq₁' l with getSchedulerStep s
+... | e , sc with lemma₂ p s eq₁' eq₂ eq₃ (scheduler-ni p sc eq₁') ? -- How do we show that this is terminating? We need an upper bound on the number of calls! m > offset eq₁  
+... | r = {!!}
 
 lemma : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
 lemma {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s with getSchedulerStep s
-... | e , sc with scheduler-ni sc eq₁
-... | s₂' , eq₁' , ss  with lemma₂ s ⟨ eq₁ , eq₂ , eq₃ ⟩ eq₁' ss
-... | Σ₂' , ps₂' , gs , eq₂' = ⟨ s₂' , Σ₂' , ps₂' ⟩ , eq₂' , gs
+... | e , sc with scheduler-ni p sc eq₁
+lemma  (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s | e , sc | aligned sc' = {!!} -- square
+lemma  (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s | e , sc | high x x₁ = {!!}
+-- ... | s₂' , eq₁' , ss  with lemma₂ s ⟨ eq₁ , eq₂ , eq₃ ⟩ eq₁' ss
+-- ... | Σ₂' , ps₂' , gs , eq₂' = ⟨ s₂' , Σ₂' , ps₂' ⟩ , eq₂' , gs
 lemma {g₁' = g₁'} (no ¬p) eq s = g₁' , trans-≈ᵍ (sym-≈ᵍ (high-step ¬p s)) eq , []
 
 --  with getPool (read-∈ r₁) ps₁'
