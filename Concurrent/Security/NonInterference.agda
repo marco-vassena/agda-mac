@@ -59,18 +59,15 @@ mutual
 ≌ᴾ-≡ (no ¬p) (cons x₁ x₂ x₃) = refl
 ≌ᴾ-≡ x bullet = refl
 
-open import Data.Product hiding (_,_)
-import Data.Product as P
-
 ◅-≡ : ∀ {l n} {t₁ t₂ : Thread l} {ts₁ ts₂ : Pool l n} ->  _≡_ {A = Pool l (suc n)}(_◅_ {n = n} t₁ ts₁) (_◅_ {n = n} t₂ ts₂) -> (t₁ ≡ t₂) × (ts₁ ≡ ts₂)
-◅-≡ refl = refl P., refl
+◅-≡ refl = refl , refl
 
 ≡-≌ᴾ : ∀ {l lₐ n} {p₁ : Pool l n} {p₂ : Pool l n} -> (x : Dec (l ⊑ lₐ)) -> εᵗ x p₁ ≡ εᵗ x p₂ -> p₁ ≌ᴾ-⟨ lₐ ⟩ p₂
 ≡-≌ᴾ {p₁ = []} {[]} x eq = nil
 ≡-≌ᴾ {p₁ = []} {∙} (yes p) ()
 ≡-≌ᴾ {p₁ = []} {∙} (no ¬p) refl = high ¬p
 ≡-≌ᴾ {l} {lₐ} {p₁ = x ◅ p₁} {x₁ ◅ p₂} (yes p) eq with ◅-≡ eq
-... | eq₁ P., eq₂ rewrite ε-Mac-extensional (yes p) (l ⊑? lₐ) x | ε-Mac-extensional (yes p) (l ⊑? lₐ) x₁ = cons p (ε-≡ eq₁) (≡-≌ᴾ (yes p) eq₂)
+... | eq₁ , eq₂ rewrite ε-Mac-extensional (yes p) (l ⊑? lₐ) x | ε-Mac-extensional (yes p) (l ⊑? lₐ) x₁ = cons p (ε-≡ eq₁) (≡-≌ᴾ (yes p) eq₂)
 ≡-≌ᴾ {p₁ = x ◅ p₁} {x₁ ◅ p₂} (no ¬p) eq = high ¬p
 ≡-≌ᴾ {p₁ = x ◅ p₁} {∙} (yes p) ()
 ≡-≌ᴾ {p₁ = x ◅ p₁} {∙} (no ¬p) eq = high ¬p
@@ -93,18 +90,18 @@ mutual
 
 ◅ᵖ-≡ⁿᵘ : ∀ {l n m ls} {u₁ u₂ : Unique l ls} {ps₁ ps₂ : Pools ls} {ts₁ : Pool l n} {ts₂ : Pool l m} -> _≡_ {A = Pools (l ∷ ls)} (_◅_ {{u = u₁}} ts₁ ps₁) (_◅_ {{u = u₂}} ts₂ ps₂)
             -> n ≡ m × u₁ ≡ u₂
-◅ᵖ-≡ⁿᵘ refl = refl P., refl
+◅ᵖ-≡ⁿᵘ refl = refl , refl
 
 ◅ᵖ-≡ : ∀ {l n ls} {u₁ u₂ : Unique l ls} {ps₁ ps₂ : Pools ls} {ts₁ ts₂ : Pool l n} -> _≡_ {A = Pools (l ∷ ls)} (_◅_ {{u = u₁}} ts₁ ps₁) (_◅_ {{u = u₂}} ts₂ ps₂)
             -> ts₁ ≡ ts₂ × ps₁ ≡ ps₂
-◅ᵖ-≡ refl = refl P., refl
+◅ᵖ-≡ refl = refl , refl
 
 
 ≡-≈ᴾ : ∀ {lₐ ls} {ps₁ ps₂ : Pools ls} -> εᵖ lₐ ps₁ ≡ εᵖ lₐ ps₂ -> ps₁ ≈ᴾ ps₂
 ≡-≈ᴾ {ps₁ = []} {[]} eq = []
 ≡-≈ᴾ {lₐ} {ps₁ = _◅_ {l = l} x ps₁} {x₁ ◅ ps₂} eq with ◅ᵖ-≡ⁿᵘ eq
-... | eq₁ P., eq₂ rewrite eq₁ | eq₂ with ◅ᵖ-≡ eq
-... | eq₃ P., eq₄ = ≡-≌ᴾ (l ⊑? lₐ) eq₃ ∷ ≡-≈ᴾ eq₄
+... | eq₁ , eq₂ rewrite eq₁ | eq₂ with ◅ᵖ-≡ eq
+... | eq₃ , eq₄ = ≡-≌ᴾ (l ⊑? lₐ) eq₃ ∷ ≡-≈ᴾ eq₄
 
 ≈ᴾ-≡ : ∀ {lₐ ls} {ps₁ ps₂ : Pools ls} -> ps₁ ≈ᴾ ps₂ -> εᵖ lₐ ps₁ ≡ εᵖ lₐ ps₂
 ≈ᴾ-≡ {lₐ} (_∷_ {l = l} ts ps) rewrite ≌ᴾ-≡ (l ⊑? lₐ) ts | ≈ᴾ-≡ ps = refl
@@ -204,9 +201,9 @@ read-≌ᴾ [] () r₂
 read-≈' : ∀ {l lₐ i n m} {ts₁ : Pool l n} {ts₂ : Pool l m} {t₁ : Thread l} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> ts₁ [ i ]ᵗ= t₁ -> ∃ λ t₂ -> (t₁ ≈-⟨ lₐ ⟩ t₂) × (ts₂ [ i ]ᵗ= t₂)
 read-≈' p (high ¬p) r = ⊥-elim (¬p p)
 read-≈' p nil ()
-read-≈' p (cons x x₁ x₂) Here = _ P., (x₁ P., Here)
+read-≈' p (cons x x₁ x₂) Here = _ , (x₁ , Here)
 read-≈' p (cons x x₁ x₂) (There r) with read-≈' p x₂ r
-read-≈' p (cons x x₁ x₂) (There r) | t P., eq P., q  = t P., (eq P., (There q))
+read-≈' p (cons x x₁ x₂) (There r) | t , eq , q  = t , (eq , (There q))
 read-≈' p bullet ()
 
 data HasPool {ls : List Label} (l : Label) (ps : Pools ls) : Set where
@@ -254,45 +251,31 @@ postulate scheduler2global : ∀ {ls h n e} {g₁ g₂ : Global ls} ->
                              let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
                                  ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁ ⟶ s₂ ↑ ⟪ h , n , e ⟫ -> h , n ⊢ g₁ ↪ g₂
 
-
 --------------------------------------------------------------------------------
 -- TODO organize modules properly so to break mutual dependencies
 
-postulate highˢ : ∀ {s₁ s₁' s₂ l lₐ n₁ n₂} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ suc n₂ ⟩ s₁' ->
-                    ∃ λ h -> ∃ λ n -> (e : Event) -> e ≢ ∙ -> HighStep lₐ h n e s₁ s₂ s₁' n₁ n₂
+postulate highˢ : ∀ {s₁ s₁' s₂ l lₐ n e i j} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ suc j ⟩ s₁' ->
+                    ∃ λ h -> ∃ λ n -> (e' : Event) -> e' ≢ ∙ -> HighStep lₐ h n e' s₁ s₂ s₁' i j
 
 
-postulate aligned : ∀ {l lₐ n s₁ s₂ s₁'} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ n ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' m lₐ
+postulate aligned : ∀ {l lₐ n i e s₁ s₂ s₁'} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' ⟪ l , n , e ⟫ lₐ
 --------------------------------------------------------------------------------
 
-lemma₂ : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
-lemma₂ {n₂ = zero} p s eq₁ eq₂ with getSchedulerStep s
-... | e P., sc with aligned p sc eq₁
-... | no-step eq = {!!} -- TODO Aligned needs to be parametrized by s₁ ⟶ s₂ ↑ m and deduce from no-step that it is in fact s₁ ⟶ s₂ ↑ ∙
+
+
+low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
+low-step {n₂ = zero} p s eq₁ eq₂ with aligned p (getSchedulerStep s) {!!} eq₁ -- This is my assumption
 ... | low sc' eq₁' with square sc' eq₂ s
-... | Σ₂' P., ps₂' P., s' P., eq' = isNI (s' ∷ []) eq'
--- ... | s₂' P., sc' P., eq₁' with square sc' eq₂ s
--- ... 
-                         
-lemma₂ {n₂ = suc n₂} p s eq₁ ⟨ a , b , c ⟩ with getSchedulerStep s
-... | e P., sc with highˢ p sc eq₁
+... | Σ₂' , ps₂' , s' , eq' = isNI (s' ∷ []) eq'                         
+low-step {n₂ = suc n₂} p s eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep s) {!!} eq₁ -- IDEM
 ... | h , n , k with k Step (λ ())
-... | no-step eq = {!!}
-... | high ¬p sc' eq₁' with lemma₂ p s eq₁' ⟨ forget eq₁' , b , c ⟩
+... | high ¬p sc' eq₁' with low-step p s eq₁' ⟨ forget eq₁' , b , c ⟩
 ... | isNI ss eq₂' = isNI (scheduler2global sc' ∷ ss) eq₂' -- This is somehow suspicious ... why don't I need to use the fact that this is am high-step?
 
 lemma : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
-lemma {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s with getSchedulerStep s
-... | e P., sc with lemma₂ p s (align eq₁) ⟨ eq₁ , eq₂ , eq₃ ⟩
+lemma {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s with low-step p s (align eq₁) ⟨ eq₁ , eq₂ , eq₃ ⟩
 ... | isNI ss eq'  = _ Σ., (eq' Σ., ss)
-lemma {g₁' = g₁'} (no ¬p) eq s = g₁' P., trans-≈ᵍ (sym-≈ᵍ (high-step ¬p s)) eq P., []
-
---  with getPool (read-∈ r₁) ps₁'
--- ... | HP r₁' with read-≈' p (read-≌ᴾ eq₃ r₁ r₁') r₂
--- ... | t , eq' , r₂' with scheduler-ni sc eq₁
--- with 
--- non-interference-scheduler p sc eq₁
--- ... | s₂' , eq₁' , sc' = _ , (⟨ eq₁' , eq₂ , eq₃ ⟩ , ((exit r₁' r₂' (valueᴸ p isV eq') sc') ∷ []))
+lemma {g₁' = g₁'} (no ¬p) eq s = g₁' , trans-≈ᵍ (sym-≈ᵍ (high-step ¬p s)) eq , []
 
 -- -- non-interference : ∀ {ls l n} {g₁ g₁' g₂ : Global ls} -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × (l , n ⊢ g₁' ↪ g₂'))
 -- -- non-interference {g₁ = g₁} {g₁'} {g₂} lₐ (εᵍ-≡ x) s with εᵍ-dist lₐ s

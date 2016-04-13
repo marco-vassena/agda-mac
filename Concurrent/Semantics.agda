@@ -224,12 +224,19 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
 
 open import Data.Product hiding (_,_)
 
-getSchedulerStep : ∀ {ls l n} {g₁ g₂ : Global ls} -> l , n ⊢ g₁ ↪ g₂ -> ∃ λ e -> (state g₁) ⟶ (state g₂) ↑ (l , n , e)
-getSchedulerStep (step x x₁ x₂ x₃ x₄ x₅) = , x₃
-getSchedulerStep (fork x x₁ x₂ x₃ x₄ x₅ x₆ x₇) = _ Σ., x₄
-getSchedulerStep (hole x x₁) = ∙ Σ., x₁
-getSchedulerStep (skip x x₁ x₂ x₃) = NoStep Σ., x₃
-getSchedulerStep (exit x x₁ x₂ x₃) = Done Σ., x₃
+getEvent : ∀ {ls l n} {g₁ g₂ : Global ls} -> l , n ⊢ g₁ ↪ g₂ -> Event
+getEvent (step x x₁ x₂ x₃ x₄ x₅) = Step
+getEvent (fork {nʰ = nʰ} {tʰ = tʰ}x x₁ x₂ x₃ x₄ x₅ x₆ x₇) = fork? tʰ nʰ
+getEvent (hole x x₁) = ∙
+getEvent (skip x x₁ x₂ x₃) = NoStep
+getEvent (exit x x₁ x₂ x₃) = Done
+
+getSchedulerStep : ∀ {ls l n} {g₁ g₂ : Global ls} -> (s : l , n ⊢ g₁ ↪ g₂) -> (state g₁) ⟶ (state g₂) ↑ (l , n , getEvent s)
+getSchedulerStep (step x x₁ x₂ x₃ x₄ x₅) = x₃
+getSchedulerStep (fork x x₁ x₂ x₃ x₄ x₅ x₆ x₇) = x₄
+getSchedulerStep (hole x x₁) = x₁
+getSchedulerStep (skip x x₁ x₂ x₃) = x₃
+getSchedulerStep (exit x x₁ x₂ x₃) = x₃
 
 open import Data.Product
 
