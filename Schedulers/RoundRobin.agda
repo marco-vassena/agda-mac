@@ -156,13 +156,42 @@ mutual
 
 open import Function
 
-offset : ∀ {s₁ s₂ lₐ} -> s₁ ≈ˢ-⟨ lₐ ⟩ s₂ -> ℕ
-offset nil = 0
-offset (consᴸ p x) = 0
-offset (cons₁ᴴ ¬p x) = suc (offset x)
-offset (cons₂ᴴ ¬p x) = suc (offset x) 
+offset₁ : ∀ {s₁ s₂ lₐ} -> s₁ ≈ˢ-⟨ lₐ ⟩ s₂ -> ℕ
+offset₁ nil = 0
+offset₁ (consᴸ p x) = 0
+offset₁ (cons₁ᴴ ¬p x) = suc (offset₁ x)
+offset₁ (cons₂ᴴ ¬p x) = offset₁ x
 
-open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ _≈ˢ-⟨_⟩_ offset
+offset₂ : ∀ {s₁ s₂ lₐ} -> s₁ ≈ˢ-⟨ lₐ ⟩ s₂ -> ℕ
+offset₂ nil = 0
+offset₂ (consᴸ p x) = 0
+offset₂ (cons₁ᴴ ¬p x) = offset₂ x
+offset₂ (cons₂ᴴ ¬p x) = suc (offset₂ x)
+
+
+mutual
+  data _≈ˢ-⟨_~_⟩_ {{lₐ : Label}} : State -> ℕ -> ℕ -> State -> Set where
+       nil : [] ≈ˢ-⟨ 0 ~ 0 ⟩ []
+       consᴸ : ∀ {l n s₁ s₂} -> (p : l ⊑ lₐ) ->  s₁ ≈ˢ-⟨ lₐ ⟩ s₂ -> ((l , n) ∷ s₁) ≈ˢ-⟨ 0 ~ 0 ⟩ ((l , n) ∷ s₂)
+       cons₁ᴴ : ∀ {h n s₁ s₂ i j} -> (¬p  : ¬ (h ⊑ lₐ)) -> s₁ ≈ˢ-⟨ i ~ lₐ ~ j ⟩ s₂ -> ((h , n) ∷ s₁) ≈ˢ-⟨ suc i ~ j ⟩ s₂
+       cons₂ᴴ : ∀ {h n s₁ s₂ i j} -> (¬p  : ¬ (h ⊑ lₐ)) -> s₁ ≈ˢ-⟨ i ~ lₐ ~ j ⟩ s₂ -> s₁ ≈ˢ-⟨ i ~ suc j ⟩ ((h , n) ∷ s₂)
+
+  _≈ˢ-⟨_~_~_⟩_ : State -> ℕ -> Label -> ℕ -> State -> Set
+  _≈ˢ-⟨_~_~_⟩_ s₁ n lₐ m s₂ = s₁ ≈ˢ-⟨ n ~ m ⟩ s₂
+
+align : ∀ {lₐ s₁ s₂} -> (eq : s₁ ≈ˢ-⟨ lₐ ⟩ s₂) -> s₁ ≈ˢ-⟨ offset₁ eq ~ lₐ ~ offset₂ eq ⟩ s₂
+align nil = nil
+align (consᴸ p x) = consᴸ p x
+align (cons₁ᴴ ¬p x) = cons₁ᴴ ¬p (align x)
+align (cons₂ᴴ ¬p x) = cons₂ᴴ ¬p (align x)
+
+dealign : ∀ {lₐ s₁ s₂ i j} -> s₁ ≈ˢ-⟨ i ~ lₐ ~ j ⟩ s₂ -> s₁ ≈ˢ-⟨ lₐ ⟩ s₂
+dealign nil = nil
+dealign (consᴸ p x) = consᴸ p x
+dealign (cons₁ᴴ ¬p x) = cons₁ᴴ ¬p (dealign x)
+dealign (cons₂ᴴ ¬p x) = cons₂ᴴ ¬p (dealign x)
+
+open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ _≈ˢ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_ offset₁ offset₂ align 
 
 ++-≈ˢ : ∀ {s₁ s₂ lₐ x} -> s₁ ≈ˢ s₂ -> (s₁ ++ x) ≈ˢ (s₂ ++ x)
 ++-≈ˢ {x = x} nil = ≡-≈ˢ refl
@@ -179,41 +208,54 @@ open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ _≈ˢ-⟨_⟩_ o
 ++'-≈ˢ ¬p (cons₁ᴴ ¬p₁ x) = cons₁ᴴ ¬p₁ (++'-≈ˢ ¬p x)
 ++'-≈ˢ ¬p (cons₂ᴴ ¬p₁ x) = cons₂ᴴ ¬p₁ (++'-≈ˢ ¬p x)
 
-≤-offset-++ : ∀ {s₁ s₂ l m h lₐ} {{n : ℕ}} -> (¬p : ¬ (h ⊑ lₐ)) (p : l ⊑ lₐ) -> (eq : ((l , m) ∷ s₁) ≈ˢ-⟨ lₐ ⟩ s₂) -> offset (++'-≈ˢ {{n}} ¬p eq) ≤ offset eq
-≤-offset-++ ¬p p (consᴸ p₁ x) = z≤n
-≤-offset-++ ¬p p (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
-≤-offset-++ ¬p p (cons₂ᴴ ¬p₁ x) = s≤s (≤-offset-++ ¬p p x)
+aligned : ∀ {l lₐ n s₁ s₂ s₁'} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ n ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' m lₐ
+aligned p hole nil = no-step refl
+aligned p step (consᴸ p₁ x) = low step (++-≈ˢ x)
+aligned p (fork p₁) (consᴸ p₂ x) = low (fork p₁) {!!} -- lemma
+aligned p done (consᴸ p₁ x) = low done x
+aligned p skip (consᴸ p₁ x) = low skip (++-≈ˢ x)
+aligned p hole (consᴸ p₁ x) = no-step refl
+aligned p step (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+aligned p (fork p₁) (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+aligned p done (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+aligned p skip (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+aligned p hole (cons₁ᴴ ¬p x) = no-step refl
 
-refl-≤ : ∀ {n} -> n ≤ n
-refl-≤ {zero} = z≤n
-refl-≤ {suc n} = s≤s refl-≤
+open import Data.Sum using (_⊎_ ; inj₁ ; inj₂)
 
-aux : ∀ {s h l n n' s₁' lₐ} -> (eq : ((l , n') ∷ s) ≈ˢ-⟨ lₐ ⟩ s₁') -> l ⊑ lₐ -> (¬p : ¬ (h ⊑ lₐ)) ->
-           {e : Event} -> e ≢ ∙ -> CloseUpStep {s₁' = (h , n) ∷ s₁'} ⟪ h , n , e ⟫ (cons₂ᴴ ¬p eq)
-aux eq p ¬p {NoStep} e≠∙ = cus skip (++'-≈ˢ ¬p eq) (s≤s (≤-offset-++ ¬p p eq)) -- (≤-offset-++ ¬p p (cons₂ᴴ ¬p eq))
-aux eq p ¬p {Step} e≠∙ = cus step (++'-≈ˢ ¬p eq) (s≤s (≤-offset-++ ¬p p eq))
-aux eq p ¬p {Done} e≠∙ = cus done eq (s≤s refl-≤)
-aux eq p ¬p {Fork h₁ n₁} e≠∙ = cus (fork {!!}) (cons₂ᴴ {!!} ((++'-≈ˢ ¬p eq))) (s≤s {!!}) -- This won't hold we need the position of the spawned threads
-aux eq p ¬p {∙} e≠∙ = ⊥-elim (e≠∙ refl) -- Here we are not making any progress (i.e. consuming s₁', hence we need to rule out ∙
+lemma : ∀ {s₁ s₁' s₂ n₁ n₂ h n l lₐ} {m : Message l} -> ¬ h ⊑ lₐ -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ s₁' -> s₁ ≡ s₂ ⊎ s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (s₁' ++ [ h , n ])
+lemma ¬p p hole nil = inj₁ refl
+lemma ¬p p s (consᴸ p' x) = inj₂ (consᴸ p' (++'-≈ˢ ¬p x))
+lemma ¬p p step (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
+lemma ¬p p (fork p') (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
+lemma ¬p p done (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
+lemma ¬p p skip (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
+lemma ¬p p hole (cons₁ᴴ ¬p₁ x) = inj₁ refl 
+lemma {n = n} ¬p p s (cons₂ᴴ ¬p₁ x) with lemma {n = n} ¬p p s x
+lemma ¬p p s (cons₂ᴴ ¬p₁ x₁) | inj₂ x = inj₂ (cons₂ᴴ ¬p₁ x)
+lemma ¬p p s (cons₂ᴴ ¬p₁ x) | inj₁ refl = inj₁ refl
 
+getNextThreadId : ∀ {s₁ s₂ n₁ n₂ lₐ} -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ suc n₂ ⟩ s₂ -> Label × ℕ
+getNextThreadId (cons₁ᴴ ¬p x) = getNextThreadId x
+getNextThreadId (cons₂ᴴ {h} {n} ¬p x) = h , n
 
-align : ∀ {s₁ s₂ s₁' l lₐ} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> (eq : s₁ ≈ˢ-⟨ lₐ ⟩ s₁') -> Aligner m s₂ eq
-align p hole nil = aligned hole
-align p step (consᴸ p₁ x) = aligned step
-align p (fork p₁) (consᴸ p₂ x) = aligned (fork p₁)
-align p done (consᴸ p₁ x) = aligned done
-align p skip (consᴸ p₁ x) = aligned skip
-align p hole (consᴸ p₁ x) = aligned hole
-align p step (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
-align p (fork p₁) (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
-align p done (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
-align p skip (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
-align p hole (cons₁ᴴ ¬p x) = aligned hole
-align {s₁' = (h , n) ∷ s₁'} p step (cons₂ᴴ ¬p eq) = high ¬p (aux eq p ¬p )
-align {s₁' = (h , n) ∷ s₁'} p (fork p₁) (cons₂ᴴ ¬p eq) = high ¬p (aux eq p ¬p)
-align {s₁' = (h , n) ∷ s₁'} p done (cons₂ᴴ ¬p eq) = high ¬p (aux eq p ¬p )
-align {s₁' = (h , n) ∷ s₁'} p skip (cons₂ᴴ ¬p eq) = high ¬p (aux eq p ¬p )
-align {s₁' = (h , n) ∷ s₁'} p hole (cons₂ᴴ ¬p eq) = aligned hole
+highˢ : ∀ {s₁ s₁' s₂ l lₐ n₁ n₂} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ suc n₂ ⟩ s₁' ->
+          ∃ λ h -> ∃ λ n -> (e : Event) -> e ≢ ∙ -> HighStep lₐ h n e s₁ s₂ s₁' n₁ n₂
+highˢ p step (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+highˢ p (fork p₁) (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+highˢ p done (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+highˢ p skip (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+highˢ p hole (cons₁ᴴ ¬p x) with getNextThreadId x
+... | h , n = h , (n , (λ e _ → no-step refl))
+highˢ {s₁} {(h , n) ∷ s₁'} {s₂} {l} {lₐ} {n₁} {n₂} p s (cons₂ᴴ  ¬p x) with lemma {n = n} ¬p p s x
+... | inj₁ a  = h , (n , (λ e _ → no-step a))
+... | inj₂ y = h , (n , aux)
+  where aux : (e : Event) -> e ≢ ∙ -> HighStep lₐ h n e s₁ s₂ ((h , n) ∷ s₁') n₁ n₂ 
+        aux NoStep _ =  high ¬p skip y
+        aux Step _ = high ¬p step y
+        aux Done _ = high ¬p done x 
+        aux (Fork h₁ n₃) _ = high ¬p (fork {!!}) {!!} -- TODO: fix fork semantics to make this work 
+        aux ∙ e≠∙ = ⊥-elim (e≠∙ refl) 
         
 open import Concurrent.Determinism (State) (_⟶_↑_) (determinism)
 -- open import Concurrent.Security.NonInterference State _⟶_↑_ εˢ ε-sch-dist ε-sch-≡

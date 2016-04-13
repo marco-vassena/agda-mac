@@ -2,16 +2,17 @@ open import Types
 open import Concurrent.Communication renaming (_,_,_ to ⟪_,_,_⟫)
 open import Relation.Binary.PropositionalEquality
 open import Concurrent.Security.Erasure
+open import Data.Product
 
 module Concurrent.Security.NonInterference
   (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
   (ε-state : Label -> State -> State) -- Erasure function of the scheduler state
   (_≈ᵀ-⟨_⟩_ : State -> Label -> State -> Set)
-  (_≈ˢ-⟨_,_,_⟩_ : State -> ℕ -> Label -> ℕ -> State -> Set)
+  (_≈ˢ-⟨_~_~_⟩_ : State -> ℕ -> Label -> ℕ -> State -> Set)
   (offset₁ : {lₐ : Label} {s₁ s₂ : State} -> s₁ ≈ᵀ-⟨ lₐ ⟩ s₂ -> ℕ)
   (offset₂ : {lₐ : Label} {s₁ s₂ : State} -> s₁ ≈ᵀ-⟨ lₐ ⟩ s₂ -> ℕ)
-  (align : ∀ {lₐ s₁ s₂} -> (eq : s₁ ≈ᵀ-⟨ lₐ ⟩ s₂) -> s₁ ≈ˢ-⟨ offset₁ eq , lₐ , offset₂ eq ⟩ s₂)
-  (forget : ∀ {lₐ s₁ s₂ n m} -> s₁ ≈ˢ-⟨ n , lₐ , m ⟩ s₂ -> s₁ ≈ᵀ-⟨ lₐ ⟩ s₂)
+  (align : ∀ {lₐ s₁ s₂} -> (eq : s₁ ≈ᵀ-⟨ lₐ ⟩ s₂) -> s₁ ≈ˢ-⟨ offset₁ eq ~ lₐ ~ offset₂ eq ⟩ s₂)
+  (forget : ∀ {lₐ s₁ s₂ n m} -> s₁ ≈ˢ-⟨ n ~ lₐ ~ m ⟩ s₂ -> s₁ ≈ᵀ-⟨ lₐ ⟩ s₂)
   (ε-sch-dist : ∀ {s₁ s₂ l lₐ} {m : Message l} -> (x : Dec (l ⊑ lₐ)) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ⟶ (ε-state lₐ s₂) ↑ (εᴹ x m))
   -- TODO as long as ≈ is isomorphic to ≡ we can just stick to one of them!
   (ε-sch-≡ : ∀ {s₁ s₂ l lₐ} {m : Message l} -> ¬ (l ⊑ lₐ) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ≡ (ε-state lₐ s₂))
@@ -20,7 +21,7 @@ module Concurrent.Security.NonInterference
                                    s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ ->
                                    s₁ ⟶ s₃ ↑ ⟪ l , n , e ⟫ ->
                                    s₂ ≡ s₃ )
-
+  
   where
 
 
@@ -216,7 +217,7 @@ getPool Here (ts ◅ ps) = HP Here
 getPool (There r) (ts ◅ ps) with getPool r ps
 getPool (There r) (ts₁ ◅ ps) | HP x = HP (There x)
 
-open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_⟩_ _≈ˢ-⟨_,_,_⟩_ offset₁ offset₂ align
+open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_ offset₁ offset₂ align
 
 -- This lemma needs to be proved.
 -- It gets called when the two configurations are finally aligned (run the same low step).
@@ -253,18 +254,32 @@ postulate scheduler2global : ∀ {ls h n e} {g₁ g₂ : Global ls} ->
                              let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
                                  ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁ ⟶ s₂ ↑ ⟪ h , n , e ⟫ -> h , n ⊢ g₁ ↪ g₂
 
-lemma₂ : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ , lₐ , n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
+
+--------------------------------------------------------------------------------
+-- TODO organize modules properly so to break mutual dependencies
+
+postulate highˢ : ∀ {s₁ s₁' s₂ l lₐ n₁ n₂} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ suc n₂ ⟩ s₁' ->
+                    ∃ λ h -> ∃ λ n -> (e : Event) -> e ≢ ∙ -> HighStep lₐ h n e s₁ s₂ s₁' n₁ n₂
+
+
+postulate aligned : ∀ {l lₐ n s₁ s₂ s₁'} {m : Message l} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ m -> s₁ ≈ˢ-⟨ n ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' m lₐ
+--------------------------------------------------------------------------------
+
+lemma₂ : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
 lemma₂ {n₂ = zero} p s eq₁ eq₂ with getSchedulerStep s
 ... | e P., sc with aligned p sc eq₁
-... | s₂' P., sc' P., eq₁' with square sc' eq₂ s
+... | no-step eq = {!!} -- TODO Aligned needs to be parametrized by s₁ ⟶ s₂ ↑ m and deduce from no-step that it is in fact s₁ ⟶ s₂ ↑ ∙
+... | low sc' eq₁' with square sc' eq₂ s
 ... | Σ₂' P., ps₂' P., s' P., eq' = isNI (s' ∷ []) eq'
+-- ... | s₂' P., sc' P., eq₁' with square sc' eq₂ s
+-- ... 
                          
-lemma₂ {n₂ = suc n₂} p s eq₁ ⟨ a , b , c ⟩ with highˢ eq₁
-... | h P., n P., k with k Step -- An Example. Here the event should come from the actual thread that should run
-... | high ¬p s' eq₁' with lemma₂ p s eq₁' ⟨ forget eq₁' , b , c ⟩ -- Yeeee it is terminating!!! :-)
-... | isNI ss eq₂' with scheduler2global s'
-... | s'' with high-step ¬p s''
-... | r = isNI ( s'' ∷ ss) (trans-≈ᵍ eq₂' refl-≈ᵍ)
+lemma₂ {n₂ = suc n₂} p s eq₁ ⟨ a , b , c ⟩ with getSchedulerStep s
+... | e P., sc with highˢ p sc eq₁
+... | h , n , k with k Step (λ ())
+... | no-step eq = {!!}
+... | high ¬p sc' eq₁' with lemma₂ p s eq₁' ⟨ forget eq₁' , b , c ⟩
+... | isNI ss eq₂' = isNI (scheduler2global sc' ∷ ss) eq₂' -- This is somehow suspicious ... why don't I need to use the fact that this is am high-step?
 
 lemma : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
 lemma {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s with getSchedulerStep s
