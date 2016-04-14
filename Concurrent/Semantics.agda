@@ -9,58 +9,65 @@ open import Data.Nat
 open import Data.List
 open import Sequential.Semantics 
 
+
 --------------------------------------------------------------------------------
 -- Lookup threads and thread pools
 
-data LookupThread {l : Label} (t : Thread l) : ∀ {n} -> ℕ -> Pool l n -> Set where
-  Here : ∀ {n} {ts : Pool l n} -> LookupThread t zero (t ◅ ts)
-  There : ∀ {n₁ n₂} {ts : Pool l n₂} {t' : Thread l} -> LookupThread t n₁ ts -> LookupThread t (suc n₁) (t' ◅ ts)
+data LookupThread {l : Label} : ∀ {n} -> (t : Thread l) -> ℕ -> Pool l n -> Set where
+  ∙ : ∀ {n n'} -> LookupThread ∙ n (∙ {n = n'})
+  Here : ∀ {n t} {ts : Pool l n} -> LookupThread t zero (t ◅ ts)
+  There : ∀ {n₁ n₂ t} {ts : Pool l n₂} {t' : Thread l} -> LookupThread t n₁ ts -> LookupThread t (suc n₁) (t' ◅ ts)
 
-data LookupPool {l : Label} {n : ℕ} (p : Pool l n) : ∀ {ls} -> Pools ls -> Set where
-  Here : ∀ {ls} {u : Unique l ls} {ps : Pools ls} -> LookupPool p (p ◅ ps)
-  There : ∀ {l' n' ls} {u : Unique l' ls} {ps : Pools ls} {p' : Pool l' n'} -> LookupPool p ps -> LookupPool p (p' ◅ ps)
+data LookupTPool {l : Label} (n : ℕ) (t : Thread l) : ∀ {ls} -> Pools ls -> Set where
+  Here : ∀ {ls n'} {u : Unique l ls} {p : Pool l n'} {ps : Pools ls} -> LookupThread t n p -> LookupTPool n t (p ◅ ps)
+  There : ∀ {l' n' ls} {u : Unique l' ls} {ps : Pools ls} {p' : Pool l' n'} -> LookupTPool n t ps -> LookupTPool n t (p' ◅ ps)
+
+_[_][_]=_ : ∀ {ls} -> Pools ls -> (l : Label) -> ℕ -> Thread l -> Set
+ps [ l ][ n ]= t = LookupTPool n t ps
 
 --------------------------------------------------------------------------------
--- Updates threads and thread pools
+-- Updates threads
 
 data UpdateThread {l : Label} (t : Thread l) : ∀ {n} -> ℕ -> Pool l n -> Pool l n -> Set where
-  ∙ : ∀ {n} -> UpdateThread t n (∙ {n = n}) ∙
+  ∙ : ∀ {n n'} -> UpdateThread t n (∙ {n = n'}) ∙
   upd : ∀ {n} {ts : Pool l n} {t₁ : Thread l} -> UpdateThread t zero (t₁ ◅ ts) (t ◅ ts)
   skip : ∀ {n} {ts₁ ts₂ : Pool l n} {t' : Thread l} -> UpdateThread t n ts₁ ts₂ -> UpdateThread t (suc n) (t' ◅ ts₁) (t' ◅ ts₂)
 
-data UpdatePool {l : Label} {n : ℕ} (p₂ : Pool l n) : ∀ {ls} -> Pools ls -> Pools ls -> Set where
-  Here : ∀ {ls} {u : Unique l ls} {p₁ : Pool l n} {ps : Pools ls} -> UpdatePool p₂ (p₁ ◅ ps) (p₂ ◅ ps)
-  There : ∀ {l' n' ls} {u : Unique l' ls} {ps₁ ps₂ : Pools ls} {p' : Pool l' n'} -> UpdatePool p₂ ps₁ ps₂ -> UpdatePool p₂ (p' ◅ ps₁) (p' ◅ ps₂)
+data UpdateTPool {l : Label} (t : Thread l) (n : ℕ) : ∀ {ls} -> Pools ls -> Pools ls -> Set where
+  Here : ∀ {ls n'} {u : Unique l ls} {p₁ p₂ : Pool l n'} {ps : Pools ls} -> UpdateThread t n p₁ p₂ -> UpdateTPool t n (p₁ ◅ ps) (p₂ ◅ ps)
+  There : ∀ {l' n' ls} {u : Unique l' ls} {ps₁ ps₂ : Pools ls} {p' : Pool l' n'} -> UpdateTPool t n ps₁ ps₂ -> UpdateTPool t n (p' ◅ ps₁) (p' ◅ ps₂)
+
+_←_[_][_]≔_ : ∀ {ls} -> Pools ls -> Pools ls -> (l : Label) -> ℕ -> Thread l -> Set
+ps₂ ← ps₁ [ l ][ n ]≔ t = UpdateTPool t n ps₁ ps₂
 
 --------------------------------------------------------------------------------
 
--- The proof that a term is blocked
-data Blocked {ls : List Label} (Σ : Store ls) : ∀ {τ} -> CTerm τ -> Set where
-  onPut : ∀ {l n τ} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) -> Blocked Σ (putMVar (Res n) t)
-  onTake : ∀ {l n τ} (q : l ∈ ls) (r : TypedIx τ E n (getMemory q Σ)) -> Blocked Σ (takeMVar {α = τ} (Res n))
+-- Read Thread Pool
 
---------------------------------------------------------------------------------
--- Syntactic sugar
+data LookupPool {l : Label} {n : ℕ} (ts : Pool l n) : ∀ {ls} -> Pools ls -> Set where
+  Here : ∀ {ls} {u : Unique l ls} {ps : Pools ls} -> LookupPool ts (ts ◅ ps)
+  There : ∀ {ls l' n'} {u : Unique l' ls} {ts' : Pool l' n'} {ps : Pools ls} -> LookupPool ts ps -> LookupPool ts (ts' ◅ ps)
 
-_[_]=_ : ∀ {ls n} -> Pools ls -> (l : Label) -> Pool l n -> Set
-ps [ l ]= p = LookupPool p ps
+_[_]=_ : ∀ {n ls} -> Pools ls -> (l : Label) -> Pool l n -> Set
+ps [ h ]= ts = LookupPool ts ps
 
-_←_[_]≔_ : ∀ {ls n} -> Pools ls -> Pools ls -> (l : Label) -> Pool l n -> Set
-ps₂ ← ps₁ [ l ]≔ p  = UpdatePool p ps₁ ps₂
+-- Update Thread pool
+
+data UpdatePool {l : Label} {n : ℕ} (ts : Pool l n) : ∀ {ls} -> Pools ls -> Pools ls -> Set where
+  Here : ∀ {ls} {u : Unique l ls} {ps : Pools ls} {ts' : Pool l n} -> UpdatePool ts (ts' ◅ ps) (ts ◅ ps) 
+  There : ∀ {ls l' n'} {u : Unique l' ls} {ps₁ ps₂ : Pools ls} {ts' : Pool l' n'} -> UpdatePool ts ps₁ ps₂ -> UpdatePool ts (ts' ◅ ps₁) (ts' ◅ ps₂)
 
 
-_[_]ᵗ=_ : ∀ {l n} -> Pool l n -> ℕ -> Thread l -> Set
-ts [ n ]ᵗ= t = LookupThread t n ts
-
-_←_[_]ᵗ≔_ : ∀ {l n} -> Pool l n -> Pool l n -> ℕ -> Thread l -> Set
-ts₂ ← ts₁ [ n ]ᵗ≔ t = UpdateThread t n ts₁ ts₂
+_←_[_]≔_ : ∀ {n ls} -> Pools ls -> Pools ls -> (l : Label) -> Pool l n -> Set
+ps₂ ← ps₁ [ l ]≔ ts = UpdatePool ts ps₁ ps₂
 
 --------------------------------------------------------------------------------
 
 -- Effect triggered in the sequential setting
-data Effect : Set where
-  ∅ : Effect
-  fork : ∀ {l} -> Thread l -> Effect
+data Effect (l : Label) :  Set where
+  ∙ : Effect l 
+  ∅ : Effect l 
+  fork : ∀ {h} -> Thread h -> Effect l      -- I don't think we need l ⊑ h
 
 -- We need to tie the event data type with the small step semantics.
 -- I don't want to redefine the small step semantics with an additional index, neither
@@ -78,20 +85,6 @@ open Program
 
 data IsFork : ∀ {τ} -> CTerm τ -> Set where
   fork : ∀ {l h} -> (p : l ⊑ h) (t : Thread h) -> IsFork (fork p t)
-
-data _⟼_↑_ {ls : List Label} : ∀ {τ} (p₁ p₂ : Program ls τ) -> Effect -> Set where
-  fork : ∀ {l h} {p₂ : Program ls (Mac l （）)} {Σ : Store ls} ->
-         (p : l ⊑ h) (t : Thread h) (s : ⟨ Σ ∥ fork p t ⟩ ⟼ p₂) -> ⟨ Σ ∥ fork p t ⟩ ⟼ p₂ ↑ (fork t)
-  none : ∀ {τ} {p₁ p₂ : Program ls τ} -> ¬ IsFork (term p₁) -> p₁ ⟼ p₂ -> p₁ ⟼ p₂ ↑ ∅ 
-
-stepOf : ∀ {ls τ e} {p₁ p₂ : Program ls τ} -> p₁ ⟼ p₂ ↑ e -> p₁ ⟼ p₂
-stepOf (fork p t s) = s
-stepOf (none ¬f s) = s
-
-fork-⊑ : ∀ {ls τ l h} {p₁ p₂ : Program ls (Mac l τ)} {t : Thread h }  -> p₁ ⟼ p₂ ↑ fork t -> l ⊑ h
-fork-⊑ (fork p t s) = p
-
---------------------------------------------------------------------------------
 
 data Is∙ {τ : Ty} : CTerm τ -> Set where
   ∙ : Is∙ ∙
@@ -131,6 +124,22 @@ is∙? (takeMVar c) = no (λ ())
 is∙? (putMVar c c₁) = no (λ ())
 is∙? ∙ = yes ∙
 
+data _⟼_↑_ {ls : List Label} : ∀ {τ l} (p₁ p₂ : Program ls (Mac l τ)) -> Effect l -> Set where
+  bullet : ∀ {l τ} {Σ : Store ls} -> ⟨ Σ ∥ (∙ {{τ = Mac l τ}}) ⟩ ⟼ ⟨ Σ ∥ ∙ ⟩ -> ⟨ Σ ∥ ∙ {{τ = Mac l τ}} ⟩ ⟼ ⟨ Σ ∥ ∙ ⟩ ↑ ∙
+  fork : ∀ {l h} {p₂ : Program ls (Mac l （）)} {Σ : Store ls} ->
+         (p : l ⊑ h) (t : Thread h) (s : ⟨ Σ ∥ fork p t ⟩ ⟼ p₂) -> ⟨ Σ ∥ fork p t ⟩ ⟼ p₂ ↑ (fork t)
+  none : ∀ {l τ} {p₁ p₂ : Program ls (Mac l τ)} -> ¬ IsFork (term p₁) -> ¬ Is∙ (term p₁) -> p₁ ⟼ p₂ -> p₁ ⟼ p₂ ↑ ∅ 
+
+stepOf : ∀ {ls τ l} {e : Effect l} {p₁ p₂ : Program ls (Mac l τ)} -> p₁ ⟼ p₂ ↑ e -> p₁ ⟼ p₂
+stepOf (bullet s) = s
+stepOf (fork p t s) = s
+stepOf (none ¬f ¬∙ s) = s
+
+fork-⊑ : ∀ {ls τ l h} {p₁ p₂ : Program ls (Mac l τ)} {t : Thread h }  -> p₁ ⟼ p₂ ↑ fork t -> l ⊑ h
+fork-⊑ (fork p t s) = p
+
+--------------------------------------------------------------------------------
+
 fork? : ∀ {h} -> Thread h -> ℕ -> Event 
 fork? t n with is∙? t
 fork? t n | yes p = Step
@@ -160,60 +169,54 @@ pools-≡ refl = refl
 data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global ls -> Set where
 
   -- Sequential step
-  step : ∀ {s₁ s₂ n'} {t₁ t₂ : Thread l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} {ts₁ ts₂ : Pool l n'} ->
+  step : ∀ {s₁ s₂ } {t₁ t₂ : Thread l} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ : Pools ls} ->
   
-            ps₁ [ l ]= ts₁ ->
-            ts₁ [ n ]ᵗ= t₁ ->
+            ps₁ [ l ][ n ]= t₁ ->
             
             ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ ∅ ->            
             s₁ ⟶ s₂ ↑ (l , n , Step) ->
 
-            ts₂ ← ts₁ [ n ]ᵗ≔ t₂ ->
-            ps₂ ← ps₁ [ l ]≔ ts₂ ->
+            ps₂ ← ps₁ [ l ][ n ]≔ t₂ ->
             
           l , n ⊢ ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₂ ⟩
 
   -- A fork step spawns a new thread
-  fork : ∀ {s₁ s₂ h n' nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {ts₁ ts₂ : Pool l n'} {tsʰ : Pool h nʰ} {t₁ t₂ : Thread l} {tʰ : Thread h} ->
+  fork : ∀ {s₁ s₂ h n' nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {t₁ t₂ : Thread l} {tʰ : Thread h} {tsʰ : Pool h n'} ->
          
-           ps₁ [ l ]= ts₁ ->
-           ts₁ [ n ]ᵗ= t₁ ->
-           ps₁ [ h ]= tsʰ ->
+           ps₁ [ l ][ n ]= t₁ ->
+           ps₁ [ h ]= tsʰ  ->
            
            ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tʰ) ->
            s₁ ⟶ s₂ ↑ (l , n , fork? tʰ nʰ) ->
 
-           ts₂ ← ts₁ [ n ]ᵗ≔ t₂ ->
-           ps₂ ← ps₁ [ l ]≔ ts₂ ->
+           ps₂ ← ps₁ [ l ][ n ]≔ t₂ ->
            ps₃ ← ps₂ [ h ]≔ (tsʰ ▻ tʰ) -> 
          
            l , n ⊢ ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₃ ⟩
 
   -- The pool at this level is collapsed, nothing to do.
-  hole : ∀ {s n'} {Σ : Store ls} {ps : Pools ls} ->
-
-    -- TODO we can also model this as ⟨ Σ ∣ ∙ ⟩ → ⟨ Σ ∣ ∙ ⟩ ↑ ∙
-  -- Is this maybe more intutive?
+  hole : ∀ {s} {Σ : Store ls} {ps : Pools ls} {t : Thread l} ->
   
-         ps [ l ]= (∙ {n = n'}) ->
+         ps [ l ][ n ]= t ->
+         ⟨ Σ ∥ t ⟩ ⟼ ⟨ Σ ∥ t ⟩ ↑ ∙ ->
          s ⟶ s ↑ (l , n , ∙) ->
+         
          l , n ⊢ ⟨ s , Σ , ps ⟩ ↪ ⟨ s , Σ , ps ⟩
 
   -- Skip a blocked thread
-  skip : ∀ {n' s₁ s₂} {Σ : Store ls} {ps : Pools ls} {ts : Pool l n'} {t : Thread l} ->
-          ps [ l ]= ts ->
-          ts [ n ]ᵗ= t ->
+  skip : ∀ {s₁ s₂} {Σ : Store ls} {ps : Pools ls} {t : Thread l} ->
 
+          ps [ l ][ n ]= t ->
+                         
           Stuck Σ t ->
           s₁ ⟶ s₂ ↑ (l , n , NoStep) ->
           l , n ⊢ ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
 
-  -- Now we don't remove terminated threads anymore, so that all the indices are still valid.
+  -- Now we dot remove terminated threads anymore, so that all the indices are still valid.
   -- In the paper Σ changes in this rule. Why is that?
-  exit : ∀ {n' s₁ s₂} {Σ : Store ls} {ps : Pools ls} {ts : Pool l n'} {t : Thread l} ->
+  exit : ∀ {s₁ s₂} {Σ : Store ls} {ps : Pools ls} {t : Thread l} ->
 
-           ps [ l ]= ts  ->
-           ts [ n ]ᵗ= t ->
+           ps [ l ][ n ]= t  ->
 
            IsValue t ->
            s₁ ⟶ s₂ ↑ (l , n , Done) ->
@@ -225,18 +228,19 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
 open import Data.Product hiding (_,_)
 
 getEvent : ∀ {ls l n} {g₁ g₂ : Global ls} -> l , n ⊢ g₁ ↪ g₂ -> Event
-getEvent (step x x₁ x₂ x₃ x₄ x₅) = Step
-getEvent (fork {nʰ = nʰ} {tʰ = tʰ}x x₁ x₂ x₃ x₄ x₅ x₆ x₇) = fork? tʰ nʰ
-getEvent (hole x x₁) = ∙
-getEvent (skip x x₁ x₂ x₃) = NoStep
-getEvent (exit x x₁ x₂ x₃) = Done
+getEvent (step x x₁ x₂ x₃) = Step
+getEvent (fork {nʰ = nʰ} {tʰ = tʰ} x x₁ x₂ x₃ x₄ x₅) = fork? tʰ nʰ
+getEvent (hole x x₁ x₂) = ∙
+getEvent (skip x x₁ x₂) = NoStep
+getEvent (exit x x₁ x₂) = Done
+
 
 getSchedulerStep : ∀ {ls l n} {g₁ g₂ : Global ls} -> (s : l , n ⊢ g₁ ↪ g₂) -> (state g₁) ⟶ (state g₂) ↑ (l , n , getEvent s)
-getSchedulerStep (step x x₁ x₂ x₃ x₄ x₅) = x₃
-getSchedulerStep (fork x x₁ x₂ x₃ x₄ x₅ x₆ x₇) = x₄
-getSchedulerStep (hole x x₁) = x₁
-getSchedulerStep (skip x x₁ x₂ x₃) = x₃
-getSchedulerStep (exit x x₁ x₂ x₃) = x₃
+getSchedulerStep (step x x₁ x₂ x₃) = x₂
+getSchedulerStep (fork x x₁ x₂ x₃ x₄ x₅) = x₃
+getSchedulerStep (hole x x₁ x₂) = x₂
+getSchedulerStep (skip x x₁ x₂) = x₂
+getSchedulerStep (exit x x₁ x₂) = x₂
 
 open import Data.Product
 

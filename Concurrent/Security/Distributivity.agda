@@ -21,9 +21,13 @@ open import Concurrent.Semantics State _⟶_↑_
 εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
 εᵍ lₐ ⟨ s , Σ , ps ⟩ = ⟨ ε-state lₐ s , εˢ lₐ Σ , ε-pools lₐ ps ⟩
 
-εᵉ : Label -> Effect -> Effect
-εᵉ lₐ ∅ = ∅
-εᵉ lₐ (fork t) = fork (ε lₐ t)
+εᵉ : ∀ {lₐ l} -> Dec (l ⊑ lₐ) -> Effect l -> Effect l
+εᵉ (yes p) ∙ = ∙
+εᵉ (yes p) ∅ = ∅
+εᵉ {lₐ} (yes p) (fork t) = fork (ε lₐ t)
+εᵉ (no ¬p) e = ∙
+
+-- εᵉ lₐ (fork t) = fork (ε lₐ t)
 
 open Program
 
@@ -68,59 +72,85 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
         aux {lₐ} (no ¬p) t nF x with ε-Mac _ (no ¬p) t | ε-Mac-CTerm≡∙ lₐ t ¬p
         aux (no ¬p) t nF () | .∙ | refl
 
+ε-Is∙ : ∀ {lₐ τ l} {t : CTerm (Mac l τ)} -> (p : l ⊑ lₐ) -> ¬ (Is∙ t) -> ¬ (Is∙ (ε-Mac lₐ (yes p) t))
+ε-Is∙ {t = Var x} p ¬∙ ()
+ε-Is∙ {t = App t t₁} p ¬∙ ()
+ε-Is∙ {t = If t Then t₁ Else t₂} p ¬∙ ()
+ε-Is∙ {t = Return t} p ¬∙ ()
+ε-Is∙ {t = t >>= t₁} p ¬∙ ()
+ε-Is∙ {t = Throw t} p ¬∙ ()
+ε-Is∙ {t = Catch t t₁} p ¬∙ ()
+ε-Is∙ {t = Mac t} p ¬∙ ()
+ε-Is∙ {t = Macₓ t} p ¬∙ ()
+ε-Is∙ {lₐ} {t = label {h = h} x t} p ¬∙ is∙ with h ⊑? lₐ
+ε-Is∙ {lₐ} {._} {l} {label x t} p₁ ¬∙ () | yes p
+ε-Is∙ {lₐ} {._} {l} {label x t} p ¬∙ () | no ¬p 
+ε-Is∙ {t = unlabel x t} p ¬∙ ()
+ε-Is∙ {lₐ} {t = join {h = h} x t} p ¬∙ is∙ with h ⊑? lₐ
+ε-Is∙ {lₐ} {._} {l} {join x t} p₁ ¬∙ () | yes p
+ε-Is∙ {lₐ} {._} {l} {join x t} p ¬∙ () | no ¬p 
+ε-Is∙ {t = read x t} p ¬∙ ()
+ε-Is∙ {t = write x t t₁} p ¬∙ ()
+ε-Is∙ {t = new x t} p ¬∙ ()
+ε-Is∙ {t = fork x t} p ¬∙ ()
+ε-Is∙ {t = newMVar x} p ¬∙ ()
+ε-Is∙ {t = takeMVar t} p ¬∙ ()
+ε-Is∙ {t = putMVar t t₁} p ¬∙ ()
+ε-Is∙ {t = ∙} p ¬∙ is∙ = ¬∙ ∙
+
 ε-↑ : ∀ {l lₐ τ ls e} {p₁ p₂ : Program ls (Mac l τ)} -> (p : l ⊑ lₐ) -> p₁ ⟼ p₂ ↑ e ->
         let ⟨ Σ₁ ∥ t₁ ⟩ = p₁
             ⟨ Σ₂ ∥ t₂ ⟩ = p₂ in
-        ⟨ εˢ lₐ Σ₁ ∥ ε-Mac lₐ (yes p) t₁ ⟩ ⟼ ⟨ εˢ lₐ Σ₂ ∥ ε-Mac lₐ (yes p) t₂ ⟩ ↑ (εᵉ lₐ e)
-ε-↑ {lₐ = lₐ} p (fork {h = h} p₁ t s) = fork p₁ (ε-Mac lₐ (h ⊑? lₐ) t) (ε-Mac-dist lₐ (yes p) s)
-ε-↑ {l} {lₐ} {p₁ = ⟨ Σ₁ ∥ t₁ ⟩} {⟨ Σ₂ ∥ t₂ ⟩ } p (none nF s) = none (ε-IsFork (yes p) nF) (ε-Mac-dist _ (yes p) s)
+        ⟨ εˢ lₐ Σ₁ ∥ ε-Mac lₐ (yes p) t₁ ⟩ ⟼ ⟨ εˢ lₐ Σ₂ ∥ ε-Mac lₐ (yes p) t₂ ⟩ ↑ (εᵉ (yes p) e)
+ε-↑ p (bullet x) = bullet (ε-Mac-dist _ (yes p) x)
+ε-↑ {lₐ = lₐ} p (fork {h = h} p₁ t s) = fork p₁ (ε-Mac _ (h ⊑? lₐ) t) (ε-Mac-dist lₐ (yes p) s)
+ε-↑ p (none nF ¬∙ s) = none (ε-IsFork (yes p) nF) (ε-Is∙ p ¬∙) (ε-Mac-dist _ (yes p) s)
 
 --------------------------------------------------------------------------------
 
-ε-write-≡ : ∀ {l lₐ n ls} {ts : Pool l n} {ps₁ ps₂ : Pools ls} -> ¬ (l ⊑ lₐ) -> ps₂ ← ps₁ [ l ]≔ ts -> ε-pools lₐ ps₁ ≡ ε-pools lₐ ps₂
-ε-write-≡ {l} {lₐ} ¬p Here with l ⊑? lₐ
-ε-write-≡ ¬p Here | yes p = ⊥-elim (¬p p)
-ε-write-≡ ¬p₁ Here | no ¬p = refl
-ε-write-≡ ¬p (There x) rewrite ε-write-≡ ¬p x = refl
+ε-updateᵖ-≡ : ∀ {l lₐ n ls} {t : Thread l} {ps₁ ps₂ : Pools ls} -> ¬ (l ⊑ lₐ) -> ps₂ ← ps₁ [ l ][ n ]≔ t -> ε-pools lₐ ps₁ ≡ ε-pools lₐ ps₂
+ε-updateᵖ-≡ {l} {lₐ} ¬p (Here x) with l ⊑? lₐ
+ε-updateᵖ-≡ ¬p (Here x) | yes p = ⊥-elim (¬p p)
+ε-updateᵖ-≡ ¬p₁ (Here x) | no ¬p = refl
+ε-updateᵖ-≡ ¬p (There x) rewrite ε-updateᵖ-≡ ¬p x = refl
 
 --------------------------------------------------------------------------------
 
--- Here n is implicit! we should expose it somehow
-ε-read∙  : ∀ {l lₐ ls n} {ps : Pools ls} {ts : Pool l n} -> ¬ ( l ⊑ lₐ) -> ps [ l ]= ts -> ε-pools lₐ ps [ l ]= (∙ {n = n})
-ε-read∙ {l} {lₐ} {ps = x ◅ ps} ¬p Here with l ⊑? lₐ
-ε-read∙ {l} {lₐ} {._} {n'} {x ◅ ps} ¬p Here | yes p = ⊥-elim (¬p p)
-ε-read∙ {l} {lₐ} {._} {n'} {x ◅ ps} ¬p₁ Here | no ¬p = Here
+ε-read∙  : ∀ {l lₐ ls n} {ps : Pools ls} {t : Thread l} -> ¬ ( l ⊑ lₐ) -> ps [ l ][ n ]= t -> ε-pools lₐ ps [ l ][ n ]= ∙
+ε-read∙ {l} {lₐ} {ps = x ◅ ps} ¬p (Here a) with l ⊑? lₐ
+ε-read∙ {l} {lₐ} {._} {n'} {x ◅ ps} ¬p (Here a) | yes p = ⊥-elim (¬p p)
+ε-read∙ {l} {lₐ} {._} {n'} {x ◅ ps} ¬p₁ (Here a) | no ¬p = Here ∙
 ε-read∙ {ps = x ◅ ps} ¬p (There q) = There (ε-read∙ ¬p q)
 
-ε-readᵖ : ∀ {l lₐ n ls} {ps : Pools ls} {ts : Pool l n} -> (x : Dec (l ⊑ lₐ)) -> ps [ l ]= ts -> ε-pools lₐ ps [ l ]= (εᵗ x ts)
-ε-readᵖ {l} {lₐ} {ts = ts} x (Here ) rewrite εᵗ-extensional x (l ⊑? lₐ) ts = Here
+ε-read : ∀ {l lₐ n' n} {t : Thread l} {ts : Pool l n'} -> (x : Dec (l ⊑ lₐ)) -> LookupThread t n ts -> LookupThread (ε-Mac lₐ x t) n (εᵗ x ts)
+ε-read (yes p) ∙ = ∙
+ε-read (yes p) Here = Here
+ε-read (yes p) (There a) = There (ε-read (yes p) a)
+ε-read {t = t} (no ¬p) a rewrite ε-Mac-CTerm≡∙ _ t ¬p = ∙
+
+ε-readᵖ : ∀ {l lₐ n ls} {ps : Pools ls} {t : Thread l} -> (x : Dec (l ⊑ lₐ)) -> ps [ l ][ n ]= t -> (ε-pools lₐ ps) [ l ][ n ]= (ε-Mac _ x t)
+ε-readᵖ {l} {lₐ} {t = t} x (Here {p = ts} y) rewrite ε-Mac-extensional x (l ⊑? lₐ) t = Here (ε-read (l ⊑? lₐ) y)
 ε-readᵖ x (There y) = There (ε-readᵖ x y)
 
-ε-readᵗ : ∀ {l lₐ n n'} {ts : Pool l n'} {t : Thread l} -> (p : l ⊑ lₐ) -> ts [ n ]ᵗ= t ->  (εᵗ (yes p) ts) [ n ]ᵗ= ε-Mac lₐ (yes p) t
-ε-readᵗ {l} {lₐ} p Here with l ⊑? lₐ
-ε-readᵗ {t = t} p₁ Here | yes p rewrite ε-Mac-extensional (yes p₁) (yes p) t = Here
-ε-readᵗ p Here | no ¬p = ⊥-elim (¬p p)
-ε-readᵗ p (There x) = There (ε-readᵗ p x)
-
-ε-read-hole : ∀ {l lₐ n ls} {ps : Pools ls} ->
-              ps [ l ]= (∙ {n = n}) -> ε-pools lₐ ps [ l ]= (∙ {n = n})
-ε-read-hole {l} {lₐ} {n} Here rewrite εᵗ∙≡∙ (l ⊑? lₐ) n = Here
-ε-read-hole (There x) = There (ε-read-hole x)              
+ε-readᵗ : ∀ {l lₐ ls n} {ps : Pools ls} {ts : Pool l n} -> (x : Dec (l ⊑ lₐ)) -> ps [ l ]= ts ->  (ε-pools lₐ ps) [ l ]= εᵗ x ts
+ε-readᵗ {l} {lₐ} {ts = ts} x Here rewrite εᵗ-extensional x (l ⊑? lₐ) ts = Here
+ε-readᵗ x (There y) = There (ε-readᵗ x y)
 
 --------------------------------------------------------------------------------
 
-ε-updateᵗ : ∀ {l lₐ n' n} {ts₁ ts₂ : Pool l n'} {t : Thread l} -> (p : l ⊑ lₐ) ->
-               ts₂ ← ts₁ [ n ]ᵗ≔ t ->
-               (εᵗ (yes p) ts₂) ← (εᵗ (yes p) ts₁) [ n ]ᵗ≔ (ε-Mac lₐ (yes p) t) 
-ε-updateᵗ p ∙ = ∙
-ε-updateᵗ p upd = upd
-ε-updateᵗ p (skip x) = skip (ε-updateᵗ p x)
+ε-update : ∀ {l lₐ n' n} {ts₁ ts₂ : Pool l n'} {t : Thread l} -> (p : l ⊑ lₐ) ->
+               UpdateThread t n ts₁ ts₂ -> 
+               UpdateThread (ε-Mac lₐ (yes p) t) n (εᵗ (yes p) ts₁) (εᵗ (yes p) ts₂)
+ε-update p ∙ = ∙
+ε-update p upd = upd
+ε-update p (skip a) = skip (ε-update p a)
 
-ε-updateᵖ : ∀ {l lₐ n ls} {ps₁ ps₂ : Pools ls} {ts : Pool l n} -> (p : l ⊑ lₐ) ->
-             ps₂ ← ps₁ [ l ]≔ ts  ->
-             (ε-pools lₐ ps₂) ← (ε-pools lₐ ps₁) [ l ]≔ (εᵗ (yes p) ts)
-ε-updateᵖ {l} {lₐ} {ts = ts} p Here rewrite εᵗ-extensional (yes p) (l ⊑? lₐ) ts = Here
-ε-updateᵖ p (There x) = There (ε-updateᵖ p x)
+ε-updateᵖ : ∀ {l lₐ n ls} {ps₁ ps₂ : Pools ls} {t : Thread l} -> (p : l ⊑ lₐ) ->
+             ps₂ ← ps₁ [ l ][ n ]≔ t  ->
+             (ε-pools lₐ ps₂) ← (ε-pools lₐ ps₁) [ l ][ n ]≔ (ε-Mac _ (yes p) t)
+ε-updateᵖ {l} {lₐ} {t = t} p (Here {p₁ = ts₁} {p₂ = ts₂} x)
+  rewrite εᵗ-extensional (l ⊑? lₐ) (yes p) ts₁ | εᵗ-extensional (l ⊑? lₐ) (yes p) ts₂ = Here (ε-update p x)
+ε-updateᵖ p (There a) = There (ε-updateᵖ p a)
 
 ▻-≡ : ∀ {l lₐ n} (ts : Pool l n) (t : Thread l)  (x : Dec (l ⊑ lₐ)) -> (εᵗ x ts ▻ ε-Mac _ x t) ≡ εᵗ (l ⊑? lₐ) (ts ▻ t)
 ▻-≡ {l} {lₐ} ts t (yes p) rewrite εᵗ-extensional (l ⊑? lₐ) (yes p) (ts ▻ t) = sym (ε-▻-≡ p t ts)
@@ -133,6 +163,13 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
                ε-pools lₐ ps₂ ← ε-pools lₐ ps₁ [ l ]≔ ((εᵗ x ts) ▻ (ε-Mac _ x t))
 ε-update-▻ {l} {lₐ} {ts = ts} {t = t} x Here rewrite ▻-≡ ts t x = Here
 ε-update-▻ x (There y) = There (ε-update-▻ x y)
+
+ε-updateᵗ-≡ : ∀ {l lₐ ls n} {ps₁ ps₂ : Pools ls} {ts : Pool l n} -> ¬ (l ⊑ lₐ) ->
+            ps₂ ← ps₁ [ l ]≔ ts -> ε-pools lₐ ps₁ ≡ ε-pools lₐ ps₂
+ε-updateᵗ-≡ {l} {lₐ} ¬p Here with l ⊑? lₐ
+ε-updateᵗ-≡ ¬p Here | yes p = ⊥-elim (¬p p)
+ε-updateᵗ-≡ ¬p₁ Here | no ¬p = refl
+ε-updateᵗ-≡ ¬p (There x) rewrite ε-updateᵗ-≡ ¬p x = refl
 
 --------------------------------------------------------------------------------
 
@@ -162,30 +199,31 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ... | yes p = ⊥-elim (¬p₁ p)
 ... | no _ = refl
 
+-- Distributivity
 εᵍ-dist : ∀ {l n ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> l , n ⊢ g₁ ↪ g₂ -> l , n ⊢ (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
 
-εᵍ-dist {l} lₐ (step r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
-εᵍ-dist {l} {n} lₐ (step {ts₂ = ts} r₁ r₂ st sc w₁ w₂) | yes p | sc' with ε-updateᵗ p w₁ | ε-updateᵖ p w₂ 
-... | x | y  rewrite εᵗ-extensional (yes p) (l ⊑? lₐ) ts = step (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-↑ p st) sc' x y
-εᵍ-dist {l} {n}  lₐ (step r₁ r₂ st sc w₁ w₂) | no ¬p | sc' with ε-read∙ ¬p r₁
-... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-sch-≡ ¬p sc = hole x sc'
+εᵍ-dist {l} lₐ (step r st sc w)  with l ⊑? lₐ
+εᵍ-dist lₐ (step r st sc w) | yes p = step (ε-readᵖ (yes p) r) ((ε-↑ p st)) (ε-sch-dist (yes p) sc ) (ε-updateᵖ p w)
+εᵍ-dist lₐ (step r st sc w) | no ¬p with ε-read∙ ¬p r | (ε-sch-dist (no ¬p) sc)
+... | x | sc' rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-updateᵖ-≡ ¬p w | ε-sch-≡ ¬p sc = hole x (bullet (Pure Hole)) sc'
 
-εᵍ-dist {l} lₐ (fork r₁ r₂ r₃ st sc  w₁ w₂ w₃) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc   
-εᵍ-dist {l} {n} lₐ (fork {h = h} {nʰ = nʰ} {tsʰ = tsʰ} {tʰ = tʰ} r₁ r₂ r₃ st sc w₁ w₂ w₃) | yes p | sc'
-  with h ⊑? lₐ | ε-update-▻ {ts = tsʰ} {t = tʰ} (h ⊑? lₐ) w₃ 
-... | x | u rewrite ε-fork? {n = nʰ} (h ⊑? lₐ) tʰ | ε-Mac-extensional x (h ⊑? lₐ) tʰ
-  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-readᵖ x r₃) (ε-↑ p st) sc' (ε-updateᵗ p w₁) (ε-updateᵖ p w₂) u
-εᵍ-dist {l} {n} lₐ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) | no ¬p | sc' with ε-read∙ ¬p r₁ 
-... | x rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-write-≡ ¬p w₂ | ε-write-≡ (trans-⋢ (fork-⊑ st) ¬p) w₃ | ε-sch-≡ ¬p sc = hole x sc'
-  
-εᵍ-dist {l} lₐ (hole r sc) with l ⊑? lₐ
-εᵍ-dist lₐ (hole r sc) | yes p = hole (ε-read-hole r) (ε-sch-dist (yes p) sc)
-εᵍ-dist lₐ (hole r sc) | no ¬p = hole (ε-read-hole r) (ε-sch-dist (no ¬p) sc)
+εᵍ-dist {l} lₐ (fork r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ
+εᵍ-dist {l} lₐ (fork {h = h} {nʰ = nʰ} {tʰ = tʰ} r₁ r₂ st sc w₁ w₂) | yes p with ε-sch-dist (yes p) sc
+... | sc' rewrite ε-fork? {n = nʰ} (h ⊑? lₐ) tʰ
+  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ (h ⊑? lₐ) r₂) (ε-↑ p st) sc' (ε-updateᵖ p w₁) (ε-update-▻ (h ⊑? lₐ) w₂)
+εᵍ-dist lₐ (fork r₁ r₂ st sc w₁ w₂) | no ¬p with ε-read∙ ¬p r₁ | (ε-sch-dist (no ¬p) sc)
+... | x | sc' rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-updateᵖ-≡ ¬p w₁ | ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₂ | ε-sch-≡ ¬p sc = hole x (bullet (Pure Hole)) sc'
 
-εᵍ-dist {l} lₐ (skip r₁ r₂ b sc ) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
-εᵍ-dist lₐ (skip r₁ r₂ b sc) | yes p | sc' = skip (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-Stuck p b) sc'
-εᵍ-dist lₐ (skip r₁ r₂ b sc) | no ¬p | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r₁) sc'
+εᵍ-dist {l} lₐ (hole r (bullet (Pure Hole)) sc) with l ⊑? lₐ
+... | yes p = hole (ε-readᵖ (yes p) r) (bullet (Pure Hole)) (ε-sch-dist (yes p) sc)
+... | no ¬p = hole (ε-readᵖ (no ¬p) r) (bullet (Pure Hole)) (ε-sch-dist (no ¬p) sc)
 
-εᵍ-dist {l} lₐ (exit r₁ r₂ isV sc) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
-εᵍ-dist lₐ (exit r₁ r₂ isV sc) | yes p | sc' = exit (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-IsValue p isV) sc'
-εᵍ-dist {l} {n} lₐ (exit r₁ r₂ isV sc) | no ¬p | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r₁) sc'
+εᵍ-dist {l} lₐ (skip r st sc) with l ⊑? lₐ
+... | yes p = skip (ε-readᵖ (yes p) r) (ε-Stuck p st) (ε-sch-dist (yes p) sc)
+... | no ¬p with ε-sch-dist (no ¬p) sc
+... | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r) (bullet (Pure Hole)) sc'
+
+εᵍ-dist {l} lₐ (exit r isV sc) with l ⊑? lₐ
+... | yes p = exit (ε-readᵖ (yes p) r) (ε-IsValue p isV) (ε-sch-dist (yes p) sc)
+... | no ¬p  with ε-sch-dist (no ¬p) sc
+... | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r) (bullet (Pure Hole)) sc'
