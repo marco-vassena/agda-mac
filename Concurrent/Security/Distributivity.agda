@@ -12,6 +12,7 @@ module Concurrent.Security.Distributivity
 
 open import Concurrent.Calculus
 open import Sequential.Security.Distributivity
+open import Sequential.Semantics
 open import Concurrent.Semantics State _⟶_↑_
 
 --------------------------------------------------------------------------------
@@ -26,13 +27,20 @@ open import Concurrent.Semantics State _⟶_↑_
 
 open Program
 
-ε-Blocked : ∀ {l lₐ τ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Blocked Σ t -> Blocked (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t)
-ε-Blocked {l} {lₐ} p (onPut q r) with l ⊑? lₐ
-ε-Blocked p₁ (onPut q r) | yes p = onPut q (ε-TypedIx p₁ _ q r)
-ε-Blocked p (onPut q r) | no ¬p = ⊥-elim (¬p p)
-ε-Blocked {l} {lₐ} p (onTake q r) with l ⊑? lₐ
-ε-Blocked p₁ (onTake q r) | yes p = onTake q (ε-TypedIx p₁ _ q r)
-ε-Blocked p (onTake q r) | no ¬p = ⊥-elim (¬p p)
+postulate Value-ε : ∀ {τ l lₐ} {t : CTerm (Mac l τ)} -> (p : l ⊑ lₐ) -> IsValue (ε-Mac lₐ (yes p) t) -> IsValue t
+postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Redex (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t) -> Redex Σ t
+
+-- To prove this we would need to prove the following lemmas:
+-- IsValue (ε t) => IsValue t
+-- Redex (ε Σ) (ε t) => Redex Σ t
+-- For thise we need the graph of the erasure function, therefore I am going to postulate them for the time being
+ε-Stuck : ∀ {l lₐ τ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ)  -> Stuck Σ t -> Stuck (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t)
+ε-Stuck {l} {lₐ} {t = t} {Σ} p (stuck nS nV) = stuck f g
+  where f : Redex (εˢ lₐ Σ)  (ε-Mac lₐ (yes p) t) -> ⊥
+        f s = nS (Redex-ε p s)
+        
+        g : IsValue (ε-Mac lₐ (yes p) t) -> ⊥
+        g isV = nV (Value-ε p isV)
 
 ε-IsFork : ∀ {lₐ τ l} {t : CTerm (Mac l τ)}(x : Dec (l ⊑ lₐ)) -> ¬ (IsFork t) -> ¬ (IsFork (ε-Mac lₐ x t))
 ε-IsFork {t = t} x nF y = aux x t nF y
@@ -175,7 +183,7 @@ open Program
 εᵍ-dist lₐ (hole r sc) | no ¬p = hole (ε-read-hole r) (ε-sch-dist (no ¬p) sc)
 
 εᵍ-dist {l} lₐ (skip r₁ r₂ b sc ) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc
-εᵍ-dist lₐ (skip r₁ r₂ b sc) | yes p | sc' = skip (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-Blocked p b) sc'
+εᵍ-dist lₐ (skip r₁ r₂ b sc) | yes p | sc' = skip (ε-readᵖ (yes p) r₁) (ε-readᵗ p r₂) (ε-Stuck p b) sc'
 εᵍ-dist lₐ (skip r₁ r₂ b sc) | no ¬p | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r₁) sc'
 
 εᵍ-dist {l} lₐ (exit r₁ r₂ isV sc) with l ⊑? lₐ | ε-sch-dist (l ⊑? lₐ) sc

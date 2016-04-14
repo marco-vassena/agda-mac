@@ -204,7 +204,7 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
           ps [ l ]= ts ->
           ts [ n ]ᵗ= t ->
 
-          Blocked Σ t ->
+          Stuck Σ t ->
           s₁ ⟶ s₂ ↑ (l , n , NoStep) ->
           l , n ⊢ ⟨ s₁ , Σ , ps ⟩ ↪ ⟨ s₂ , Σ , ps ⟩
 

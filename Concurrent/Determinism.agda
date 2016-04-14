@@ -22,17 +22,11 @@ write-∈ : ∀ {l ls n} {ts : Pool l n} {ps₁ ps₂ : Pools ls} -> ps₂ ← p
 write-∈ Here = Here
 write-∈ (There x) = There (write-∈ x)
 
-blocked-no-redex : ∀ {ls l} {Σ₁ Σ₂ : Store ls} {t₁ t₂ : Thread l} -> Blocked Σ₁ t₁ -> ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ -> ⊥
-blocked-no-redex (onPut q r) (Pure ()) 
-blocked-no-redex (onPut q r) (putMVarCtx (Pure ()))
-blocked-no-redex {Σ₁ = Σ} (onPut q₁ r₁) (putMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ = index-unique-status r₁ r₂
-blocked-no-redex (onTake q r) (Pure ())
-blocked-no-redex (onTake q r) (takeMVarCtx (Pure ()))
-blocked-no-redex {Σ₁ = Σ} (onTake q₁ r₁) (takeMVar q₂ r₂) rewrite store-unique Σ q₁ q₂ = index-unique-status r₂ r₁
+stuck-no-redex : ∀ {ls l} {Σ₁ : Store ls} {t₁ : Thread l} -> Stuck Σ₁ t₁ -> Redex Σ₁ t₁ -> ⊥
+stuck-no-redex (stuck x x₁) r = ⊥-elim (x r)
 
-blocked-no-value : ∀ {l ls} {Σ : Store ls} {t : Thread l} -> Blocked Σ t -> IsValue t -> ⊥
-blocked-no-value (onPut q r) ()
-blocked-no-value (onTake q r) ()
+stuck-no-value : ∀ {l ls} {Σ : Store ls} {t : Thread l} -> Stuck Σ t -> IsValue t -> ⊥
+stuck-no-value (stuck x x₁) isV = x₁ isV
 
 single-event : ∀ {l ls τ} {t : Thread l} {p₁ p₂ p₃ : Program ls τ} -> p₁ ⟼ p₂ ↑ (fork t) -> ¬ (p₁ ⟼ p₃ ↑ ∅)
 single-event (fork p t s) (none nF s₁) = nF (fork p t)
@@ -103,7 +97,7 @@ determinism↪ (step r₁ r₂ st sc w₁ w₂) (fork r₁' r₂' r₃' st' sc' 
 determinism↪ (step r₁ r₂ st sc w₁ w₂) (hole r₁' sc')
   rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' = ⊥-elim (thread-in∙ r₂)
 determinism↪ (step r₁ r₂ st sc w₁ w₂) (skip r₁' r₂' b sc')
-  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (blocked-no-redex b (stepOf st))
+  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (stuck-no-redex b (Step (stepOf st)))
 determinism↪ (step r₁ r₂ st sc w₁ w₂) (exit r₁' r₂' isV sc')
   rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (valueNotRedex _ isV (Step (stepOf st)))
 determinism↪ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) (step r₁' r₂' st' sc' w₁' w₂')
@@ -116,7 +110,7 @@ determinism↪ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) (fork r₁' r₂' r₃
 determinism↪ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) (hole r₁' sc')
   rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' = ⊥-elim (thread-in∙ r₂)
 determinism↪ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) (skip r₁' r₂' b sc')
-  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (blocked-no-redex b (stepOf st))
+  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (stuck-no-redex b (Step (stepOf st)))
 determinism↪ (fork r₁ r₂ r₃ st sc w₁ w₂ w₃) (exit r₁' r₂' isV sc')
   rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (valueNotRedex _ isV (Step (stepOf st)))
 determinism↪ (hole r₁ sc) (step  r₁' r₂' st' sc' w₁' w₂') rewrite lookup-pool-size r₁ r₁' with lookup-pool r₁ r₁'
@@ -129,15 +123,15 @@ determinism↪ (hole r₁ sc) (skip r₁' r₂' b sc') rewrite lookup-pool-size 
 determinism↪ (hole r₁ sc) (exit  r₁' r₂' isV sc') rewrite lookup-pool-size r₁ r₁' with lookup-pool r₁ r₁'
 ... | refl = ⊥-elim (thread-in∙ r₂')
 determinism↪ (skip r₁ r₂ b sc) (step r₁' r₂' st' sc' w₁' w₂')
-  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (blocked-no-redex b (stepOf st'))
+  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (stuck-no-redex b (Step (stepOf st')))
 determinism↪ (skip r₁ r₂ b sc) (fork r₁' r₂' r₃' st' sc' w₁' w₂' w₃')
-  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (blocked-no-redex b (stepOf st'))
+  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (stuck-no-redex b (Step (stepOf st')))
 determinism↪ (skip r₁ r₂ b sc) (hole r₁' sc') rewrite lookup-pool-size r₁ r₁' with lookup-pool r₁ r₁'
 ... | refl = ⊥-elim (thread-in∙ r₂)
 determinism↪ (skip r₁ r₂ b sc) (skip r₁' r₂' b' sc')
   rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' | deterministic-scheduler sc sc' = refl
 determinism↪ (skip r₁ r₂ b sc) (exit r₁' r₂' isV sc')
-  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (blocked-no-value b isV)
+  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (stuck-no-value b isV)
 determinism↪ (exit r₁ r₂ isV sc) (step r₁' r₂' st' sc' w₁' w₂')
   rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (valueNotRedex _ isV (Step (stepOf st')))
 determinism↪ (exit r₁ r₂ isV sc) (fork r₁' r₂' r₃' st' sc' w₁' w₂' w₃')
@@ -145,6 +139,6 @@ determinism↪ (exit r₁ r₂ isV sc) (fork r₁' r₂' r₃' st' sc' w₁' w�
 determinism↪ (exit r₁ r₂ isV sc) (hole r₁' sc') rewrite lookup-pool-size r₁ r₁' with lookup-pool r₁ r₁'
 ... | refl = ⊥-elim (thread-in∙ r₂)
 determinism↪ (exit r₁ r₂ isV sc) (skip r₁' r₂' b' sc')
-  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (blocked-no-value b' isV)
+  rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' = ⊥-elim (stuck-no-value b' isV)
 determinism↪ (exit r₁ r₂ isV sc) (exit r₁' r₂' isV' sc')
   rewrite lookup-pool-size r₁ r₁' | lookup-pool r₁ r₁' | lookup-thread r₂ r₂' | deterministic-scheduler sc sc' = refl

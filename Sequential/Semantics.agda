@@ -181,7 +181,7 @@ mutual
 --------------------------------------------------------------------------------
 
 data Stuck {ls : List Label} {τ : Ty} (Σ : Store ls) (t : CTerm τ) : Set where
-  stuck : ∀ {Σ' : Store ls} {t' : CTerm τ} -> ¬ (⟨ Σ ∥ t ⟩ ⟼ ⟨ Σ' ∥ t' ⟩) -> ¬ (IsValue t) -> Stuck Σ t
+  stuck : ¬ (Redex Σ t) -> ¬ (IsValue t) -> Stuck Σ t
 
 data PStatus {ls : List Label} {τ : Ty} (Σ : Store ls) (t : CTerm τ) : Set where
   V : IsValue t -> PStatus Σ t
