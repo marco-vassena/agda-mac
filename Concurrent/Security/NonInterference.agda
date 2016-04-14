@@ -247,7 +247,7 @@ postulate scheduler2global : ∀ {ls h n e} {g₁ g₂ : Global ls} ->
 
 module PS
     (highˢ : ∀ {s₁ s₁' s₂ l lₐ n e i j} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ suc j ⟩ s₁' ->
-                    ∃ λ h -> ∃ λ n -> (e' : Event) -> e' ≢ ∙ -> HighStep lₐ h n e' s₁ s₂ s₁' i j)
+                    ∃ λ h -> ∃ λ n -> (e' : Event h) -> e' ≢ ∙ -> HighStep lₐ h n e' s₁ s₂ s₁' i j)
     (aligned : ∀ {l lₐ n i e s₁ s₂ s₁'} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' ⟪ l , n , e ⟫ lₐ)
   where
 

@@ -173,31 +173,32 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 
 --------------------------------------------------------------------------------
 
-ε-fork? : ∀ {h lₐ n} -> (x : Dec (h ⊑ lₐ)) (t : Thread h) -> εᴱ lₐ (fork? t n) ≡ fork? (ε-Mac lₐ x t) n
-ε-fork? x t with is∙? t
-ε-fork? (yes p) .∙ | yes ∙ = refl
-ε-fork? (no ¬p) .∙ | yes ∙ = refl
-ε-fork? {h} {lₐ} (yes p) t | no ¬p with h ⊑? lₐ
-ε-fork? (yes p) (Var x) | no ¬p | yes p' = refl
-ε-fork? (yes p) (App t t₁) | no ¬p | yes p' = refl
-ε-fork? (yes p) (If t Then t₁ Else t₂) | no ¬p | yes p' = refl
-ε-fork? (yes p) (Return t) | no ¬p | yes p' = refl
-ε-fork? (yes p) (t >>= t₁) | no ¬p | yes p' = refl
-ε-fork? (yes p) (Throw t) | no ¬p | yes p' = refl
-ε-fork? (yes p) (Catch t t₁) | no ¬p | yes p' = refl
-ε-fork? (yes p) (Mac t) | no ¬p | yes p' = refl
-ε-fork? (yes p) (Macₓ t) | no ¬p | yes p' = refl
-ε-fork? (yes p) (unlabel x t) | no ¬p | yes p' = refl
-ε-fork? (yes p) (read x t) | no ¬p | yes p' = refl
-ε-fork? (yes p) (write x t t₁) | no ¬p | yes p' = refl
-ε-fork? (yes p) (fork x t) | no ¬p | yes p' = refl
-ε-fork? (yes p) (takeMVar t) | no ¬p | yes p' = refl
-ε-fork? (yes p) (putMVar t t₁) | no ¬p | yes p' = refl
-ε-fork? (yes p) ∙ | no ¬p | yes p' = ⊥-elim (¬p ∙)
-... | no ¬p' = ⊥-elim (¬p' p)
-ε-fork? {h} {lₐ} (no ¬p₁) t | no ¬p rewrite ε-Mac-CTerm≡∙ _ t ¬p₁ with h ⊑? lₐ
-... | yes p = ⊥-elim (¬p₁ p)
-... | no _ = refl
+ε-fork? : ∀ {h lₐ l n} -> (p : l ⊑ h) (x : Dec (h ⊑ lₐ)) -> (t : Thread h) -> εᴱ lₐ (fork? p t n)  ≡ fork? p (ε-Mac lₐ x t) n
+ε-fork? l⊑h (yes p) t with is∙? t
+ε-fork? l⊑h (yes p₁) .∙ | yes ∙ = refl
+ε-fork? {h} {lₐ} l⊑h (yes p) t | no ¬p with h ⊑? lₐ
+ε-fork? l⊑h (yes p₁) (Var x) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (App t t₁) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (If t Then t₁ Else t₂) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (Return t) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (t >>= t₁) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (Throw t) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (Catch t t₁) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (Mac t) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (Macₓ t) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (unlabel x t) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (read x t) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (write x t t₁) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (fork x t) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (takeMVar t) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (putMVar t t₁) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) ∙ | no ¬p | yes p = ⊥-elim (¬p ∙)
+ε-fork? l⊑h (yes p) t | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
+ε-fork? l⊑h (no ¬p) t rewrite ε-Mac-CTerm≡∙ _ t ¬p with is∙? t
+ε-fork? l⊑h (no ¬p) t | yes p = refl
+ε-fork? {h} {lₐ} l⊑h (no ¬p) t | no ¬p₁ with h ⊑? lₐ
+ε-fork? l⊑h (no ¬p) t | no ¬p₁ | yes p = ⊥-elim (¬p p)
+ε-fork? l⊑h (no ¬p₂) t | no ¬p₁ | no ¬p = refl
 
 -- Distributivity
 εᵍ-dist : ∀ {l n ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> l , n ⊢ g₁ ↪ g₂ -> l , n ⊢ (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
@@ -208,9 +209,9 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ... | x | sc' rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-updateᵖ-≡ ¬p w | ε-sch-≡ ¬p sc = hole x (bullet (Pure Hole)) sc'
 
 εᵍ-dist {l} lₐ (fork r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ
-εᵍ-dist {l} lₐ (fork {h = h} {nʰ = nʰ} {tʰ = tʰ} r₁ r₂ st sc w₁ w₂) | yes p with ε-sch-dist (yes p) sc
-... | sc' rewrite ε-fork? {n = nʰ} (h ⊑? lₐ) tʰ
-  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ (h ⊑? lₐ) r₂) (ε-↑ p st) sc' (ε-updateᵖ p w₁) (ε-update-▻ (h ⊑? lₐ) w₂)
+εᵍ-dist {l} lₐ (fork {h = h} {nʰ = nʰ} {tʰ = tʰ} {{l⊑h}} r₁ r₂ st sc w₁ w₂) | yes p with ε-sch-dist (yes p) sc
+... | sc' rewrite ε-fork? {n = nʰ} l⊑h (h ⊑? lₐ) tʰ
+  =  fork (ε-readᵖ (yes p) r₁) (ε-readᵗ (h ⊑? lₐ) r₂) (ε-↑ p st) sc' (ε-updateᵖ p w₁) (ε-update-▻ (h ⊑? lₐ) w₂)
 εᵍ-dist lₐ (fork r₁ r₂ st sc w₁ w₂) | no ¬p with ε-read∙ ¬p r₁ | (ε-sch-dist (no ¬p) sc)
 ... | x | sc' rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-updateᵖ-≡ ¬p w₁ | ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₂ | ε-sch-≡ ¬p sc = hole x (bullet (Pure Hole)) sc'
 

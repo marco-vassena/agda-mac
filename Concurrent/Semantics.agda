@@ -143,10 +143,10 @@ fork-⊑ (fork p t s) = p
 
 --------------------------------------------------------------------------------
 
-fork? : ∀ {h} -> Thread h -> ℕ -> Event 
-fork? t n with is∙? t
-fork? t n | yes p = Step
-fork? {h} t n | no ¬p = Fork h n
+fork? : ∀ {l h} -> l ⊑ h ->  Thread h -> ℕ -> Event l
+fork? p t n with is∙? t
+fork? p t n | yes _ = Step
+fork? p t n | no ¬p = Fork _ n p
 
 -------------------------------------------------------------------------------
 -- The global configuration is a thread pool paired with some shared split memory Σ
@@ -185,12 +185,13 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
 
   -- A fork step spawns a new thread
   fork : ∀ {s₁ s₂ h nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {t₁ t₂ : Thread l} {tʰ : Thread h} {tsʰ : Pool h nʰ} ->
-         
+           {{p : l ⊑ h}} ->
+           
            ps₁ [ l ][ n ]= t₁ ->
            ps₁ [ h ]= tsʰ  ->
            
            ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tʰ) ->
-           s₁ ⟶ s₂ ↑ (l , n , fork? tʰ nʰ) ->
+           s₁ ⟶ s₂ ↑ (l , n , fork? p tʰ nʰ) ->
 
            ps₂ ← ps₁ [ l ][ n ]≔ t₂ ->
            ps₃ ← ps₂ [ h ]≔ (tsʰ ▻ tʰ) -> 
@@ -230,9 +231,9 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
 
 open import Data.Product hiding (_,_)
 
-getEvent : ∀ {ls l n} {g₁ g₂ : Global ls} -> l , n ⊢ g₁ ↪ g₂ -> Event
+getEvent : ∀ {ls l n} {g₁ g₂ : Global ls} -> l , n ⊢ g₁ ↪ g₂ -> Event l
 getEvent (step x x₁ x₂ x₃) = Step
-getEvent (fork {nʰ = nʰ} {tʰ = tʰ} x x₁ x₂ x₃ x₄ x₅) = fork? tʰ nʰ
+getEvent (fork {nʰ = nʰ} {tʰ = tʰ} {{p}} x x₁ x₂ x₃ x₄ x₅) = fork? p tʰ nʰ
 getEvent (hole x x₁ x₂) = ∙
 getEvent (skip x x₁ x₂) = NoStep
 getEvent (exit x x₁ x₂) = Done

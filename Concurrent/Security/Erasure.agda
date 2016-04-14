@@ -17,10 +17,10 @@ open import Relation.Binary.PropositionalEquality
 ε-pools lₐ [] = []
 ε-pools lₐ (_◅_ {l = l} ts ps) = εᵗ (l ⊑? lₐ) ts ◅ (ε-pools lₐ ps)
 
-εᴱ : Label -> Event -> Event
-εᴱ lₐ (Fork h n) with h ⊑? lₐ
-εᴱ lₐ (Fork h n) | yes p = Fork h n
-εᴱ lₐ (Fork h n) | no ¬p = Step
+εᴱ : ∀ {l} -> Label -> Event l -> Event l
+εᴱ lₐ (Fork h n p) with h ⊑? lₐ
+εᴱ lₐ (Fork h n p) | yes _ = Fork h n p
+εᴱ lₐ (Fork h n p) | no ¬p = Step
 εᴱ lₐ e = e
 
 εᴹ : ∀ {l lₐ} -> Dec (l ⊑ lₐ) -> Message l -> Message l

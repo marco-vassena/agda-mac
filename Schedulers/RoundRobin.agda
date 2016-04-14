@@ -17,7 +17,7 @@ State = List (Label × ℕ)
 
 data _⟶_↑_ : ∀ {l} -> State -> State -> Message l -> Set where
   step : ∀ {s l n} -> ((l , n) ∷ s) ⟶ s ++ [ (l , n) ] ↑ ⟪ l , n , Step ⟫
-  fork : ∀ {s l n h m} -> (p : l ⊑ h) -> ((l , n) ∷ s) ⟶ s ++ ((h , m) ∷ (l , n) ∷ []) ↑ ⟪ l , n , Fork h m ⟫
+  fork : ∀ {s l n h m} -> (p : l ⊑ h) -> ((l , n) ∷ s) ⟶ s ++ ((h , m) ∷ (l , n) ∷ []) ↑ ⟪ l , n , Fork h m p ⟫
   done : ∀ {s l n} -> ((l , n) ∷ s) ⟶ s ↑ ⟪ l , n , Done ⟫
   skip : ∀ {s l n} -> ((l , n) ∷ s) ⟶ s ++ [ (l , n) ] ↑ ⟪ l , n , NoStep ⟫
   hole : ∀ {s l n} -> s ⟶ s ↑ ⟪ l , n , ∙ ⟫
@@ -116,13 +116,10 @@ determinism : ∀ {s₁ s₂ s₃ l n e} ->
                                    s₁ ⟶ s₃ ↑ ⟪ l , n , e ⟫ ->
                                    s₂ ≡ s₃
 determinism step step = refl
-determinism (fork p₁) (fork p₂) = refl
+determinism (fork p) (fork .p) = refl
 determinism done done = refl
 determinism skip skip = refl
 determinism hole hole = refl
-
-
--- structural low-equivalence
 
 mutual
   data _≈ˢ_ {{lₐ : Label}} : State -> State -> Set where
@@ -269,7 +266,7 @@ lemma₂ ¬p₁ ¬p₂ p hole e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (e≠∙ ref
 lemma₂ ¬p₁ ¬p₂ p s e≠∙ (cons₂ᴴ ¬p x) = cons₂ᴴ ¬p (lemma₂ ¬p₁ ¬p₂ p s e≠∙ x)
 
 highˢ : ∀ {s₁ s₁' s₂ l lₐ e n n₁ n₂} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ suc n₂ ⟩ s₁' ->
-          ∃ λ h -> ∃ λ n -> (e : Event) -> e ≢ ∙ -> HighStep lₐ h n e s₁ s₂ s₁' n₁ n₂
+          ∃ λ h -> ∃ λ n -> (e : Event h) -> e ≢ ∙ -> HighStep lₐ h n e s₁ s₂ s₁' n₁ n₂
 highˢ p step e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
 highˢ p (fork p₁) e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
 highˢ p done e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
@@ -277,11 +274,11 @@ highˢ p skip e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
 highˢ p hole e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (e≠∙ refl)
 highˢ {s₁} {(h , n) ∷ s₁'} {s₂} {l} {lₐ} {e} {n'} {n₁} {n₂} p s e≠∙ (cons₂ᴴ  ¬p x) with lemma {n = n} ¬p p s e≠∙ x
 ... | eq' = h , (n , aux)
-  where aux : (e : Event) -> e ≢ ∙ -> HighStep lₐ h n e s₁ s₂ ((h , n) ∷ s₁') n₁ n₂
+  where aux : (e : Event h) -> e ≢ ∙ -> HighStep lₐ h n e s₁ s₂ ((h , n) ∷ s₁') n₁ n₂
         aux NoStep e≠∙₁ = high ¬p skip eq'
         aux Step e≠∙₁ = high ¬p step eq'
         aux Done e≠∙₁ = high ¬p done x
-        aux (Fork h₁ n₃) e≠∙₁ = high ¬p (fork {!!}) (lemma₂ (trans-⋢ {!!} ¬p) ¬p p s e≠∙ x) -- I need to put this constraint in the event e
+        aux (Fork h₁ n₃ h⊑h₁) e≠∙₁ = high ¬p (fork h⊑h₁) (lemma₂ (trans-⋢ h⊑h₁ ¬p) ¬p p s e≠∙ x)
         aux ∙ e≠∙₁ = ⊥-elim (e≠∙₁ refl)
         
 open import Concurrent.Determinism (State) (_⟶_↑_) (determinism)
