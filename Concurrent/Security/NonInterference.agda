@@ -17,6 +17,8 @@ module Concurrent.Security.NonInterference
   -- TODO as long as ≈ is isomorphic to ≡ we can just stick to one of them!
   (ε-sch-≡ : ∀ {s₁ s₂ l lₐ} {m : Message l} -> ¬ (l ⊑ lₐ) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ≡ (ε-state lₐ s₂))
 
+
+
   (deterministic-scheduler : ∀ {s₁ s₂ s₃ l n e} ->
                                    s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ ->
                                    s₁ ⟶ s₃ ↑ ⟪ l , n , e ⟫ ->
@@ -129,7 +131,6 @@ _≈ᵀ_ {{lₐ}} s₁ s₂ = s₁ ≈ᵀ-⟨ lₐ ⟩ s₂
 postulate ≈ᵀ-≡ : ∀ {lₐ s₁ s₂} -> s₁ ≈ᵀ s₂ -> ε-state lₐ s₁ ≡ ε-state lₐ s₂
 postulate ≡-≈ᵀ : ∀ {lₐ s₁ s₂} -> ε-state lₐ s₁ ≡ ε-state lₐ s₂ -> s₁ ≈ᵀ s₂
 
-
 postulate sym-≈ᵀ : ∀ {lₐ} {s₁ s₂ : State} -> s₁ ≈ᵀ s₂ -> s₂ ≈ᵀ s₁
 -- sym-≈ᵀ x = sym x
 
@@ -162,8 +163,9 @@ unlift-≈ᵍ {g₁ = ⟨ state , storeᵍ , pools ⟩} {⟨ state₁ , storeᵍ
 lift-≈ᵍ :  ∀ {lₐ ls} {g₁ g₂ : Global ls}  -> εᵍ lₐ g₁ ≡ εᵍ lₐ g₂ -> g₁ ≈ᵍ g₂
 lift-≈ᵍ {g₁ = ⟨ state , storeᵍ , pools ⟩} {⟨ state₁ , storeᵍ₁ , pools₁ ⟩} eq = ⟨ ≡-≈ᵀ (state-≡ eq) , εˢ-≡ (storeᵍ-≡ eq) , ≡-≈ᴾ (pools-≡ eq) ⟩
 
--- TODO I might need to use structural low-equivalence also for stores
+--------------------------------------------------------------------------------
 
+-- Progress insensitive non-interference
 simulation↪ : ∀ {ls l n} {{lₐ : Label}} {g₁ g₂ g₁' g₂' : Global ls} ->
                     g₁ ≈ᵍ-⟨ lₐ ⟩ g₂ ->
                     l , n ⊢ g₁ ↪ g₁' ->
@@ -172,6 +174,8 @@ simulation↪ : ∀ {ls l n} {{lₐ : Label}} {g₁ g₂ g₁' g₂' : Global ls
 simulation↪ {{lₐ}} p s₁ s₂ = lift-≈ᵍ (aux (unlift-≈ᵍ p) (εᵍ-dist lₐ s₁) (εᵍ-dist lₐ s₂))
   where aux : ∀ {ls l n} {t₁ t₂ t₃ t₄ : Global ls} -> t₁ ≡ t₂ -> l , n ⊢ t₁ ↪ t₃ -> l , n ⊢ t₂ ↪ t₄ -> t₃ ≡ t₄
         aux refl s₁ s₂ = determinism↪ s₁ s₂
+
+--------------------------------------------------------------------------------
 
 open import Sequential.Semantics
 
@@ -214,27 +218,10 @@ getPool Here (ts ◅ ps) = HP Here
 getPool (There r) (ts ◅ ps) with getPool r ps
 getPool (There r) (ts₁ ◅ ps) | HP x = HP (There x)
 
-open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_ offset₁ offset₂ align
+-- TODO USE CONSISTENT NAMES
+open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_
 
--- This lemma needs to be proved.
--- It gets called when the two configurations are finally aligned (run the same low step).
--- 
--- postulate lemma₃ : ∀ {ls l lₐ s₂' n e} {g₁ g₂ g₁' : Global ls} ->
---                      let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
---                          ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
---                          ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁' in
---                      g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> s₂ ≈ˢ-⟨ lₐ ⟩ s₂' -> s₁' ⟶ s₂' ↑ ⟪ l , n , e ⟫  ->
---                      l , n ⊢ g₁ ↪ g₂ -> ∃ (λ Σ₂' -> ∃ (λ ps₂' -> l , n ⊢ g₁' ↪ ⟨ s₂' , Σ₂' , ps₂' ⟩ ×  g₂ ≈ᵍ-⟨ lₐ ⟩ ⟨ s₂' , Σ₂' , ps₂' ⟩)) 
-
--- How can we enforce that the scheduler chooses a valid thread id?
--- Here I need something more refined e.g. ps[ l ][ n ]= t
--- Maybe I should merge directly ps[ l ]= ts and ts [ n ]= t in a single data-type
-postulate threadToRun : ∀ {ls} (l : Label) (n : ℕ) (g₁ : Global ls) -> Thread l
-
--- TODO here I definitevely need the proof ps [ l ][ n ]= t where ps = pools g₁
--- This shouldn't be too bad. Depending on the status and the reduction only one rule apply!
--- postulate nextStep : ∀ {ls l } {Σ : Store ls} {t : Thread l} -> (n : ℕ) -> PStatus Σ t -> (g₁ : Global ls) -> ∃ λ g₂ -> l , n ⊢ g₁ ↪ g₂
-postulate nextEvent : ∀ {ls l } {Σ : Store ls} {t : Thread l} -> PStatus Σ t -> Event
+--------------------------------------------------------------------------------
 
 data NI {ls} (lₐ : Label) (g₁' g₂ : Global ls) : Set where
   isNI : ∀ {g₂'} -> g₁' ↪⋆ g₂' -> g₂ ≈ᵍ-⟨ lₐ ⟩ g₂' -> NI lₐ g₁' g₂
@@ -243,7 +230,8 @@ postulate square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} ->
                                 let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
                                     ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁'
                                     ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁' ⟶ s₂' ↑ ⟪ l , n , e ⟫ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ ->
-                                ∃ (λ Σ₂' -> (∃ (λ ps₂' -> let g₂' = ⟨ s₂' , Σ₂' , ps₂' ⟩ in (l , n ⊢ g₁' ↪ g₂') × (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂'))))
+                                ∃ (λ Σ₂' -> (∃ (λ ps₂' ->
+                                  let g₂' = ⟨ s₂' , Σ₂' , ps₂' ⟩ in (l , n ⊢ g₁' ↪ g₂') × (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂'))))
 
 
 -- Here we need some proof that ps [ h ] [ n ] does actually generate e
@@ -252,33 +240,38 @@ postulate scheduler2global : ∀ {ls h n e} {g₁ g₂ : Global ls} ->
                                  ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁ ⟶ s₂ ↑ ⟪ h , n , e ⟫ -> h , n ⊢ g₁ ↪ g₂
 
 --------------------------------------------------------------------------------
--- TODO organize modules properly so to break mutual dependencies
 
-postulate highˢ : ∀ {s₁ s₁' s₂ l lₐ n e i j} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ suc j ⟩ s₁' ->
-                    ∃ λ h -> ∃ λ n -> (e' : Event) -> e' ≢ ∙ -> HighStep lₐ h n e' s₁ s₂ s₁' i j
+-- Inner module defined to break mutual dependency between Security.Scheduler and specific scheduler modules (e.g. RoundRobin)
+
+module PS
+    (highˢ : ∀ {s₁ s₁' s₂ l lₐ n e i j} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ suc j ⟩ s₁' ->
+                    ∃ λ h -> ∃ λ n -> (e' : Event) -> e' ≢ ∙ -> HighStep lₐ h n e' s₁ s₂ s₁' i j)
+    (aligned : ∀ {l lₐ n i e s₁ s₂ s₁'} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' ⟪ l , n , e ⟫ lₐ)
+  where
+
+    low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
+    low-step {n₂ = zero} p s eq₁ eq₂ with aligned p (getSchedulerStep s) {!!} eq₁ -- This is my assumption
+    ... | low sc' eq₁' with square sc' eq₂ s
+    ... | Σ₂' , ps₂' , s' , eq' = isNI (s' ∷ []) eq'                         
+    low-step {n₂ = suc n₂} p s eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep s) {!!} eq₁ -- IDEM
+    ... | h , n , k with k Step (λ ())
+    ... | high ¬p sc' eq₁' with low-step p s eq₁' ⟨ forget eq₁' , b , c ⟩
+    ... | isNI ss eq₂' = isNI (scheduler2global sc' ∷ ss) eq₂' -- This is somehow suspicious ... why don't I need to use the fact that this is am high-step?
+
+    -- TODO maybe use NI data-type for clarity
+    ps-ni-dispatch : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
+    ps-ni-dispatch {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s with low-step p s (align eq₁) ⟨ eq₁ , eq₂ , eq₃ ⟩
+    ... | isNI ss eq'  = _ Σ., (eq' Σ., ss)
+    ps-ni-dispatch {g₁' = g₁'} (no ¬p) eq s = g₁' , trans-≈ᵍ (sym-≈ᵍ (high-step ¬p s)) eq , []
+
+    -- TODO I will probably need to add the assumption ps [ l ][ n ] ≠ ∙
+    progress-sensitive-ni : ∀ {l ls n} {g₁ g₁' g₂ : Global ls} -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂')
+    progress-sensitive-ni {l} lₐ = ps-ni-dispatch (l ⊑? lₐ)
 
 
-postulate aligned : ∀ {l lₐ n i e s₁ s₂ s₁'} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' ⟪ l , n , e ⟫ lₐ
---------------------------------------------------------------------------------
-
-
-
-low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
-low-step {n₂ = zero} p s eq₁ eq₂ with aligned p (getSchedulerStep s) {!!} eq₁ -- This is my assumption
-... | low sc' eq₁' with square sc' eq₂ s
-... | Σ₂' , ps₂' , s' , eq' = isNI (s' ∷ []) eq'                         
-low-step {n₂ = suc n₂} p s eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep s) {!!} eq₁ -- IDEM
-... | h , n , k with k Step (λ ())
-... | high ¬p sc' eq₁' with low-step p s eq₁' ⟨ forget eq₁' , b , c ⟩
-... | isNI ss eq₂' = isNI (scheduler2global sc' ∷ ss) eq₂' -- This is somehow suspicious ... why don't I need to use the fact that this is am high-step?
-
-lemma : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
-lemma {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s with low-step p s (align eq₁) ⟨ eq₁ , eq₂ , eq₃ ⟩
-... | isNI ss eq'  = _ Σ., (eq' Σ., ss)
-lemma {g₁' = g₁'} (no ¬p) eq s = g₁' , trans-≈ᵍ (sym-≈ᵍ (high-step ¬p s)) eq , []
-
--- -- non-interference : ∀ {ls l n} {g₁ g₁' g₂ : Global ls} -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × (l , n ⊢ g₁' ↪ g₂'))
--- -- non-interference {g₁ = g₁} {g₁'} {g₂} lₐ (εᵍ-≡ x) s with εᵍ-dist lₐ s
--- -- ... | r = {!!} , ({!!} , {!r!})
-
--- -- TODO prove non-interference for multiple steps.
+    -- TODO I will need the assumption that every thread is non ∙
+    progress-sensitive-ni⋆ : ∀ {ls} {g₁ g₁' g₂ : Global ls} -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> g₁ ↪⋆ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂')
+    progress-sensitive-ni⋆ lₐ eq [] = _ , (eq , [])
+    progress-sensitive-ni⋆ lₐ eq (s ∷ ss) with progress-sensitive-ni lₐ eq s
+    ... | g₂' , eq₂' , ss₂' with progress-sensitive-ni⋆ lₐ eq₂' ss
+    ... | g₃' , eq₃' , ss₃' = g₃' , (eq₃' , ss₂' ++ˢ ss₃')

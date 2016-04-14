@@ -17,7 +17,7 @@ State = List (Label × ℕ)
 
 data _⟶_↑_ : ∀ {l} -> State -> State -> Message l -> Set where
   step : ∀ {s l n} -> ((l , n) ∷ s) ⟶ s ++ [ (l , n) ] ↑ ⟪ l , n , Step ⟫
-  fork : ∀ {s l n h m} -> (p : l ⊑ h) -> ((l , n) ∷ s) ⟶ ((h , m) ∷ s) ++ [ (l , n) ] ↑ ⟪ l , n , Fork h m ⟫
+  fork : ∀ {s l n h m} -> (p : l ⊑ h) -> ((l , n) ∷ s) ⟶ s ++ ((h , m) ∷ (l , n) ∷ []) ↑ ⟪ l , n , Fork h m ⟫
   done : ∀ {s l n} -> ((l , n) ∷ s) ⟶ s ↑ ⟪ l , n , Done ⟫
   skip : ∀ {s l n} -> ((l , n) ∷ s) ⟶ s ++ [ (l , n) ] ↑ ⟪ l , n , NoStep ⟫
   hole : ∀ {s l n} -> s ⟶ s ↑ ⟪ l , n , ∙ ⟫
@@ -42,6 +42,17 @@ open import Relation.Binary.PropositionalEquality hiding ([_])
 ... | yes p rewrite εˢ-append-no {{n}} xs ¬p  = refl
 ... | no ¬p' rewrite εˢ-append-no {{n}} xs ¬p  = refl
 
+-- TODO use this more general concept instead of append-yes or append-no
+ε-++ : (lₐ : Label) (s₁ s₂ : State) -> εˢ lₐ (s₁ ++ s₂) ≡ (εˢ lₐ s₁) ++ (εˢ lₐ s₂)
+ε-++ lₐ [] s₂ = refl
+ε-++ lₐ ((l , n) ∷ s₁) s₂ with l ⊑? lₐ
+ε-++ lₐ ((l , n) ∷ s₁) s₂ | yes p rewrite ε-++ lₐ s₁ s₂ = refl
+ε-++ lₐ ((l , n) ∷ s₁) s₂ | no ¬p = ε-++ lₐ s₁ s₂
+
+++[] :  (s : State) -> s ++ [] ≡ s
+++[] [] = refl
+++[] (x ∷ s) rewrite ++[] s = refl
+
 ε-sch-dist : ∀ {l lₐ s₁ s₂} {m : Message l} -> (x : Dec (l ⊑ lₐ)) -> s₁ ⟶ s₂ ↑ m -> (εˢ lₐ s₁) ⟶ (εˢ lₐ s₂) ↑ (εᴹ x m)
 ε-sch-dist {lₐ = lₐ} {s₁ = (l , n) ∷ s} (yes p) step with l ⊑? lₐ
 ε-sch-dist {s₁ = (l , n) ∷ s} (yes p₁) step | yes p rewrite sym (εˢ-append-yes {{n}} s p) = step
@@ -49,16 +60,21 @@ open import Relation.Binary.PropositionalEquality hiding ([_])
 ε-sch-dist {lₐ = lₐ} {s₁ = (l , n) ∷ s₁} (no ¬p) step with l ⊑? lₐ
 ε-sch-dist {s₁ = (l , n) ∷ s₁} (no ¬p) step | yes p = ⊥-elim (¬p p)
 ε-sch-dist {s₁ = (l , n) ∷ s₁} (no ¬p₁) step | no ¬p rewrite εˢ-append-no {{n}} s₁ ¬p = hole
-ε-sch-dist {lₐ = lₐ} (yes p) (fork {s} {l} {n} p') with l ⊑? lₐ
-ε-sch-dist {lₐ = lₐ} (yes p₁) (fork {h = h} p') | yes p with h ⊑? lₐ
-ε-sch-dist (yes p₂) (fork {s} {_} {n} p') | yes p₁ | yes p rewrite sym (εˢ-append-yes {{n}} s p₁) = fork p'
-ε-sch-dist (yes p₁) (fork {s} {_} {n} p') | yes p | no ¬p rewrite sym (εˢ-append-yes {{n}} s p₁) = step
-ε-sch-dist (yes p) (fork  p')| no ¬p = ⊥-elim (¬p p) 
+ε-sch-dist {lₐ = lₐ} (yes p) (fork {s} {l} {n} {h} {m} p') rewrite ε-++ lₐ s (((h , m) ∷ (l , n) ∷ [])) with l ⊑? lₐ | h ⊑? lₐ
+ε-sch-dist {lₐ = lₐ} (yes p₂) (fork {l = l} p') | yes p | yes p₁ with l ⊑? lₐ
+ε-sch-dist (yes p₃) (fork p') | yes p₁ | yes p₂ | yes p = fork p'
+ε-sch-dist (yes p₂) (fork p') | yes p | yes p₁ | no ¬p = ⊥-elim (¬p p₂)
+ε-sch-dist {lₐ = lₐ} (yes p₁) (fork {l = l} p') | yes p | no ¬p with l ⊑? lₐ
+ε-sch-dist (yes p₂) (fork p') | yes p₁ | no ¬p | yes p = step
+ε-sch-dist (yes p₁) (fork p') | yes p | no ¬p₁ | no ¬p = ⊥-elim (¬p p₁)
+ε-sch-dist (yes p) (fork p') | no ¬p | b = ⊥-elim (¬p p)
 ε-sch-dist {lₐ = lₐ} (no ¬p) (fork {s} {l} {n} p') with l ⊑? lₐ
 ε-sch-dist (no ¬p) (fork p') | yes p = ⊥-elim (¬p p)
-ε-sch-dist {lₐ = lₐ} (no ¬p₁) (fork {h = h} p') | no ¬p with h ⊑? lₐ
-ε-sch-dist (no ¬p₁) (fork p') | no ¬p | yes p = ⊥-elim (trans-⋢ p' ¬p₁ p) 
-ε-sch-dist (no ¬p₂) (fork {s} {l} {n} p') | no ¬p₁ | no ¬p rewrite εˢ-append-no {{n}} s ¬p₁ = hole
+ε-sch-dist {lₐ = lₐ} (no ¬p₁) (fork {s} {l} {n} {h} {m} p') | no ¬p rewrite ε-++ lₐ s (((h , m) ∷ (l , n) ∷ [])) with h ⊑? lₐ
+... | yes p = ⊥-elim (trans-⋢ p' ¬p₁ p)
+... | no ¬p' with l ⊑? lₐ
+... | yes p'' = ⊥-elim (¬p₁ p'')
+... | no ¬p'' rewrite ++[] (εˢ lₐ s) = hole
 ε-sch-dist {l} {lₐ} (yes p) done with l ⊑? lₐ
 ε-sch-dist (yes p₁) done | yes p = done
 ε-sch-dist (yes p) done | no ¬p = ⊥-elim (¬p p)
@@ -80,9 +96,11 @@ open import Relation.Binary.PropositionalEquality hiding ([_])
 ε-sch-≡ ¬p₁ (step {s = s} {n = n}) | no ¬p rewrite εˢ-append-no {{n}} s ¬p = refl
 ε-sch-≡ {lₐ = lₐ} ¬p (fork {s} {l} {n} p')  with l ⊑? lₐ
 ε-sch-≡ ¬p (fork p') | yes p = ⊥-elim (¬p p)
-ε-sch-≡ {lₐ = lₐ} ¬p₁ (fork {h = h} p') | no ¬p with h ⊑? lₐ
-ε-sch-≡ ¬p₁ (fork p') | no ¬p | yes p = ⊥-elim (trans-⋢ p' ¬p₁ p) 
-ε-sch-≡ ¬p₂ (fork {s} {l} {n} p') | no ¬p₁ | no ¬p rewrite εˢ-append-no {{n}} s ¬p₁ =  refl
+ε-sch-≡ {lₐ = lₐ} ¬p₁ (fork {s} {l} {n} {h} {m} p') | no ¬p rewrite ε-++ lₐ s ((h , m) ∷ ((l , n) ∷ [])) with h ⊑? lₐ
+... | yes p =  ⊥-elim (trans-⋢ p' ¬p₁ p)
+... | no ¬p' with l ⊑? lₐ
+... | yes p'' = ⊥-elim (¬p₁ p'')
+... | no ¬p'' rewrite ++[] (εˢ lₐ s) = refl
 ε-sch-≡ {l} {lₐ} ¬p (done {s = s} {n = n}) with l ⊑? lₐ
 ε-sch-≡ ¬p (done {s = s} {n = n}) | yes p = ⊥-elim (¬p p)
 ε-sch-≡ ¬p₁ (done {s = s} {n = n}) | no ¬p rewrite εˢ-append-no {{n}} s ¬p = refl
@@ -191,7 +209,7 @@ dealign (consᴸ p x) = consᴸ p x
 dealign (cons₁ᴴ ¬p x) = cons₁ᴴ ¬p (dealign x)
 dealign (cons₂ᴴ ¬p x) = cons₂ᴴ ¬p (dealign x)
 
-open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ _≈ˢ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_ offset₁ offset₂ align 
+open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ _≈ˢ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_
 
 ++-≈ˢ : ∀ {s₁ s₂ lₐ x} -> s₁ ≈ˢ s₂ -> (s₁ ++ x) ≈ˢ (s₂ ++ x)
 ++-≈ˢ {x = x} nil = ≡-≈ˢ refl
@@ -199,19 +217,24 @@ open import Concurrent.Security.Scheduler State _⟶_↑_ εˢ _≈ˢ-⟨_⟩_ _
 ++-≈ˢ (cons₁ᴴ ¬p x₁) = cons₁ᴴ ¬p (++-≈ˢ x₁)
 ++-≈ˢ (cons₂ᴴ ¬p x₁) = cons₂ᴴ ¬p (++-≈ˢ x₁)
 
-++-≡ˢ :  ∀ {s₁ s₂ lₐ x} -> s₁ ≈ˢ s₂ -> εˢ lₐ (s₁ ++ x) ≡ εˢ lₐ (s₂ ++ x)
-++-≡ˢ eq = ≈ˢ-≡ (++-≈ˢ eq)
+++₁-≈ˢ : ∀ {s₁ s₂ lₐ h} {{n}} -> ¬ (h ⊑ lₐ) -> s₁ ≈ˢ-⟨ lₐ ⟩ s₂ -> s₁ ≈ˢ-⟨ lₐ ⟩ (s₂ ++ [ h , n ])
+++₁-≈ˢ ¬p nil = cons₂ᴴ ¬p nil
+++₁-≈ˢ ¬p (consᴸ p x) = consᴸ p (++₁-≈ˢ ¬p x)
+++₁-≈ˢ ¬p (cons₁ᴴ ¬p₁ x) = cons₁ᴴ ¬p₁ (++₁-≈ˢ ¬p x)
+++₁-≈ˢ ¬p (cons₂ᴴ ¬p₁ x) = cons₂ᴴ ¬p₁ (++₁-≈ˢ ¬p x)
 
-++'-≈ˢ : ∀ {s₁ s₂ lₐ h} {{n}} -> ¬ (h ⊑ lₐ) -> s₁ ≈ˢ-⟨ lₐ ⟩ s₂ -> s₁ ≈ˢ-⟨ lₐ ⟩ (s₂ ++ [ h , n ])
-++'-≈ˢ ¬p nil = cons₂ᴴ ¬p nil
-++'-≈ˢ ¬p (consᴸ p x) = consᴸ p (++'-≈ˢ ¬p x)
-++'-≈ˢ ¬p (cons₁ᴴ ¬p₁ x) = cons₁ᴴ ¬p₁ (++'-≈ˢ ¬p x)
-++'-≈ˢ ¬p (cons₂ᴴ ¬p₁ x) = cons₂ᴴ ¬p₁ (++'-≈ˢ ¬p x)
+++₂-≈ˢ : ∀ {s₁ s₂ lₐ h₁ h₂ n₁ n₂} -> ¬ (h₁ ⊑ lₐ) -> ¬ (h₂ ⊑ lₐ) -> s₁ ≈ˢ-⟨ lₐ ⟩ s₂ -> s₁ ≈ˢ-⟨ lₐ ⟩ (s₂ ++  (h₁ , n₁) ∷ ((h₂ , n₂) ∷ []))
+++₂-≈ˢ ¬p₁ ¬p₂ nil = cons₂ᴴ ¬p₁ (cons₂ᴴ ¬p₂ nil)
+++₂-≈ˢ ¬p₁ ¬p₂ (consᴸ p x) = consᴸ p (++₂-≈ˢ ¬p₁ ¬p₂ x)
+++₂-≈ˢ ¬p₁ ¬p₂ (cons₁ᴴ ¬p x) = cons₁ᴴ ¬p (++₂-≈ˢ ¬p₁ ¬p₂ x)
+++₂-≈ˢ ¬p₁ ¬p₂ (cons₂ᴴ ¬p x) = cons₂ᴴ ¬p (++₂-≈ˢ ¬p₁ ¬p₂ x)
+
+--fork-≈ˢ : ∀ {s₁ s₂}
 
 aligned : ∀ {l lₐ i e n s₁ s₂ s₁'}  -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' ⟪ l , n , e ⟫ lₐ
 aligned p hole e≠∙ nil = ⊥-elim (e≠∙ refl)
 aligned p step e≠∙ (consᴸ p₁ x) = low step (++-≈ˢ x)
-aligned p (fork p₁) e≠∙ (consᴸ p₂ x) = low (fork p₁) {!!} -- lemma
+aligned p (fork p₁) e≠∙ (consᴸ p₂ x) = low (fork p₁) (++-≈ˢ x)
 aligned p done e≠∙ (consᴸ p₁ x) = low done x
 aligned p skip e≠∙ (consᴸ p₁ x) = low skip (++-≈ˢ x)
 aligned p hole e≠∙ (consᴸ p₁ x) = ⊥-elim (e≠∙ refl)
@@ -223,10 +246,10 @@ aligned p hole e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (e≠∙ refl)
 
 open import Data.Sum using (_⊎_ ; inj₁ ; inj₂)
 
-lemma : ∀ {s₁ s₁' s₂ n₁ n₂ h n n' l lₐ e} -> ¬ h ⊑ lₐ -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n' , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ s₁'
-              -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (s₁' ++ [ h , n ])
+lemma : ∀ {s₁ s₁' s₂ i j h n n' l lₐ e} -> ¬ h ⊑ lₐ -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n' , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ j ⟩ s₁'
+              -> s₁ ≈ˢ-⟨ i ~ lₐ ~ j ⟩ (s₁' ++ [ h , n ])
 lemma ¬p p hole e≠∙ nil = ⊥-elim (e≠∙ refl)
-lemma ¬p p s e≠∙  (consᴸ p' x) = consᴸ p' (++'-≈ˢ ¬p x)
+lemma ¬p p s e≠∙  (consᴸ p' x) = consᴸ p' (++₁-≈ˢ ¬p x)
 lemma ¬p p step e≠∙  (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
 lemma ¬p p (fork p') e≠∙  (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
 lemma ¬p p done e≠∙ (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
@@ -234,9 +257,16 @@ lemma ¬p p skip e≠∙  (cons₁ᴴ ¬p₁ x) = ⊥-elim (¬p₁ p)
 lemma ¬p p hole e≠∙ (cons₁ᴴ ¬p₁ x) = ⊥-elim (e≠∙ refl)
 lemma {n = n} ¬p p s e≠∙  (cons₂ᴴ ¬p₁ x) = cons₂ᴴ ¬p₁ (lemma {n = n} ¬p p s e≠∙ x)
 
-getNextThreadId : ∀ {s₁ s₂ n₁ n₂ lₐ} -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ suc n₂ ⟩ s₂ -> Label × ℕ
-getNextThreadId (cons₁ᴴ ¬p x) = getNextThreadId x
-getNextThreadId (cons₂ᴴ {h} {n} ¬p x) = h , n
+lemma₂ : ∀ {s₁ s₁' s₂ i j h₁ h₂ n₁ n₂ n' l lₐ e} -> ¬ h₁ ⊑ lₐ -> ¬ h₂ ⊑ lₐ -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n' , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ j ⟩ s₁'
+              -> s₁ ≈ˢ-⟨ i ~ lₐ ~ j ⟩ (s₁' ++ ((h₁ , n₁) ∷ (h₂ , n₂) ∷ []))
+lemma₂ ¬p₁ ¬p₂ p hole e≠∙ nil = ⊥-elim (e≠∙ refl)
+lemma₂ {n₁ = n₁} {n₂ = n₂} ¬p₁ ¬p₂ p s e≠∙ (consᴸ p₁ x) = consᴸ p₁ (++₂-≈ˢ ¬p₁ ¬p₂ x)
+lemma₂ ¬p₁ ¬p₂ p step e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+lemma₂ ¬p₁ ¬p₂ p (fork p₁) e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+lemma₂ ¬p₁ ¬p₂ p done e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+lemma₂ ¬p₁ ¬p₂ p skip e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (¬p p)
+lemma₂ ¬p₁ ¬p₂ p hole e≠∙ (cons₁ᴴ ¬p x) = ⊥-elim (e≠∙ refl)
+lemma₂ ¬p₁ ¬p₂ p s e≠∙ (cons₂ᴴ ¬p x) = cons₂ᴴ ¬p (lemma₂ ¬p₁ ¬p₂ p s e≠∙ x)
 
 highˢ : ∀ {s₁ s₁' s₂ l lₐ e n n₁ n₂} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ n₁ ~ lₐ ~ suc n₂ ⟩ s₁' ->
           ∃ λ h -> ∃ λ n -> (e : Event) -> e ≢ ∙ -> HighStep lₐ h n e s₁ s₂ s₁' n₁ n₂
@@ -251,7 +281,7 @@ highˢ {s₁} {(h , n) ∷ s₁'} {s₂} {l} {lₐ} {e} {n'} {n₁} {n₂} p s e
         aux NoStep e≠∙₁ = high ¬p skip eq'
         aux Step e≠∙₁ = high ¬p step eq'
         aux Done e≠∙₁ = high ¬p done x
-        aux (Fork h₁ n₃) e≠∙₁ = high ¬p (fork {!!}) {!!} -- TODO: fix fork semantics to make this work 
+        aux (Fork h₁ n₃) e≠∙₁ = high ¬p (fork {!!}) (lemma₂ (trans-⋢ {!!} ¬p) ¬p p s e≠∙ x) -- I need to put this constraint in the event e
         aux ∙ e≠∙₁ = ⊥-elim (e≠∙₁ refl)
         
 open import Concurrent.Determinism (State) (_⟶_↑_) (determinism)

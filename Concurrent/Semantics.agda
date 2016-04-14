@@ -248,3 +248,9 @@ data _↪⋆_ {ls : List Label} : Global ls -> Global ls -> Set where
 
   -- More steps
   _∷_ : ∀ {l n g₁ g₂ g₃} -> l , n ⊢ g₁ ↪ g₂ -> g₂ ↪⋆ g₃ -> g₁ ↪⋆ g₃
+
+
+-- Concatenates two multiple steps reductions
+_++ˢ_ : ∀ {ls} {g₁ g₂ g₃ : Global ls} -> g₁ ↪⋆ g₂ -> g₂ ↪⋆ g₃ -> g₁ ↪⋆ g₃
+[] ++ˢ ss₂ = ss₂
+(s ∷ ss₁) ++ˢ ss₂ = s ∷ (ss₁ ++ˢ ss₂)
