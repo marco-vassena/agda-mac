@@ -124,18 +124,21 @@ is∙? (takeMVar c) = no (λ ())
 is∙? (putMVar c c₁) = no (λ ())
 is∙? ∙ = yes ∙
 
-data _⟼_↑_ {ls : List Label} : ∀ {τ l} (p₁ p₂ : Program ls (Mac l τ)) -> Effect l -> Set where
-  bullet : ∀ {l τ} {Σ : Store ls} -> ⟨ Σ ∥ (∙ {{τ = Mac l τ}}) ⟩ ⟼ ⟨ Σ ∥ ∙ ⟩ -> ⟨ Σ ∥ ∙ {{τ = Mac l τ}} ⟩ ⟼ ⟨ Σ ∥ ∙ ⟩ ↑ ∙
-  fork : ∀ {l h} {p₂ : Program ls (Mac l （）)} {Σ : Store ls} ->
+data _⟼_↑_ {l : Label} {ls : List Label} : (p₁ p₂ : Program ls (Mac l （）)) -> Effect l -> Set where
+  bullet : {Σ : Store ls} -> ⟨ Σ ∥ (∙ {{τ = Mac l （）}}) ⟩ ⟼ ⟨ Σ ∥ ∙ ⟩ -> ⟨ Σ ∥ ∙ {{τ = Mac l （）}} ⟩ ⟼ ⟨ Σ ∥ ∙ ⟩ ↑ ∙
+  fork : ∀ {h} {p₂ : Program ls (Mac l （）)} {Σ : Store ls} ->
          (p : l ⊑ h) (t : Thread h) (s : ⟨ Σ ∥ fork p t ⟩ ⟼ p₂) -> ⟨ Σ ∥ fork p t ⟩ ⟼ p₂ ↑ (fork t)
-  none : ∀ {l τ} {p₁ p₂ : Program ls (Mac l τ)} -> ¬ IsFork (term p₁) -> ¬ Is∙ (term p₁) -> p₁ ⟼ p₂ -> p₁ ⟼ p₂ ↑ ∅ 
+  none : {p₁ p₂ : Program ls (Mac l （）)} -> ¬ IsFork (term p₁) -> ¬ Is∙ (term p₁) -> p₁ ⟼ p₂ -> p₁ ⟼ p₂ ↑ ∅ 
 
-stepOf : ∀ {ls τ l} {e : Effect l} {p₁ p₂ : Program ls (Mac l τ)} -> p₁ ⟼ p₂ ↑ e -> p₁ ⟼ p₂
+stepOf : ∀ {ls l} {e : Effect l} {p₁ p₂ : Program ls (Mac l （）)} -> p₁ ⟼ p₂ ↑ e -> p₁ ⟼ p₂
 stepOf (bullet s) = s
 stepOf (fork p t s) = s
 stepOf (none ¬f ¬∙ s) = s
 
-fork-⊑ : ∀ {ls τ l h} {p₁ p₂ : Program ls (Mac l τ)} {t : Thread h }  -> p₁ ⟼ p₂ ↑ fork t -> l ⊑ h
+redexOf : ∀ {ls l} {e : Effect l} {p₁ p₂ : Program ls (Mac l （）)} -> p₁ ⟼ p₂ ↑ e -> Redex (store p₁) (term p₁)
+redexOf s = Step (stepOf s)
+
+fork-⊑ : ∀ {ls l h} {p₁ p₂ : Program ls (Mac l （）)} {t : Thread h }  -> p₁ ⟼ p₂ ↑ fork t -> l ⊑ h
 fork-⊑ (fork p t s) = p
 
 --------------------------------------------------------------------------------
@@ -181,7 +184,7 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
           l , n ⊢ ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₂ ⟩
 
   -- A fork step spawns a new thread
-  fork : ∀ {s₁ s₂ h n' nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {t₁ t₂ : Thread l} {tʰ : Thread h} {tsʰ : Pool h n'} ->
+  fork : ∀ {s₁ s₂ h nʰ} {Σ₁ Σ₂ : Store ls} {ps₁ ps₂ ps₃ : Pools ls} {t₁ t₂ : Thread l} {tʰ : Thread h} {tsʰ : Pool h nʰ} ->
          
            ps₁ [ l ][ n ]= t₁ ->
            ps₁ [ h ]= tsʰ  ->

@@ -180,43 +180,45 @@ simulation↪ {{lₐ}} p s₁ s₂ = lift-≈ᵍ (aux (unlift-≈ᵍ p) (εᵍ-d
 open import Sequential.Semantics
 
 high-step : ∀ {lₐ l ls n} {g₁ g₂ : Global ls} -> ¬ (l ⊑ lₐ) -> l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₂
-high-step ¬p (step r₁ r₂ st sc w₁ w₂) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (ε-write-≡ ¬p w₂) ⟩
-high-step ¬p (fork r₁ r₂ r₃ st sc  w₁ w₂ w₃)
-  = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (trans (ε-write-≡ ¬p w₂) (ε-write-≡ (trans-⋢ (fork-⊑ st) ¬p) w₃)) ⟩
-high-step ¬p (hole r sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
-high-step ¬p (skip r₁ r₂ b sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
-high-step ¬p (exit r₁ r₂ isV sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
+high-step ¬p (step r st sc w) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (ε-updateᵖ-≡ ¬p w) ⟩
+high-step ¬p (fork r₁ r₂ st sc  w₁ w₂)
+  = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (trans (ε-updateᵖ-≡ ¬p w₁) (ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₂)) ⟩
+high-step ¬p (hole r st sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
+high-step ¬p (skip r b sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
+high-step ¬p (exit r isV sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
 
-read-≈ : ∀ {l lₐ i n m} {ts₁ : Pool l n} {ts₂ : Pool l m} {t₁ t₂ : Thread l} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> ts₁ [ i ]ᵗ= t₁ -> ts₂ [ i ]ᵗ= t₂ -> t₁ ≈-⟨ lₐ ⟩ t₂
-read-≈ p (high ¬p) a b = ⊥-elim (¬p p)
-read-≈ p nil () b
-read-≈ p (cons x x₁ x₂) Here Here = x₁
-read-≈ p (cons x x₁ x₂) (There a) (There b) = read-≈ x x₂ a b
-read-≈ p bullet () b
+-- Not sure if this are needed now...
 
--- TODO I think we can combine this and getPool in a unique lemma
-read-≌ᴾ : ∀ {l lₐ n n' ls} {ps ps' : Pools ls} {ts : Pool l n} {ts' : Pool l n'} -> ps ≈ᴾ-⟨ lₐ ⟩ ps' -> ps [ l ]= ts -> ps' [ l ]= ts' -> ts ≌ᴾ-⟨ lₐ ⟩ ts' 
-read-≌ᴾ (x ∷ x₁) Here Here = x
-read-≌ᴾ (x ∷ x₁) Here (There {u = u} r₂) = ⊥-elim (not-unique u (read-∈ r₂))
-read-≌ᴾ (x ∷ x₁) (There {u = u} r₁) Here = ⊥-elim (not-unique u (read-∈ r₁))
-read-≌ᴾ (x ∷ x₁) (There r₁) (There r₂) = read-≌ᴾ x₁ r₁ r₂
-read-≌ᴾ [] () r₂
+-- read-≈ : ∀ {l lₐ i n m} {ts₁ : Pool l n} {ts₂ : Pool l m} {t₁ t₂ : Thread l} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> ts₁ [ i ]ᵗ= t₁ -> ts₂ [ i ]ᵗ= t₂ -> t₁ ≈-⟨ lₐ ⟩ t₂
+-- read-≈ p (high ¬p) a b = ⊥-elim (¬p p)
+-- read-≈ p nil () b
+-- read-≈ p (cons x x₁ x₂) Here Here = x₁
+-- read-≈ p (cons x x₁ x₂) (There a) (There b) = read-≈ x x₂ a b
+-- read-≈ p bullet () b
 
-read-≈' : ∀ {l lₐ i n m} {ts₁ : Pool l n} {ts₂ : Pool l m} {t₁ : Thread l} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> ts₁ [ i ]ᵗ= t₁ -> ∃ λ t₂ -> (t₁ ≈-⟨ lₐ ⟩ t₂) × (ts₂ [ i ]ᵗ= t₂)
-read-≈' p (high ¬p) r = ⊥-elim (¬p p)
-read-≈' p nil ()
-read-≈' p (cons x x₁ x₂) Here = _ , (x₁ , Here)
-read-≈' p (cons x x₁ x₂) (There r) with read-≈' p x₂ r
-read-≈' p (cons x x₁ x₂) (There r) | t , eq , q  = t , (eq , (There q))
-read-≈' p bullet ()
+-- -- TODO I think we can combine this and getPool in a unique lemma
+-- read-≌ᴾ : ∀ {l lₐ n n' ls} {ps ps' : Pools ls} {ts : Pool l n} {ts' : Pool l n'} -> ps ≈ᴾ-⟨ lₐ ⟩ ps' -> ps [ l ]= ts -> ps' [ l ]= ts' -> ts ≌ᴾ-⟨ lₐ ⟩ ts' 
+-- read-≌ᴾ (x ∷ x₁) Here Here = x
+-- read-≌ᴾ (x ∷ x₁) Here (There {u = u} r₂) = ⊥-elim (not-unique u (read-∈ r₂))
+-- read-≌ᴾ (x ∷ x₁) (There {u = u} r₁) Here = ⊥-elim (not-unique u (read-∈ r₁))
+-- read-≌ᴾ (x ∷ x₁) (There r₁) (There r₂) = read-≌ᴾ x₁ r₁ r₂
+-- read-≌ᴾ [] () r₂
 
-data HasPool {ls : List Label} (l : Label) (ps : Pools ls) : Set where
-  HP : ∀ {n} {ts : Pool l n} -> ps [ l ]= ts -> HasPool l ps
+-- read-≈' : ∀ {l lₐ i n m} {ts₁ : Pool l n} {ts₂ : Pool l m} {t₁ : Thread l} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> ts₁ [ i ]ᵗ= t₁ -> ∃ λ t₂ -> (t₁ ≈-⟨ lₐ ⟩ t₂) × (ts₂ [ i ]ᵗ= t₂)
+-- read-≈' p (high ¬p) r = ⊥-elim (¬p p)
+-- read-≈' p nil ()
+-- read-≈' p (cons x x₁ x₂) Here = _ , (x₁ , Here)
+-- read-≈' p (cons x x₁ x₂) (There r) with read-≈' p x₂ r
+-- read-≈' p (cons x x₁ x₂) (There r) | t , eq , q  = t , (eq , (There q))
+-- read-≈' p bullet ()
 
-getPool : ∀ {l ls} -> l ∈ ls -> (ps : Pools ls) -> HasPool l ps
-getPool Here (ts ◅ ps) = HP Here 
-getPool (There r) (ts ◅ ps) with getPool r ps
-getPool (There r) (ts₁ ◅ ps) | HP x = HP (There x)
+-- data HasPool {ls : List Label} (l : Label) (ps : Pools ls) : Set where
+--   HP : ∀ {n} {ts : Pool l n} -> ps [ l ]= ts -> HasPool l ps
+
+-- getPool : ∀ {l ls} -> l ∈ ls -> (ps : Pools ls) -> HasPool l ps
+-- getPool Here (ts ◅ ps) = HP Here 
+-- getPool (There r) (ts ◅ ps) with getPool r ps
+-- getPool (There r) (ts₁ ◅ ps) | HP x = HP (There x)
 
 -- TODO USE CONSISTENT NAMES
 open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_

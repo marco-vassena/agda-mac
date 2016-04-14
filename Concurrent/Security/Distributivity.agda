@@ -98,7 +98,7 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ε-Is∙ {t = putMVar t t₁} p ¬∙ ()
 ε-Is∙ {t = ∙} p ¬∙ is∙ = ¬∙ ∙
 
-ε-↑ : ∀ {l lₐ τ ls e} {p₁ p₂ : Program ls (Mac l τ)} -> (p : l ⊑ lₐ) -> p₁ ⟼ p₂ ↑ e ->
+ε-↑ : ∀ {l lₐ ls e} {p₁ p₂ : Program ls (Mac l （）)} -> (p : l ⊑ lₐ) -> p₁ ⟼ p₂ ↑ e ->
         let ⟨ Σ₁ ∥ t₁ ⟩ = p₁
             ⟨ Σ₂ ∥ t₂ ⟩ = p₂ in
         ⟨ εˢ lₐ Σ₁ ∥ ε-Mac lₐ (yes p) t₁ ⟩ ⟼ ⟨ εˢ lₐ Σ₂ ∥ ε-Mac lₐ (yes p) t₂ ⟩ ↑ (εᵉ (yes p) e)
