@@ -187,38 +187,20 @@ high-step ¬p (hole r st sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ r
 high-step ¬p (skip r b sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
 high-step ¬p (exit r isV sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
 
--- Not sure if this are needed now...
+read-≌ᴾ : ∀ {l lₐ n n'} {t₁ : Thread l} {ts₁ ts₂ : Pool l n} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> LookupThread t₁ n' ts₁ -> ∃ (λ t₂ -> LookupThread t₂ n' ts₂ × t₁ ≈-⟨ lₐ ⟩ t₂)
+read-≌ᴾ p (high ¬p) ∙ = ⊥-elim (¬p p)
+read-≌ᴾ p bullet ∙ = ∙ , ∙ , ε-≡ refl
+read-≌ᴾ p (high ¬p) Here = ⊥-elim (¬p p)
+read-≌ᴾ p (cons p' eq _) Here = _ , Here , eq
+read-≌ᴾ p (high ¬p) (There r) = ⊥-elim (¬p p)
+read-≌ᴾ p (cons p' _ eq₁) (There r₁) with read-≌ᴾ p eq₁ r₁
+... | t₂ , r₂ , eq₂ = t₂ , There r₂ , eq₂
 
--- read-≈ : ∀ {l lₐ i n m} {ts₁ : Pool l n} {ts₂ : Pool l m} {t₁ t₂ : Thread l} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> ts₁ [ i ]ᵗ= t₁ -> ts₂ [ i ]ᵗ= t₂ -> t₁ ≈-⟨ lₐ ⟩ t₂
--- read-≈ p (high ¬p) a b = ⊥-elim (¬p p)
--- read-≈ p nil () b
--- read-≈ p (cons x x₁ x₂) Here Here = x₁
--- read-≈ p (cons x x₁ x₂) (There a) (There b) = read-≈ x x₂ a b
--- read-≈ p bullet () b
-
--- -- TODO I think we can combine this and getPool in a unique lemma
--- read-≌ᴾ : ∀ {l lₐ n n' ls} {ps ps' : Pools ls} {ts : Pool l n} {ts' : Pool l n'} -> ps ≈ᴾ-⟨ lₐ ⟩ ps' -> ps [ l ]= ts -> ps' [ l ]= ts' -> ts ≌ᴾ-⟨ lₐ ⟩ ts' 
--- read-≌ᴾ (x ∷ x₁) Here Here = x
--- read-≌ᴾ (x ∷ x₁) Here (There {u = u} r₂) = ⊥-elim (not-unique u (read-∈ r₂))
--- read-≌ᴾ (x ∷ x₁) (There {u = u} r₁) Here = ⊥-elim (not-unique u (read-∈ r₁))
--- read-≌ᴾ (x ∷ x₁) (There r₁) (There r₂) = read-≌ᴾ x₁ r₁ r₂
--- read-≌ᴾ [] () r₂
-
--- read-≈' : ∀ {l lₐ i n m} {ts₁ : Pool l n} {ts₂ : Pool l m} {t₁ : Thread l} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> ts₁ [ i ]ᵗ= t₁ -> ∃ λ t₂ -> (t₁ ≈-⟨ lₐ ⟩ t₂) × (ts₂ [ i ]ᵗ= t₂)
--- read-≈' p (high ¬p) r = ⊥-elim (¬p p)
--- read-≈' p nil ()
--- read-≈' p (cons x x₁ x₂) Here = _ , (x₁ , Here)
--- read-≈' p (cons x x₁ x₂) (There r) with read-≈' p x₂ r
--- read-≈' p (cons x x₁ x₂) (There r) | t , eq , q  = t , (eq , (There q))
--- read-≈' p bullet ()
-
--- data HasPool {ls : List Label} (l : Label) (ps : Pools ls) : Set where
---   HP : ∀ {n} {ts : Pool l n} -> ps [ l ]= ts -> HasPool l ps
-
--- getPool : ∀ {l ls} -> l ∈ ls -> (ps : Pools ls) -> HasPool l ps
--- getPool Here (ts ◅ ps) = HP Here 
--- getPool (There r) (ts ◅ ps) with getPool r ps
--- getPool (There r) (ts₁ ◅ ps) | HP x = HP (There x)
+read-≈ : ∀ {ls l lₐ n} {t₁ : Thread l} {ps₁ ps₂ : Pools ls} -> l ⊑ lₐ -> ps₁ ≈ᴾ-⟨ lₐ ⟩ ps₂ -> ps₁ [ l ][ n ]= t₁ -> ∃ (λ t₂ -> ps₂ [ l ][ n ]= t₂ × t₁ ≈-⟨ lₐ ⟩ t₂)
+read-≈ p (eq₁ ∷ _) (Here r₁) with read-≌ᴾ p eq₁ r₁
+... | t₂ , r₂ , eq₂ = t₂ , Here r₂ , eq₂
+read-≈ p (_ ∷ eq₁) (There r₁)  with read-≈ p eq₁ r₁
+... | t₂ , r₂ , eq' = t₂ , There r₂ , eq'
 
 -- TODO USE CONSISTENT NAMES
 open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_
@@ -240,6 +222,42 @@ postulate square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} ->
 postulate scheduler2global : ∀ {ls h n e} {g₁ g₂ : Global ls} ->
                              let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
                                  ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁ ⟶ s₂ ↑ ⟪ h , n , e ⟫ -> h , n ⊢ g₁ ↪ g₂
+
+data _≈ᵉ_ {lₐ : Label} {l} : Effect l -> Effect l -> Set where
+  ∙ : ∙ ≈ᵉ ∙
+  ∅ : ∅ ≈ᵉ ∅
+  fork : ∀ {h} {t₁ t₂ : Thread h} -> l ⊑ lₐ -> t₁ ≈-⟨ lₐ ⟩ t₂ -> fork t₁ ≈ᵉ fork t₂
+  nv : ∀ {e₁ e₂} -> ¬ (l ⊑ lₐ) -> e₁ ≈ᵉ e₂
+  
+_≈ᵉ-⟨_⟩_ : ∀ {l} -> Effect l -> Label -> Effect l -> Set
+e₁ ≈ᵉ-⟨ lₐ ⟩ e₂ = _≈ᵉ_ {lₐ} e₁ e₂
+
+≈ᵉ-≡ : ∀ {l lₐ} {e₁ e₂ : Effect l} -> (x : Dec (l ⊑ lₐ)) -> e₁ ≈ᵉ-⟨ lₐ ⟩ e₂ -> εᵉ x e₁ ≡ εᵉ x e₂
+≈ᵉ-≡ (yes p) ∙ = refl
+≈ᵉ-≡ (yes p) ∅ = refl
+≈ᵉ-≡ (yes p) (fork x (ε-≡ eq)) rewrite eq = refl
+≈ᵉ-≡ (yes p) (nv x) = ⊥-elim (x p)
+≈ᵉ-≡ (no ¬p) ∙ = refl
+≈ᵉ-≡ (no ¬p) ∅ = refl
+≈ᵉ-≡ (no ¬p) (fork x x₁) = refl
+≈ᵉ-≡ (no ¬p) (nv x) = refl
+
+≡-≈ᵉ : ∀ {l lₐ} {e₁ e₂ : Effect l} -> (x : Dec (l ⊑ lₐ)) -> εᵉ x e₁ ≡ εᵉ x e₂ -> e₁ ≈ᵉ-⟨ lₐ ⟩ e₂
+≡-≈ᵉ {e₁ = ∙} {∙} (yes p) eq = ∙
+≡-≈ᵉ {e₁ = ∙} {∅} (yes p) ()
+≡-≈ᵉ {e₁ = ∙} {fork x} (yes p) ()
+≡-≈ᵉ {e₁ = ∅} {∙} (yes p) () 
+≡-≈ᵉ {e₁ = ∅} {∅} (yes p) refl = ∅
+≡-≈ᵉ {e₁ = ∅} {fork x} (yes p) ()
+≡-≈ᵉ {e₁ = fork x} {∙} (yes p) ()
+≡-≈ᵉ {e₁ = fork x} {∅} (yes p) ()
+≡-≈ᵉ {e₁ = fork x} {fork x₁} (yes p) eq = {!!} -- TODO if we know p₁ ≈ p₂ we can conclude that the type is actually the same
+≡-≈ᵉ (no ¬p) refl = nv ¬p
+
+open import Sequential.Security.NonInterference
+
+postulate same-event : ∀ {ls l lₐ e₁ e₂} {p₁ p₂ p₁' p₂' : Program ls (Mac l _)} -> l ⊑ lₐ -> p₁ ≈ᵖ-⟨ lₐ ⟩ p₂ -> p₁ ⟼ p₂ ↑ e₁ -> p₁' ⟼ p₂' ↑ e₂ -> e₁ ≈ᵉ-⟨ lₐ ⟩ e₂
+
 
 --------------------------------------------------------------------------------
 

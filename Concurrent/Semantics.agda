@@ -86,6 +86,41 @@ open Program
 data IsFork : ∀ {τ} -> CTerm τ -> Set where
   fork : ∀ {l h} -> (p : l ⊑ h) (t : Thread h) -> IsFork (fork p t)
 
+isFork? : ∀ {τ} -> (t : CTerm τ) -> Dec (IsFork t)
+isFork? （） = no (λ ())
+isFork? True = no (λ ())
+isFork? False = no (λ ())
+isFork? (Var x) = no (λ ())
+isFork? (Abs t) = no (λ ())
+isFork? (App t t₁) = no (λ ())
+isFork? (If t Then t₁ Else t₂) = no (λ ())
+isFork? (Return t) = no (λ ())
+isFork? (t >>= t₁) = no (λ ())
+isFork? ξ = no (λ ())
+isFork? (Throw t) = no (λ ())
+isFork? (Catch t t₁) = no (λ ())
+isFork? (Mac t) = no (λ ())
+isFork? (Macₓ t) = no (λ ())
+isFork? (Res t) = no (λ ())
+isFork? (Resₓ t) = no (λ ())
+isFork? (relabel x t) = no (λ ())
+isFork? (relabel∙ x t) = no (λ ())
+isFork? (label x t) = no (λ ())
+isFork? (unlabel x t) = no (λ ())
+isFork? (join x t) = no (λ ())
+isFork? zero = no (λ ())
+isFork? (suc t) = no (λ ())
+isFork? (read x t) = no (λ ())
+isFork? (write x t t₁) = no (λ ())
+isFork? (new x t) = no (λ ())
+isFork? (fmap t t₁) = no (λ ())
+isFork? (fmap∙ t t₁) = no (λ ())
+isFork? (fork x t) = yes (fork x t)
+isFork? (newMVar x) = no (λ ())
+isFork? (takeMVar t) = no (λ ())
+isFork? (putMVar t t₁) = no (λ ())
+isFork? ∙ = no (λ ())
+
 data Is∙ {τ : Ty} : CTerm τ -> Set where
   ∙ : Is∙ ∙
 
@@ -140,6 +175,36 @@ redexOf s = Step (stepOf s)
 
 fork-⊑ : ∀ {ls l h} {p₁ p₂ : Program ls (Mac l （）)} {t : Thread h }  -> p₁ ⟼ p₂ ↑ fork t -> l ⊑ h
 fork-⊑ (fork p t s) = p
+
+
+effectOf : ∀ {l τ} -> CTerm (Mac l τ) -> Effect l
+effectOf ∙ = ∙
+effectOf (fork p t) = fork t
+effectOf _ = ∅
+
+-- For any reduction we can compute the event generated
+-- stepWithEvent : ∀ {l ls} {t₁ : CTerm (Mac l （）)} {Σ₁ : Store ls} {p₂ : Program ls (Mac l （）)} -> (s : ⟨ Σ₁ ∥ t₁ ⟩ ⟼ p₂) -> p₁ ⟼ p₂ ↑ (effectOf (term p₁))
+stepWithEvent : ∀ {l ls} {p₁ p₂ : Program ls (Mac l （）)} -> (s : p₁ ⟼ p₂) -> p₁ ⟼ p₂ ↑ (effectOf (term p₁))
+stepWithEvent {p₁ = ⟨ store ∥ t ⟩} s with is∙? t
+stepWithEvent {l} {ls} {⟨ store₁ ∥ .∙ ⟩} {⟨ .store₁ ∥ .∙ ⟩} (Pure Hole) | yes ∙ = bullet (Pure Hole)
+stepWithEvent {l} {ls} {⟨ store ∥ t ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p with isFork? t
+stepWithEvent {l} {ls} {⟨ store ∥ .(fork p t) ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p | yes (fork p t) = fork p t s
+stepWithEvent {l} {ls} {⟨ store ∥ Var x ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ App t t₁ ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ If t Then t₁ Else t₂ ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ Return t ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ t >>= t₁ ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ Throw t ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ Catch t t₁ ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ Mac t ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ Macₓ t ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ unlabel x t ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ read x t ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ write x t t₁ ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ fork x t ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = ⊥-elim (¬p (fork x t))
+stepWithEvent {l} {ls} {⟨ store ∥ takeMVar t ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ putMVar t t₁ ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = none ¬p ¬p₁ s
+stepWithEvent {l} {ls} {⟨ store ∥ ∙ ⟩} {⟨ store₁ ∥ term ⟩} s | no ¬p₁ | no ¬p = ⊥-elim (¬p₁ ∙)
 
 --------------------------------------------------------------------------------
 
@@ -237,7 +302,6 @@ getEvent (fork {nʰ = nʰ} {tʰ = tʰ} {{p}} x x₁ x₂ x₃ x₄ x₅) = fork?
 getEvent (hole x x₁ x₂) = ∙
 getEvent (skip x x₁ x₂) = NoStep
 getEvent (exit x x₁ x₂) = Done
-
 
 getSchedulerStep : ∀ {ls l n} {g₁ g₂ : Global ls} -> (s : l , n ⊢ g₁ ↪ g₂) -> (state g₁) ⟶ (state g₂) ↑ (l , n , getEvent s)
 getSchedulerStep (step x x₁ x₂ x₃) = x₂
