@@ -61,6 +61,26 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   fmapEx∙ : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap∙ (Abs t) (Resₓ {{l}} e) ⇝ (Res ∙)
 
+  appFunCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (Res l (α => β))} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> (f₁ <*> x) ⇝ (f₂ <*> x)
+
+  appFunCtxNF₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> (Res f₁ <*> x) ⇝ (Res f₂ <*> x)
+  
+  appFunCtx₂ : ∀ {l α β} {t : Term (α ∷ []) β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> (Res (Abs t) <*> x₁) ⇝ ((Res (Abs t)) <*> x₂)
+
+  appFunₓ : ∀ {l β α} {e : CTerm Exception} {x : CTerm (Res l α)} -> (Resₓ {α = α => β} e <*> x) ⇝ Resₓ e
+
+  appFun : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> (Res (Abs t) <*> (Res x)) ⇝ Res (subst x t)
+
+  appFunCtx∙₁ : ∀ {l α β} {f₁ f₂ : CTerm (Res l (α => β))} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> (f₁ <*>∙ x) ⇝ (f₂ <*>∙ x)
+
+--  appFunCtxNF∙₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> (Res f₁ <*>∙ x) ⇝ (Res f₂ <*>∙ x)
+
+  -- appFunCtx∙₂ : ∀ {l α β} {f : CTerm (α => β)} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> (Res f <*>∙ x₁) ⇝ (Res f <*>∙ x₂)
+
+  appFun∙ : ∀ {l α β} {f : CTerm (α => β)} {x : CTerm α} -> (Res f <*>∙ (Res x)) ⇝ Res ∙
+
+  appFun∙ₓ : ∀ {l α β} {e : CTerm Exception} {x : CTerm (Res l α)} -> (Resₓ {α = α => β} e <*>∙ x) ⇝ Res ∙
+
   -- Bullet reduces to itself. We need this rule because ∙ is not a value.
   Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
 

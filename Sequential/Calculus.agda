@@ -59,6 +59,12 @@ mutual
     -- This is used to avoid a context sensitive erasure in fmap
     fmap∙  : ∀ {l α β} -> Term Δ (α => β) -> Term Δ (Res l α) -> Term Δ (Res l β)
 
+    -- Applicative Functor
+    _<*>_ : ∀ {l α β} -> Term Δ (Res l (α => β)) -> Term Δ (Res l α) -> Term Δ (Res l β)
+
+    -- Applicative Functor
+    _<*>∙_ : ∀ {l α β} -> Term Δ (Res l (α => β)) -> Term Δ (Res l α) -> Term Δ (Res l β)
+
     -- Concurrency
     fork : ∀ {l h} -> l ⊑ h -> Term Δ (Mac h  （）) -> Term Δ (Mac l  （）)
 
@@ -244,6 +250,8 @@ wken (write x t t₁) p = write x (wken t p) (wken t₁ p)
 wken (new x t) p = new x (wken t p)
 wken (fmap f x) p = fmap (wken f p) (wken x p)
 wken (fmap∙ f x) p = fmap∙ (wken f p) (wken x p)
+wken (f <*> x) p = (wken f p) <*> (wken x p)
+wken (f <*>∙ x) p = (wken f p) <*>∙ (wken x p)
 wken (fork x t) p = fork x (wken t p)
 wken (newMVar {α = α} x) p = newMVar {α = α} x
 wken (takeMVar t) p = takeMVar (wken t p)
@@ -289,6 +297,8 @@ tm-subst Δ₁ Δ₂ v (write x t t₁) = write x (tm-subst Δ₁ Δ₂ v t) (tm
 tm-subst Δ₁ Δ₂ v (new x t) = new x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (fmap f x) = fmap (tm-subst Δ₁ Δ₂ v f) (tm-subst Δ₁ Δ₂ v x)
 tm-subst Δ₁ Δ₂ v (fmap∙ f x) = fmap∙ (tm-subst Δ₁ Δ₂ v f) (tm-subst Δ₁ Δ₂ v x)
+tm-subst Δ₁ Δ₂ v (f <*> x) = tm-subst Δ₁ Δ₂ v f <*> tm-subst Δ₁ Δ₂ v x
+tm-subst Δ₁ Δ₂ v (f <*>∙ x) = tm-subst Δ₁ Δ₂ v f <*>∙ tm-subst Δ₁ Δ₂ v x
 tm-subst Δ₁ Δ₂ v (fork x t) = fork x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (newMVar {α = α} x) = newMVar {α = α} x
 tm-subst Δ₁ Δ₂ v (takeMVar t) = takeMVar (tm-subst Δ₁ Δ₂ v t)

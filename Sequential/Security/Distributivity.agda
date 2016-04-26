@@ -1,6 +1,5 @@
 module Sequential.Security.Distributivity where
 
-
 open import Sequential.Security.Erasure public
 open import Sequential.Semantics
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
@@ -110,6 +109,63 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx∙ with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx∙ | yes p rewrite ε∙≡∙ {τ} {[]} lₐ = fmapEx∙
 ε-dist⇝ {Res lᵈ τ} lₐ fmapEx∙ | no ¬p = fmap∙
+
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₁ s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₁ s) | yes p = appFunCtx₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₁ s) | no ¬p = appFunCtx∙₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtxNF₁ s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtxNF₁ s) | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtxNF₁ s) | yes p₁ | yes p = appFunCtxNF₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtxNF₁ s) | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtxNF₁ s) | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtxNF₁ s) | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtxNF₁ s) | no ¬p₁ | no ¬p = {!!} -- appFunCtxNF∙₁ Hole
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₂ s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₂ s) | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₂ s) | yes p₁ | yes p = appFunCtx₂ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₂ s) | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₂ s) | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₂ s) | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx₂ s) | no ¬p₁ | no ¬p = {!appFunCtxzaza ? !}
+ε-dist⇝ {Res lᵈ τ} lₐ appFun with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ appFun | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ (appFun {t = t} {x = x}) | yes p₁ | yes p rewrite sym (ε-subst lₐ x t) = appFun
+ε-dist⇝ {Res lᵈ τ} lₐ appFun | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ appFun | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ appFun | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ appFun | no ¬p₁ | no ¬p = {!appFun∙!}
+ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | yes p₁ | yes p = appFunₓ
+ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | no ¬p | yes p = ⊥-elim (¬p p) 
+ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | no ¬p₁ | no ¬p = {!appFun∙!}
+
+ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx∙₁ s) = {!!}
+ε-dist⇝ {Res lᵈ τ} lₐ appFun∙ = {!!}
+ε-dist⇝ {Res lᵈ τ} lₐ appFun∙ₓ = {!!}
+
+-- ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx s) with lᵈ ⊑? lₐ
+-- ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx s) | yes p = appFunCtx (ε-dist⇝ lₐ s)
+-- ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx s) | no ¬p = appFunCtx∙ (ε-dist⇝ lₐ s)
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFun with lᵈ ⊑? lₐ
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFun | yes p with lᵈ ⊑? lₐ
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFun | yes p₁ | yes p = appFun
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFun | yes p | no ¬p = ⊥-elim (¬p p)
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFun | no ¬p with lᵈ ⊑? lₐ
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFun | no ¬p | yes p = ⊥-elim (¬p p)
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFun | no ¬p₁ | no ¬p = {!appFun∙!} -- • ≠ ε(f)
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ with lᵈ ⊑? lₐ
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | yes p with lᵈ ⊑? lₐ
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | yes p₁ | yes p = appFunₓ
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | yes p | no ¬p = ⊥-elim (¬p p)
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | no ¬p with lᵈ ⊑? lₐ
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | no ¬p | yes p = ⊥-elim (¬p p)
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFunₓ | no ¬p₁ | no ¬p = {!!}
+-- ε-dist⇝ {Res lᵈ τ} lₐ (appFunCtx∙ s) = {!!}
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFun∙ = {!!}
+-- ε-dist⇝ {Res lᵈ τ} lₐ appFun∙ₓ = {!!}
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p₁ s) | yes p = relabelCtx p₁ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) | no ¬p = relabelCtx∙ p (ε-dist⇝ lₐ s)
