@@ -54,6 +54,9 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
 
+  --------------------------------------------------------------------------------
+  -- Applicative Functor rules
+  
   appFunCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (Labeled l (α => β))} {x : CTerm (Labeled l α)} -> f₁ ⇝ f₂ -> (f₁ <*> x) ⇝ (f₂ <*> x)
   
   appFunCtx₂ : ∀ {l α β} {f : CTerm (Id (α => β))} {x₁ x₂ : CTerm (Labeled l α)} -> x₁ ⇝ x₂ -> (Res f <*> x₁) ⇝ (Res f <*> x₂)

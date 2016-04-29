@@ -46,9 +46,6 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-Mac-dist⇝ lₐ (yes p) Hole = Hole
 ε-Mac-dist⇝ {c₁ = c₁} {c₂} lₐ (no ¬p) s rewrite ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p = Hole
 
-ε-<*>ᴵ-dist : ∀ {lᵈ lₐ α β} (f : CTerm (Id (α => β))) (x : CTerm (Id α))  -> lᵈ ⊑ lₐ -> ε lₐ (f <*>ᴵ x) ≡ (ε lₐ f) <*>ᴵ (ε lₐ x)
-ε-<*>ᴵ-dist f x p = {!refl!}
-
 -- This proof is repetitive because, even though the erasure
 -- function is defined with a default case for all non Mac lᵈ τ types
 -- reasoning requires to explicitly pattern match on each of them.
@@ -85,25 +82,71 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Res lᵈ τ} lₐ IfFalse = IfFalse
 ε-dist⇝ {Res lᵈ τ} lₐ (unIdCtx s) = unIdCtx (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ unId = unId
-ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₁ s) = appFunCtx₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₁ s) with lᵈ ⊑? lₐ
+... | yes p = appFunCtx₁ (ε-dist⇝ lₐ s)
+... | no ¬p = appFunCtx∙₁ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ s) with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ s) | yes p = appFunCtx₂ (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ s) | no ¬p = appFunCtx₂ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ s) | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ s) | yes p₁ | yes p = appFunCtx₂ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ s) | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ s) | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ s) | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ s) | no ¬p₁ | no ¬p = appFunCtx∙₂ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ₓ s) with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ₓ s) | yes p = appFunCtx₂ₓ (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ₓ s) | no ¬p = appFunCtx₂ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ₓ s) | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ₓ s) | yes p₁ | yes p = appFunCtx₂ₓ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ₓ s) | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ₓ s) | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ₓ s) | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx₂ₓ s) | no ¬p₁ | no ¬p = appFunCtx∙₂ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ ._} lₐ appFun with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ ._} lₐ (appFun {f = f} {x = x}) | yes p rewrite ε-<*>ᴵ-dist f x p = appFun
-ε-dist⇝ {Res lᵈ ._} lₐ appFun | no ¬p = {!appFun!}
+ε-dist⇝ {Res lᵈ ._} lₐ appFun | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun | yes p₁ | yes p = appFun
+ε-dist⇝ {Res lᵈ ._} lₐ appFun | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ appFun | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ appFun | no ¬p₁ | no ¬p = appFun∙
 ε-dist⇝ {Res lᵈ ._} lₐ appFun₁ₓ with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ ._} lₐ appFun₁ₓ | yes p = appFun₁ₓ
-ε-dist⇝ {Res lᵈ ._} lₐ appFun₁ₓ | no ¬p = {!!}
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁ₓ | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁ₓ | yes p₁ | yes p = appFun₁ₓ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁ₓ | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁ₓ | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁ₓ | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁ₓ | no ¬p₁ | no ¬p = appFun∙
 ε-dist⇝ {Res lᵈ ._} lₐ appFun₂ₓ with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ ._} lₐ appFun₂ₓ | yes p = appFun₂ₓ
-ε-dist⇝ {Res lᵈ ._} lₐ appFun₂ₓ | no ¬p = {!!}
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₂ₓ | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₂ₓ | yes p₁ | yes p = appFun₂ₓ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₂ₓ | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₂ₓ | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₂ₓ | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₂ₓ | no ¬p₁ | no ¬p = appFun∙
 ε-dist⇝ {Res lᵈ ._} lₐ appFun₁₂ₓ with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ ._} lₐ appFun₁₂ₓ | yes p = appFun₁₂ₓ
-ε-dist⇝ {Res lᵈ ._} lₐ appFun₁₂ₓ | no ¬p = {!!}
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁₂ₓ | yes p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁₂ₓ | yes p₁ | yes p = appFun₁₂ₓ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁₂ₓ | yes p | no ¬p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁₂ₓ | no ¬p with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁₂ₓ | no ¬p | yes p = ⊥-elim (¬p p)
+ε-dist⇝ {Res lᵈ ._} lₐ appFun₁₂ₓ | no ¬p₁ | no ¬p = appFun∙
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx∙₁ s) = appFunCtx∙₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx∙₂ s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx∙₂ s) | yes p = appFunCtx∙₂ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx∙₂ s) | no ¬p = appFunCtx∙₂ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx∙₂ₓ s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx∙₂ₓ s) | yes p = appFunCtx∙₂ₓ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ (appFunCtx∙₂ₓ s) | no ¬p = appFunCtx∙₂ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙ with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙ | yes p = appFun∙
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙ | no ¬p = appFun∙
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₁ₓ with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₁ₓ | yes p = appFun∙₁ₓ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₁ₓ | no ¬p = appFun∙
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₂ₓ with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₂ₓ | yes p = appFun∙₂ₓ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₂ₓ | no ¬p = appFun∙
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₁₂ₓ with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₁₂ₓ | yes p = appFun∙₁₂ₓ
+ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₁₂ₓ | no ¬p = appFun∙
+
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) with lᵈ ⊑? lₐ
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p₁ s) | yes p = relabelCtx p₁ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) | no ¬p = relabelCtx∙ p (ε-dist⇝ lₐ s)
@@ -161,6 +204,10 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Id τ} lₐ IfFalse = IfFalse
 ε-dist⇝ {Id τ} lₐ (unIdCtx s) = unIdCtx (ε-dist⇝ lₐ s)
 ε-dist⇝ {Id τ} lₐ unId = unId
+ε-dist⇝ {Id τ} lₐ (appFunIdCtx₁ s) = appFunIdCtx₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Id τ} lₐ (appFunIdCtx₂ s) = appFunIdCtx₂ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Id τ} lₐ (appFunIdCtx₃ s) = appFunIdCtx₃ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Id τ} lₐ (appFunId {t = t} {x = x}) rewrite sym (ε-subst lₐ x t) = appFunId
 ε-dist⇝ {Id τ} lₐ Hole = Hole
 
 --------------------------------------------------------------------------------
