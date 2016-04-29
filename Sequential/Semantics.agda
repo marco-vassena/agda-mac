@@ -26,6 +26,14 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   unId : ∀ {τ} {t : CTerm τ} -> unId (Id t) ⇝ t
 
+  appFunIdCtx₁ : ∀ {α β} {f₁ f₂ : CTerm (Id (α => β))} {x : CTerm (Id α)} -> f₁ ⇝ f₂ -> (f₁ <*>ᴵ x) ⇝ (f₂ <*>ᴵ x)
+
+  appFunIdCtx₂ : ∀ {α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Id α)} -> f₁ ⇝ f₂ -> (Id f₁ <*>ᴵ x) ⇝ (Id f₂ <*>ᴵ x)
+
+  appFunIdCtx₃ : ∀ {α β} {t : Term (α ∷ []) β} {x₁ x₂ : CTerm (Id α)} -> x₁ ⇝ x₂ -> (Id (Abs t) <*>ᴵ x₁) ⇝ (Id (Abs t) <*>ᴵ x₂)
+
+  appFunId : ∀ {α β} {t : Term (α ∷ []) β} {x : CTerm α} -> (Id (Abs t) <*>ᴵ (Id x)) ⇝ (Id (subst x t))
+
   Return : ∀ {τ} {l : Label} {t : CTerm τ} -> Return t ⇝ Mac t
 
   Throw : ∀ {l : Label}  {α : Ty} {e : CTerm Exception} -> Throw {{l}} {{α}} e ⇝ Macₓ e 
@@ -60,18 +68,40 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   appFun₂ₓ : ∀ {l α β} {f : CTerm (Id (α => β))} {e : CTerm Exception} -> (Res f <*> Resₓ e) ⇝ Resₓ e
 
-  -- We need also this case. We report exceptions in the same order as in lazy evaluation
+   -- We need also this case. We report exceptions in the same order as in lazy evaluation
   appFun₁₂ₓ : ∀ {l α β} {e₁ e₂ : CTerm Exception} -> (Resₓ {α = Id (α => β)} e₁ <*> Resₓ e₂) ⇝ Resₓ e₁
+
+  --------------------------------------------------------------------------------
+  -- Bulletized rules for <*>∙
+  appFunCtx∙₁ : ∀ {l α β} {f₁ f₂ : CTerm (Labeled l (α => β))} {x : CTerm (Labeled l α)} -> f₁ ⇝ f₂ -> (f₁ <*>∙ x) ⇝ (f₂ <*>∙ x)
+  
+  appFunCtx∙₂ : ∀ {l α β} {f : CTerm (Id (α => β))} {x₁ x₂ : CTerm (Labeled l α)} -> x₁ ⇝ x₂ -> (Res f <*>∙ x₁) ⇝ (Res f <*>∙ x₂)
+
+  appFunCtx∙₂ₓ : ∀ {l β α} {e : CTerm Exception} {x₁ x₂ : CTerm (Labeled l α)} -> x₁ ⇝ x₂ -> (Resₓ {α = Id (α => β)} e <*>∙ x₁) ⇝ ((Resₓ e) <*>∙ x₂)
+
+  appFun∙ : ∀ {l α β} {f : CTerm (Id (α => β))} {x : CTerm (Id α)} -> (Res f <*>∙ Res x) ⇝ Res ∙
+
+  appFun∙₁ₓ : ∀ {l α β} {e : CTerm Exception} {x : CTerm (Id α)} -> (Resₓ {α = Id (α => β)} e <*>∙ Res x) ⇝ Resₓ e
+
+  appFun∙₂ₓ : ∀ {l α β} {f : CTerm (Id (α => β))} {e : CTerm Exception} -> (Res f <*>∙ Resₓ e) ⇝ Resₓ e
+
+  appFun∙₁₂ₓ : ∀ {l α β} {e₁ e₂ : CTerm Exception} -> (Resₓ {α = Id (α => β)} e₁ <*>∙ Resₓ e₂) ⇝ Resₓ e₁
+
+  --------------------------------------------------------------------------------
 
   -- Bullet reduces to itself. We need this rule because ∙ is not a value.
   Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙
 
+  --------------------------------------------------------------------------------
+  -- Relabel
   relabelCtx : ∀ {l h α} {c₁ c₂ : CTerm (Res l α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> relabel p c₁ ⇝ relabel p c₂
 
   relabel : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> relabel p (Res t) ⇝ Res t
 
   relabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> relabel {α = α} p (Resₓ e) ⇝ Resₓ e
 
+ --------------------------------------------------------------------------------
+  -- ∙ed rules for relabel
   relabelCtx∙ : ∀ {l h α} {c₁ c₂ : CTerm (Res l α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> relabel∙ p c₁ ⇝ relabel∙ p c₂
 
   relabel∙ : ∀ {l h α} {c : CTerm α} -> (p : l ⊑ h) -> relabel∙ p (Res c) ⇝ Res ∙ 

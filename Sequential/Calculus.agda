@@ -18,6 +18,7 @@ mutual
 
     Id : ∀ {τ} -> Term Δ τ -> Term Δ (Id τ)
     unId : ∀ {τ} -> Term Δ (Id τ) -> Term Δ τ
+    _<*>ᴵ_ : ∀ {α β} -> Term Δ (Id (α => β)) -> Term Δ (Id α) -> Term Δ (Id β)
 
     Var : ∀ {τ} -> τ ∈ Δ -> Term Δ τ
     Abs : ∀ {α β} -> Term (α ∷ Δ) β -> Term Δ (α => β)
@@ -61,6 +62,7 @@ mutual
 
     -- Applicative Functor
     _<*>_ : ∀ {l α β} -> Term Δ (Labeled l (α => β)) -> Term Δ (Labeled l α) -> Term Δ (Labeled l β)
+    _<*>∙_ : ∀ {l α β} -> Term Δ (Labeled l (α => β)) -> Term Δ (Labeled l α) -> Term Δ (Labeled l β)
 
     -- Concurrency
     fork : ∀ {l h} -> l ⊑ h -> Term Δ (Mac h  （）) -> Term Δ (Mac l  （）)
@@ -111,10 +113,6 @@ mutual
 -- Fmap is expressed in terms of <*> and pure
 fmap : ∀ {Δ l α β} -> Term Δ (α => β) -> Term Δ (Labeled l α) -> Term Δ (Labeled l β)
 fmap f x = Res (Id f) <*> x
-
--- Syntatic sugar for the Applicative Functor isntance of Id
-_<*>ᴵ_ : ∀ {Δ α β} -> Term Δ (Id (α => β)) -> Term Δ (Id α) -> Term Δ (Id β)
-f <*>ᴵ x = Id (App (unId f) (unId x))
 
 --------------------------------------------------------------------------------
 
@@ -234,6 +232,7 @@ wken True p = True
 wken False p = False
 wken (Id t) p = Id (wken t p)
 wken (unId t) p = unId (wken t p)
+wken (f <*>ᴵ x) p = (wken f p) <*>ᴵ (wken x p)
 wken (Var x) p = Var (wken-∈ x p)
 wken (Abs t) p = Abs (wken t (cons p))
 wken (App t t₁) p = App (wken t p) (wken t₁ p)
@@ -258,6 +257,7 @@ wken (read x t) p = read x (wken t p)
 wken (write x t t₁) p = write x (wken t p) (wken t₁ p)
 wken (new x t) p = new x (wken t p)
 wken (f <*> x) p = (wken f p) <*> (wken x p)
+wken (f <*>∙ x) p = (wken f p) <*>∙ (wken x p)
 wken (fork x t) p = fork x (wken t p)
 wken (newMVar {α = α} x) p = newMVar {α = α} x
 wken (takeMVar t) p = takeMVar (wken t p)
@@ -280,6 +280,7 @@ tm-subst Δ₁ Δ₂ v True = True
 tm-subst Δ₁ Δ₂ v False = False
 tm-subst Δ₁ Δ₂ v (Id t) = Id (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (unId t) = unId (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (f <*>ᴵ x) = (tm-subst Δ₁ Δ₂ v f) <*>ᴵ (tm-subst Δ₁ Δ₂ v x)
 tm-subst Δ₁ Δ₂ v (Var x) = var-subst Δ₁ Δ₂ v x
 tm-subst Δ₁ Δ₂ v (Abs t) = Abs (tm-subst (_ ∷ Δ₁) Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (App t t₁) = App (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
@@ -304,6 +305,7 @@ tm-subst Δ₁ Δ₂ v (read x t) = read x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (write x t t₁) = write x (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
 tm-subst Δ₁ Δ₂ v (new x t) = new x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (f <*> x) = tm-subst Δ₁ Δ₂ v f <*> tm-subst Δ₁ Δ₂ v x
+tm-subst Δ₁ Δ₂ v (f <*>∙ x) = tm-subst Δ₁ Δ₂ v f <*>∙ tm-subst Δ₁ Δ₂ v x
 tm-subst Δ₁ Δ₂ v (fork x t) = fork x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (newMVar {α = α} x) = newMVar {α = α} x
 tm-subst Δ₁ Δ₂ v (takeMVar t) = takeMVar (tm-subst Δ₁ Δ₂ v t)

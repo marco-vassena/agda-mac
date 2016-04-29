@@ -72,7 +72,11 @@ open import Data.List as L hiding (drop)
 ε lₐ (If t Then t₁ Else t₂) = If (ε lₐ t) Then (ε lₐ t₁) Else (ε lₐ t₂)
 ε lₐ (Id t) = Id (ε lₐ t)
 ε lₐ (unId t) = unId (ε lₐ t)
-ε {Res lᵈ (Id τ)} lₐ (f <*> x) = (ε lₐ f) <*> (ε lₐ x)
+ε lₐ (f <*>ᴵ x) = (ε lₐ f) <*>ᴵ (ε lₐ x)
+ε {Res lᵈ (Id τ)} lₐ (f <*> x) with lᵈ ⊑? lₐ
+ε {Res lᵈ (Id τ)} lₐ (f <*> x) | yes p = (ε lₐ f) <*> (ε lₐ x)
+ε {Res lᵈ (Id τ)} lₐ (f <*> x) | no ¬p = (ε lₐ f) <*>∙ (ε lₐ x)
+ε {Res lᵈ (Id τ)} lₐ (f <*>∙ x) = (ε lₐ f) <*>∙ (ε lₐ x)
 ε {Res lᵈ τ} lₐ (Res t) with lᵈ ⊑? lₐ
 ε {Res lᵈ τ} lₐ (Res t) | yes p = Res (ε lₐ t)
 ε {Res lᵈ τ} lₐ (Res t) | no ¬p = Res ∙
@@ -323,6 +327,7 @@ open import Data.List as L hiding (drop)
 ε-wken {（）} lₐ ∙ p = refl
 ε-wken {Id τ} lₐ (Id t) p rewrite ε-wken lₐ t p = refl
 ε-wken {Id τ} lₐ (unId t) p rewrite ε-wken lₐ t p = refl
+ε-wken {Id τ} lₐ (f <*>ᴵ x) p rewrite ε-wken lₐ f p | ε-wken lₐ x p = refl
 ε-wken {Id τ} lₐ (Var x) p = refl
 ε-wken {Id τ} lₐ (App t t₁) p
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
@@ -353,7 +358,10 @@ open import Data.List as L hiding (drop)
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
 ε-wken {Res x α} lₐ (If t Then t₁ Else t₂) p
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p | ε-wken lₐ t₂ p = refl
-ε-wken {Res lᵈ (Id α)} lₐ (f <*> x) p rewrite ε-wken lₐ f p | ε-wken lₐ x p = refl
+ε-wken {Res lᵈ (Id α)} lₐ (f <*> x) p with lᵈ ⊑? lₐ
+... | yes _ rewrite ε-wken lₐ f p | ε-wken lₐ x p = refl
+... | no ¬p rewrite ε-wken lₐ f p | ε-wken lₐ x p = refl
+ε-wken {Res lᵈ (Id α)} lₐ (f <*>∙ x) p rewrite ε-wken lₐ f p | ε-wken lₐ x p = refl
 ε-wken {Res lᵈ α} lₐ (Res t) p with lᵈ ⊑? lₐ
 ε-wken {Res lᵈ α} lₐ (Res t) p₁ | yes p
   rewrite ε-wken lₐ t p₁ = refl
@@ -462,8 +470,11 @@ open import Data.List as L hiding (drop)
         ε-tm-subst {τ = Res l τ} Δ₁ Δ₂ x₁ (App t₁ t₂)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
         ε-tm-subst {τ = Res l τ} Δ₁ Δ₂ x₁ (If t₁ Then t₂ Else t₃)
-          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl      
-        ε-tm-subst {α} {Res l (Id τ)} Δ₁ Δ₂ x₁ (f <*> x) rewrite ε-tm-subst Δ₁ Δ₂ x₁ f | ε-tm-subst Δ₁ Δ₂ x₁ x = refl       
+          rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁  | ε-tm-subst Δ₁ Δ₂ x₁ t₂ | ε-tm-subst Δ₁ Δ₂ x₁ t₃ = refl
+        ε-tm-subst {α} {Res lᵈ (Id τ)} Δ₁ Δ₂ x₁ (f <*> x) with lᵈ ⊑? lₐ
+        ... | yes _  rewrite ε-tm-subst Δ₁ Δ₂ x₁ f | ε-tm-subst Δ₁ Δ₂ x₁ x = refl
+        ... | no _  rewrite ε-tm-subst Δ₁ Δ₂ x₁ f | ε-tm-subst Δ₁ Δ₂ x₁ x = refl               
+        ε-tm-subst {α} {Res l (Id τ)} Δ₁ Δ₂ x₁ (f <*>∙ x) rewrite ε-tm-subst Δ₁ Δ₂ x₁ f | ε-tm-subst Δ₁ Δ₂ x₁ x = refl       
         ε-tm-subst {τ = Res lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) with lᵈ ⊑? lₐ
         ε-tm-subst {α} {Res lᵈ τ} Δ₁ Δ₂ x₂ (Res t₁) | yes p
           rewrite ε-tm-subst Δ₁ Δ₂ x₂ t₁ = refl
@@ -503,6 +514,7 @@ open import Data.List as L hiding (drop)
 
         ε-tm-subst {τ = Id τ} Δ₁ Δ₂ x₁ (Id t₁) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
         ε-tm-subst {τ = Id τ} Δ₁ Δ₂ x₁ (unId t₁) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-tm-subst {τ = Id τ} Δ₁ Δ₂ x₁ (f <*>ᴵ x) rewrite ε-tm-subst Δ₁ Δ₂ x₁ f | ε-tm-subst Δ₁ Δ₂ x₁ x  = refl       
         ε-tm-subst {τ = Id τ} Δ₁ Δ₂ x₁ (Var x₂) rewrite ε-var-subst Δ₁ Δ₂ x₁ x₂ = refl
         ε-tm-subst {τ = Id τ} Δ₁ Δ₂ x₁ (App t₁ t₂)
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ | ε-tm-subst Δ₁ Δ₂ x₁ t₂ = refl
