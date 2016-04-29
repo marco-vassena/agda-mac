@@ -16,6 +16,9 @@ mutual
     True : Term Δ Bool 
     False : Term Δ Bool
 
+    Id : ∀ {τ} -> Term Δ τ -> Term Δ (Id τ)
+    unId : ∀ {τ} -> Term Δ (Id τ) -> Term Δ τ
+
     Var : ∀ {τ} -> τ ∈ Δ -> Term Δ τ
     Abs : ∀ {α β} -> Term (α ∷ Δ) β -> Term Δ (α => β)
     App : ∀ {α β} -> Term Δ (α => β) -> Term Δ α -> Term Δ β
@@ -35,15 +38,18 @@ mutual
     Res : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Res l α)
     Resₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Res l α)
 
+    -- TODO relabel should only work with Labeled objects
     -- It is fine to strenghten the level of a labeled resource
     relabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Res h α)
 
     -- This is used to avoid a context sensitive erasure in relabel
     relabel∙  : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Res h α)
 
+    -- TODO this should produce Labeled 
     label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Res h α))
     unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Mac h α)
 
+    -- TODO this should produce Labeled 
     join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Res h α))
 
     zero : Term Δ Nat
@@ -53,17 +59,8 @@ mutual
     write : ∀ {α l h} -> l ⊑ h -> Term Δ (Ref h α) -> Term Δ α -> Term Δ (Mac l （）)
     new : ∀ {α l h} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Ref h α))
 
-    -- Res l α is a functor
-    fmap : ∀ {l α β} -> Term Δ (α => β) -> Term Δ (Res l α) -> Term Δ (Res l β)
-
-    -- This is used to avoid a context sensitive erasure in fmap
-    fmap∙  : ∀ {l α β} -> Term Δ (α => β) -> Term Δ (Res l α) -> Term Δ (Res l β)
-
     -- Applicative Functor
-    _<*>_ : ∀ {l α β} -> Term Δ (Res l (α => β)) -> Term Δ (Res l α) -> Term Δ (Res l β)
-
-    -- Applicative Functor
-    _<*>∙_ : ∀ {l α β} -> Term Δ (Res l (α => β)) -> Term Δ (Res l α) -> Term Δ (Res l β)
+    _<*>_ : ∀ {l α β} -> Term Δ (Labeled l (α => β)) -> Term Δ (Labeled l α) -> Term Δ (Labeled l β)
 
     -- Concurrency
     fork : ∀ {l h} -> l ⊑ h -> Term Δ (Mac h  （）) -> Term Δ (Mac l  （）)
@@ -108,6 +105,16 @@ mutual
   -- Type synonym that ensures no duplicates in a list.
   Unique : Label -> List Label -> Set
   Unique l₁ ls = All (λ l₂ → ¬ (l₁ ≡ l₂)) ls
+
+--------------------------------------------------------------------------------
+
+-- Fmap is expressed in terms of <*> and pure
+fmap : ∀ {Δ l α β} -> Term Δ (α => β) -> Term Δ (Labeled l α) -> Term Δ (Labeled l β)
+fmap f x = Res (Id f) <*> x
+
+-- Syntatic sugar for the Applicative Functor isntance of Id
+_<*>ᴵ_ : ∀ {Δ α β} -> Term Δ (Id (α => β)) -> Term Δ (Id α) -> Term Δ (Id β)
+f <*>ᴵ x = Id (App (unId f) (unId x))
 
 --------------------------------------------------------------------------------
 
@@ -210,13 +217,13 @@ data IsValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   False : IsValue False
   Abs : ∀ {α β} (t : Term (α ∷ Δ) β) -> IsValue (Abs t)
   ξ : IsValue ξ
+  Id : ∀ {τ} -> (t : Term Δ τ) -> IsValue (Id t) 
   Mac : ∀ {α} {l : Label} (t : Term Δ α) -> IsValue (Mac t)
   Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Macₓ {α = α} e)
   Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsValue (Res t)
   Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Resₓ {α = α} e)
   zero : IsValue zero
   suc : (n : Term Δ Nat) -> IsValue (suc n)
-
 
 --------------------------------------------------------------------------------
 
@@ -225,6 +232,8 @@ wken : ∀ {τ Δ₁ Δ₂} -> Term Δ₁ τ -> Δ₁ ⊆ˡ Δ₂ -> Term Δ₂ 
 wken （） p = （）
 wken True p = True
 wken False p = False
+wken (Id t) p = Id (wken t p)
+wken (unId t) p = unId (wken t p)
 wken (Var x) p = Var (wken-∈ x p)
 wken (Abs t) p = Abs (wken t (cons p))
 wken (App t t₁) p = App (wken t p) (wken t₁ p)
@@ -248,10 +257,7 @@ wken (suc n) p = suc (wken n p)
 wken (read x t) p = read x (wken t p)
 wken (write x t t₁) p = write x (wken t p) (wken t₁ p)
 wken (new x t) p = new x (wken t p)
-wken (fmap f x) p = fmap (wken f p) (wken x p)
-wken (fmap∙ f x) p = fmap∙ (wken f p) (wken x p)
 wken (f <*> x) p = (wken f p) <*> (wken x p)
-wken (f <*>∙ x) p = (wken f p) <*>∙ (wken x p)
 wken (fork x t) p = fork x (wken t p)
 wken (newMVar {α = α} x) p = newMVar {α = α} x
 wken (takeMVar t) p = takeMVar (wken t p)
@@ -272,6 +278,8 @@ tm-subst : ∀ {α τ} (Δ₁ Δ₂ : Context) -> Term Δ₂ α -> Term (Δ₁ +
 tm-subst Δ₁ Δ₂ v （） = （）
 tm-subst Δ₁ Δ₂ v True = True
 tm-subst Δ₁ Δ₂ v False = False
+tm-subst Δ₁ Δ₂ v (Id t) = Id (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (unId t) = unId (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (Var x) = var-subst Δ₁ Δ₂ v x
 tm-subst Δ₁ Δ₂ v (Abs t) = Abs (tm-subst (_ ∷ Δ₁) Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (App t t₁) = App (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
@@ -295,10 +303,7 @@ tm-subst Δ₁ Δ₂ v (suc n) = suc (tm-subst Δ₁ Δ₂ v n)
 tm-subst Δ₁ Δ₂ v (read x t) = read x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (write x t t₁) = write x (tm-subst Δ₁ Δ₂ v t) (tm-subst Δ₁ Δ₂ v t₁)
 tm-subst Δ₁ Δ₂ v (new x t) = new x (tm-subst Δ₁ Δ₂ v t)
-tm-subst Δ₁ Δ₂ v (fmap f x) = fmap (tm-subst Δ₁ Δ₂ v f) (tm-subst Δ₁ Δ₂ v x)
-tm-subst Δ₁ Δ₂ v (fmap∙ f x) = fmap∙ (tm-subst Δ₁ Δ₂ v f) (tm-subst Δ₁ Δ₂ v x)
 tm-subst Δ₁ Δ₂ v (f <*> x) = tm-subst Δ₁ Δ₂ v f <*> tm-subst Δ₁ Δ₂ v x
-tm-subst Δ₁ Δ₂ v (f <*>∙ x) = tm-subst Δ₁ Δ₂ v f <*>∙ tm-subst Δ₁ Δ₂ v x
 tm-subst Δ₁ Δ₂ v (fork x t) = fork x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (newMVar {α = α} x) = newMVar {α = α} x
 tm-subst Δ₁ Δ₂ v (takeMVar t) = takeMVar (tm-subst Δ₁ Δ₂ v t)

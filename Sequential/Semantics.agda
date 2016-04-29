@@ -22,6 +22,10 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   IfFalse : ∀ {τ} {t e : CTerm τ} -> (If False Then t Else e) ⇝ e
 
+  unIdCtx : ∀ {τ} {t₁ t₂ : CTerm (Id τ)} -> t₁ ⇝ t₂ -> unId t₁ ⇝ unId t₂
+
+  unId : ∀ {τ} {t : CTerm τ} -> unId (Id t) ⇝ t
+
   Return : ∀ {τ} {l : Label} {t : CTerm τ} -> Return t ⇝ Mac t
 
   Throw : ∀ {l : Label}  {α : Ty} {e : CTerm Exception} -> Throw {{l}} {{α}} e ⇝ Macₓ e 
@@ -42,44 +46,22 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
 
-  -- To make Res a secure functor we need a more strict semantics.
-  -- In particular to have distributivity we need a strict function application, but interestingly
-  -- we need strictness in the function also for Resₓ.
-  fmapCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm α} -> f₁ ⇝ f₂ -> fmap f₁ (Res x) ⇝ fmap f₂ (Res x)
-
-  fmapCtx₂ : ∀ {l α β} {t : Term (α ∷ []) β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap (Abs t) x₁ ⇝ fmap (Abs t) x₂
-
-  fmap : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap (Abs t) (Res x) ⇝ (Res (subst x t))
-
-  fmapEx : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap (Abs t) (Resₓ {{l}} e) ⇝ (Resₓ e)
-
-  fmapCtx₁∙ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> fmap∙ f₁ x ⇝ fmap∙ f₂ x    
-
-  fmapCtx₂∙ : ∀ {l α β} {t : Term (α ∷ [])  β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> fmap∙ (Abs t) x₁ ⇝ fmap∙ (Abs t) x₂
-
-  fmap∙ : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> fmap∙ (Abs t) (Res x) ⇝ (Res ∙)
-
-  fmapEx∙ : ∀ {l α β} {t : Term (α ∷ []) β} {e : CTerm Exception} -> fmap∙ (Abs t) (Resₓ {{l}} e) ⇝ (Res ∙)
-
-  appFunCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (Res l (α => β))} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> (f₁ <*> x) ⇝ (f₂ <*> x)
-
-  appFunCtxNF₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> (Res f₁ <*> x) ⇝ (Res f₂ <*> x)
+  appFunCtx₁ : ∀ {l α β} {f₁ f₂ : CTerm (Labeled l (α => β))} {x : CTerm (Labeled l α)} -> f₁ ⇝ f₂ -> (f₁ <*> x) ⇝ (f₂ <*> x)
   
-  appFunCtx₂ : ∀ {l α β} {t : Term (α ∷ []) β} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> (Res (Abs t) <*> x₁) ⇝ ((Res (Abs t)) <*> x₂)
+  appFunCtx₂ : ∀ {l α β} {f : CTerm (Id (α => β))} {x₁ x₂ : CTerm (Labeled l α)} -> x₁ ⇝ x₂ -> (Res f <*> x₁) ⇝ (Res f <*> x₂)
 
-  appFunₓ : ∀ {l β α} {e : CTerm Exception} {x : CTerm (Res l α)} -> (Resₓ {α = α => β} e <*> x) ⇝ Resₓ e
+  -- We cannot shortcut the computation, that would break determinism
+  appFunCtx₂ₓ : ∀ {l β α} {e : CTerm Exception} {x₁ x₂ : CTerm (Labeled l α)} -> x₁ ⇝ x₂ -> (Resₓ {α = Id (α => β)} e <*> x₁) ⇝ ((Resₓ e) <*> x₂)
 
-  appFun : ∀ {l α β} {t : Term (α ∷ []) β} {x : CTerm α} -> (Res (Abs t) <*> (Res x)) ⇝ Res (subst x t)
+ -- Using the Id Applicative functor instance
+  appFun : ∀ {l α β} {f : CTerm (Id (α => β))} {x : CTerm (Id α)} -> (Res f <*> Res x) ⇝ Res (f <*>ᴵ x)
 
-  appFunCtx∙₁ : ∀ {l α β} {f₁ f₂ : CTerm (Res l (α => β))} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> (f₁ <*>∙ x) ⇝ (f₂ <*>∙ x)
+  appFun₁ₓ : ∀ {l α β} {e : CTerm Exception} {x : CTerm (Id α)} -> (Resₓ {α = Id (α => β)} e <*> Res x) ⇝ Resₓ e
 
---  appFunCtxNF∙₁ : ∀ {l α β} {f₁ f₂ : CTerm (α => β)} {x : CTerm (Res l α)} -> f₁ ⇝ f₂ -> (Res f₁ <*>∙ x) ⇝ (Res f₂ <*>∙ x)
+  appFun₂ₓ : ∀ {l α β} {f : CTerm (Id (α => β))} {e : CTerm Exception} -> (Res f <*> Resₓ e) ⇝ Resₓ e
 
-  -- appFunCtx∙₂ : ∀ {l α β} {f : CTerm (α => β)} {x₁ x₂ : CTerm (Res l α)} -> x₁ ⇝ x₂ -> (Res f <*>∙ x₁) ⇝ (Res f <*>∙ x₂)
-
-  appFun∙ : ∀ {l α β} {f : CTerm (α => β)} {x : CTerm α} -> (Res f <*>∙ (Res x)) ⇝ Res ∙
-
-  appFun∙ₓ : ∀ {l α β} {e : CTerm Exception} {x : CTerm (Res l α)} -> (Resₓ {α = α => β} e <*>∙ x) ⇝ Res ∙
+  -- We need also this case. We report exceptions in the same order as in lazy evaluation
+  appFun₁₂ₓ : ∀ {l α β} {e₁ e₂ : CTerm Exception} -> (Resₓ {α = Id (α => β)} e₁ <*> Resₓ e₂) ⇝ Resₓ e₁
 
   -- Bullet reduces to itself. We need this rule because ∙ is not a value.
   Hole : ∀ {τ : Ty} -> (∙ {{τ}}) ⇝ ∙

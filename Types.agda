@@ -34,11 +34,15 @@ data Ty : Set where
   Res : Label -> Ty -> Ty
   Exception : Ty
   Nat : Ty
+  Id : Ty -> Ty
   
 infixr 3 _=>_
 
 Ref : Label -> Ty -> Ty
 Ref l τ = Res l Nat
+
+Labeled : Label -> Ty -> Ty
+Labeled l τ = Res l (Id τ)
 
 -- I will represents MVar also using integers like references
 MVar : Label -> Ty -> Ty
