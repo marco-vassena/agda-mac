@@ -19,6 +19,7 @@ valueNotRedex .(Res t) (Res t) (Step (Pure ()))
 valueNotRedex .(Resₓ e) (Resₓ e) (Step (Pure ()))
 valueNotRedex (suc .n) (suc n) (Step (Pure ()))
 valueNotRedex .zero zero (Step (Pure ()))
+valueNotRedex .(Id x) (Id x) (Step (Pure ()))
 
 data PureRedex {τ : Ty} (t : CTerm τ) : Set where
   Step : ∀ {t' : CTerm τ} -> t ⇝ t' -> PureRedex t
@@ -35,6 +36,7 @@ valueNotRedex⇝ (Res t) (Step ())
 valueNotRedex⇝ (Resₓ e) (Step ())
 valueNotRedex⇝ zero (Step ())
 valueNotRedex⇝ (suc isV) (Step ())
+valueNotRedex⇝ (Id x) (Step ())
 
 -- The pure small step semantics is deterministic.
 determinism⇝ : ∀ {τ} {c₁ c₂ c₃ : CTerm τ} -> c₁ ⇝ c₂ -> c₁ ⇝ c₃ -> c₂ ≡ c₃
@@ -43,6 +45,10 @@ determinism⇝ (AppL s₁) (AppL s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (AppL ()) Beta
 determinism⇝ Beta (AppL ())
 determinism⇝ Beta Beta = refl
+determinism⇝ (unIdCtx s₁) (unIdCtx s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (unIdCtx ()) unId
+determinism⇝ unId (unIdCtx ())
+determinism⇝ unId unId = refl
 determinism⇝ (IfCond s₁) (IfCond s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (IfCond ()) IfTrue
 determinism⇝ (IfCond ()) IfFalse
@@ -59,46 +65,33 @@ determinism⇝ CatchEx CatchEx = refl
 determinism⇝ (label p) (label .p) = refl
 determinism⇝ (unlabel p) (unlabel .p) = refl
 determinism⇝ (unlabelEx p) (unlabelEx .p) = refl
-determinism⇝ fmap (fmapCtx₁ ())
-determinism⇝ fmap (fmapCtx₂ ())
-determinism⇝ fmap fmap = refl
-determinism⇝ fmapEx (fmapCtx₂ ())
-determinism⇝ fmapEx fmapEx = refl
-determinism⇝ (fmapCtx₁ s₁) (fmapCtx₁ s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (fmapCtx₁ ()) (fmapCtx₂ s₂)
-determinism⇝ (fmapCtx₁ ()) fmap
-determinism⇝ (fmapCtx₂ ()) (fmapCtx₁ s₂)
-determinism⇝ (fmapCtx₂ s₁) (fmapCtx₂ s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (fmapCtx₂ ()) fmap
-determinism⇝ (fmapCtx₂ ()) fmapEx
-determinism⇝ fmap∙ (fmapCtx₁∙ ())
-determinism⇝ fmap∙ (fmapCtx₂∙ ())
-determinism⇝ fmap∙ fmap∙ = refl
-determinism⇝ fmapEx∙ (fmapCtx₁∙ ())
-determinism⇝ fmapEx∙ (fmapCtx₂∙ ())
-determinism⇝ fmapEx∙ fmapEx∙ = refl
-determinism⇝ (fmapCtx₁∙ s₁) (fmapCtx₁∙ s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (fmapCtx₁∙ ()) (fmapCtx₂∙ s₂)
-determinism⇝ (fmapCtx₁∙ ()) fmap∙
-determinism⇝ (fmapCtx₁∙ ()) fmapEx∙
-determinism⇝ (fmapCtx₂∙ s₁) (fmapCtx₁∙ ())
-determinism⇝ (fmapCtx₂∙ s₁) (fmapCtx₂∙ s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (fmapCtx₂∙ ()) fmap∙
-determinism⇝ (fmapCtx₂∙ ()) fmapEx∙
-determinism⇝ (appFunCtx s₁) (appFunCtx s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (appFunCtx ()) appFun
-determinism⇝ (appFunCtx ()) appFunₓ
-determinism⇝ appFun (appFunCtx ())
+determinism⇝ (appFunCtx₁ s₁) (appFunCtx₁ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (appFunCtx₁ ()) (appFunCtx₂ s₂)
+determinism⇝ (appFunCtx₁ ()) (appFunCtx₂ₓ s₂)
+determinism⇝ (appFunCtx₁ ()) appFun 
+determinism⇝ (appFunCtx₁ ()) appFun₁ₓ 
+determinism⇝ (appFunCtx₁ ()) appFun₂ₓ 
+determinism⇝ (appFunCtx₁ ()) appFun₁₂ₓ 
+determinism⇝ (appFunCtx₂ s₁) (appFunCtx₁ ())
+determinism⇝ (appFunCtx₂ s₁) (appFunCtx₂ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (appFunCtx₂ ()) appFun
+determinism⇝ (appFunCtx₂ ()) appFun₂ₓ
+determinism⇝ (appFunCtx₂ₓ s₁) (appFunCtx₁ ())
+determinism⇝ (appFunCtx₂ₓ s₁) (appFunCtx₂ₓ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (appFunCtx₂ₓ ()) appFun₁ₓ
+determinism⇝ (appFunCtx₂ₓ ()) appFun₁₂ₓ
+determinism⇝ appFun (appFunCtx₁ ())
+determinism⇝ appFun (appFunCtx₂ ())
 determinism⇝ appFun appFun = refl
-determinism⇝ appFunₓ (appFunCtx ())
-determinism⇝ appFunₓ appFunₓ = refl
-determinism⇝ (appFunCtx∙ s₁) (appFunCtx∙ s₂) rewrite determinism⇝ s₁ s₂ = refl
-determinism⇝ (appFunCtx∙ ()) appFun∙
-determinism⇝ (appFunCtx∙ ()) appFun∙ₓ
-determinism⇝ appFun∙ (appFunCtx∙ ())
-determinism⇝ appFun∙ appFun∙ = refl
-determinism⇝ appFun∙ₓ (appFunCtx∙ ())
-determinism⇝ appFun∙ₓ appFun∙ₓ = refl
+determinism⇝ appFun₁ₓ (appFunCtx₁ ())
+determinism⇝ appFun₁ₓ (appFunCtx₂ₓ ())
+determinism⇝ appFun₁ₓ appFun₁ₓ = refl
+determinism⇝ appFun₂ₓ (appFunCtx₁ ()) 
+determinism⇝ appFun₂ₓ (appFunCtx₂ ()) 
+determinism⇝ appFun₂ₓ appFun₂ₓ = refl
+determinism⇝ appFun₁₂ₓ (appFunCtx₁ ()) 
+determinism⇝ appFun₁₂ₓ (appFunCtx₂ₓ ()) 
+determinism⇝ appFun₁₂ₓ appFun₁₂ₓ = refl
 determinism⇝ (relabelCtx p s₁) (relabelCtx .p s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (relabelCtx p ()) (relabel .p)
 determinism⇝ (relabelCtx p ()) (relabelEx .p)
@@ -122,6 +115,8 @@ determinismMixedC Beta (Pure s₁) = determinism⇝ Beta s₁
 determinismMixedC (IfCond s₁) (Pure s) = determinism⇝ (IfCond s₁) s
 determinismMixedC IfTrue (Pure s) = determinism⇝ IfTrue s
 determinismMixedC IfFalse (Pure s) = determinism⇝ IfFalse s
+determinismMixedC (unIdCtx s₁) (Pure s₂) = determinism⇝ (unIdCtx s₁) s₂
+determinismMixedC unId (Pure s₂) = determinism⇝ unId s₂
 determinismMixedC Hole (Pure s) = determinism⇝ Hole s
 determinismMixedC Return (Pure s) = determinism⇝ Return s
 determinismMixedC Throw (Pure x) = determinism⇝ Throw x
@@ -138,20 +133,13 @@ determinismMixedC (unlabel p) (Pure x) = determinism⇝ (unlabel p) x
 determinismMixedC (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedC (unlabelEx p) (Pure x) = determinism⇝ (unlabelEx p) x
 determinismMixedC (unlabelEx p) (unlabelCtx .p (Pure ()))
-determinismMixedC fmap (Pure s₂) = determinism⇝ fmap s₂
-determinismMixedC fmapEx (Pure s₂) = determinism⇝ fmapEx s₂
-determinismMixedC (fmapCtx₁ s₁) (Pure s₂) = determinism⇝ (fmapCtx₁ s₁) s₂
-determinismMixedC (fmapCtx₂ s₁) (Pure s₂) = determinism⇝ (fmapCtx₂ s₁) s₂
-determinismMixedC fmap∙ (Pure s₂) = determinism⇝ fmap∙ s₂
-determinismMixedC fmapEx∙ (Pure s₂) = determinism⇝ fmapEx∙ s₂
-determinismMixedC (fmapCtx₁∙ s₁) (Pure s₂) = determinism⇝ (fmapCtx₁∙ s₁) s₂
-determinismMixedC (fmapCtx₂∙ s₁) (Pure s₂) = determinism⇝ (fmapCtx₂∙ s₁) s₂
-determinismMixedC (appFunCtx s) (Pure x₁) = determinism⇝ (appFunCtx s) x₁
-determinismMixedC appFun (Pure x₁) = determinism⇝ appFun x₁
-determinismMixedC appFunₓ (Pure x₁) = determinism⇝ appFunₓ x₁
-determinismMixedC (appFunCtx∙ s) (Pure x₁) = determinism⇝ (appFunCtx∙ s) x₁
-determinismMixedC appFun∙ (Pure x₁) = determinism⇝ appFun∙ x₁
-determinismMixedC appFun∙ₓ (Pure x₁) = determinism⇝ appFun∙ₓ x₁
+determinismMixedC (appFunCtx₁ s₁) (Pure s₂) = determinism⇝ (appFunCtx₁ s₁) s₂
+determinismMixedC (appFunCtx₂ s₁) (Pure s₂) = determinism⇝ (appFunCtx₂ s₁) s₂
+determinismMixedC (appFunCtx₂ₓ s₁) (Pure s₂) = determinism⇝ (appFunCtx₂ₓ s₁) s₂
+determinismMixedC appFun (Pure s₂) = determinism⇝ appFun s₂
+determinismMixedC appFun₁ₓ (Pure s₂) = determinism⇝ appFun₁ₓ s₂
+determinismMixedC appFun₂ₓ (Pure s₂) = determinism⇝ appFun₂ₓ s₂
+determinismMixedC appFun₁₂ₓ (Pure s₂) = determinism⇝ appFun₁₂ₓ s₂
 determinismMixedC (relabelCtx p s₂) (Pure x) = determinism⇝ (relabelCtx p s₂) x
 determinismMixedC (relabel p) (Pure s₂) = determinism⇝ (relabel p) s₂ 
 determinismMixedC (relabelEx p) (Pure s₂) = determinism⇝ (relabelEx p) s₂
@@ -239,6 +227,8 @@ determinismMixedS Beta (Pure x₁) = refl
 determinismMixedS (IfCond s₁) (Pure x) = refl
 determinismMixedS IfTrue (Pure x) = refl
 determinismMixedS IfFalse (Pure x) = refl
+determinismMixedS (unIdCtx s) (Pure s₂) = refl
+determinismMixedS unId (Pure s₂) = refl
 determinismMixedS Return (Pure x) = refl
 determinismMixedS Throw (Pure x) = refl
 determinismMixedS Bind (Pure x) = refl
@@ -255,27 +245,19 @@ determinismMixedS (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedS (unlabelEx p) (Pure x) = refl
 determinismMixedS (unlabelEx p) (unlabelCtx .p (Pure ()))
 determinismMixedS Hole (Pure Hole) = refl
+determinismMixedS (appFunCtx₁ s₁) (Pure s₂) = refl
+determinismMixedS (appFunCtx₂ s₁) (Pure s₂) = refl
+determinismMixedS (appFunCtx₂ₓ s₁) (Pure s₂) = refl
+determinismMixedS appFun (Pure s₂) = refl
+determinismMixedS appFun₁ₓ (Pure s₂) = refl
+determinismMixedS appFun₂ₓ (Pure s₂) = refl
+determinismMixedS appFun₁₂ₓ (Pure s₂) = refl
 determinismMixedS (relabelCtx p s₁) (Pure s₂) = refl
 determinismMixedS (relabel p) (Pure s₂) = refl
 determinismMixedS (relabelEx p) (Pure s₂) = refl 
 determinismMixedS (relabelCtx∙ p s₁) (Pure s₂) = refl
 determinismMixedS (relabel∙ p) (Pure s₂) = refl
 determinismMixedS (relabelEx∙ p) (Pure s₂) = refl
-determinismMixedS fmap (Pure s₂) = refl
-determinismMixedS fmapEx (Pure s₂) = refl
-determinismMixedS (fmapCtx₁ s₁) (Pure s₂) = refl
-determinismMixedS (fmapCtx₂ s₁) (Pure s₂) = refl
-determinismMixedS fmap∙ (Pure s₂) = refl
-determinismMixedS fmapEx∙ (Pure s₂) = refl
-determinismMixedS (fmapCtx₁∙ s₁) (Pure s₂) = refl
-determinismMixedS (fmapCtx₂∙ s₁) (Pure s₂) = refl
-determinismMixedS (appFunCtx s) (Pure s₂) = refl
-determinismMixedS appFun (Pure s₂) = refl
-determinismMixedS appFunₓ (Pure s₂) = refl
-determinismMixedS (appFunCtx∙ s) (Pure s₂) = refl
-determinismMixedS appFun∙ (Pure s₂) = refl
-determinismMixedS appFunₓ∙ (Pure s₂) = refl
-
 
 determinismS⋆ : ∀ {τ ls} {s₁ s₂ s₃ : Store ls} {c₁ c₂ c₃ : CTerm τ} ->
                  ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₂ ∥ c₂ ⟩ -> IsValue c₂ -> ⟨ s₁ ∥ c₁ ⟩ ⟼⋆ ⟨ s₃ ∥ c₃ ⟩ -> IsValue c₃ -> s₂ ≡ s₃
