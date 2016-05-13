@@ -39,19 +39,17 @@ mutual
     Res : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Res l α)
     Resₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Res l α)
 
-    -- TODO relabel should only work with Labeled objects
     -- It is fine to strenghten the level of a labeled resource
-    relabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Res h α)
+    relabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Labeled h α)
 
     -- This is used to avoid a context sensitive erasure in relabel
-    relabel∙  : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Res h α)
+    relabel∙  : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Labeled h α)
+
+    label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Labeled h α))
+    unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Mac h α)
 
     -- TODO this should produce Labeled 
-    label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Res h α))
-    unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Res l α) -> Term Δ (Mac h α)
-
-    -- TODO this should produce Labeled 
-    join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Res h α))
+    join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
 
     zero : Term Δ Nat
     suc : Term Δ Nat -> Term Δ Nat
@@ -143,17 +141,17 @@ index-unique-status Here ()
 index-unique-status (There x) (There y) = index-unique-status x y
 index-unique-status ∙ ()
 
-liftRes : ∀ {p τ l} -> Cell τ p -> Cell (Res l τ) p
-liftRes ⊞ = ⊞
-liftRes ⟦ x ⟧ = ⟦ (Res x) ⟧
+liftLabeled : ∀ {p τ l} -> Cell τ p -> Cell (Labeled l τ) p
+liftLabeled ⊞ = ⊞
+liftLabeled ⟦ x ⟧ = ⟦ (Res (Id x)) ⟧
 
 -- TODO : better name / symbol
 get : ∀ {τ} -> Cell τ F -> CTerm τ
 get ⟦ x ⟧ = x
 
 -- Read from memory
-_[_] : ∀ {τ l n p} -> (m : Memory l) -> TypedIx τ p n m -> Cell (Res l τ) p
-(c ∷ m) [ Here ] = liftRes c
+_[_] : ∀ {τ l n p} -> (m : Memory l) -> TypedIx τ p n m -> Cell (Labeled l τ) p
+(c ∷ m) [ Here ] = liftLabeled c
 (c ∷ m) [ There i ] = _[_] m i 
 _[_] {p = F} ∙ ∙ = ⟦ Res ∙ ⟧
 
@@ -190,11 +188,11 @@ lengthᵐ : ∀ {l} -> Memory l -> CTerm (Res l Nat)
 lengthᵐ m = Res (count m)
 
 -- Read from memory in store
-_[_][_]ᶜ : ∀ {p τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ p n (getMemory q s) -> Cell (Res l τ) p
+_[_][_]ᶜ : ∀ {p τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ p n (getMemory q s) -> Cell (Labeled l τ) p
 (m ∷ s) [ Here ][ r ]ᶜ = m [ r ]
 (x ∷ s) [ There q ][ r ]ᶜ = s [ q ][ r ]ᶜ
 
-_[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ F n (getMemory q s) -> CTerm (Res l τ)
+_[_][_] : ∀ {τ ls l n} -> (s : Store ls) (q : l ∈ ls) -> TypedIx τ F n (getMemory q s) -> CTerm (Labeled l τ)
 s [ q ][ r ] = get (s [ q ][ r ]ᶜ)
 
 -- Write a cell to memory in store.
