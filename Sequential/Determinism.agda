@@ -56,6 +56,22 @@ determinism⇝ IfTrue (IfCond ())
 determinism⇝ IfTrue IfTrue = refl
 determinism⇝ IfFalse (IfCond ())
 determinism⇝ IfFalse IfFalse = refl
+determinism⇝ (appFunIdCtx₁ s₁) (appFunIdCtx₁ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (appFunIdCtx₁ ()) (appFunIdCtx₂ s₂)
+determinism⇝ (appFunIdCtx₁ ()) (appFunIdCtx₃ s₂)
+determinism⇝ (appFunIdCtx₁ ()) appFunId
+determinism⇝ (appFunIdCtx₂ s₁) (appFunIdCtx₁ ())
+determinism⇝ (appFunIdCtx₂ s₁) (appFunIdCtx₂ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (appFunIdCtx₂ ()) (appFunIdCtx₃ s₂)
+determinism⇝ (appFunIdCtx₂ ()) appFunId
+determinism⇝ (appFunIdCtx₃ s₁) (appFunIdCtx₁ ())
+determinism⇝ (appFunIdCtx₃ s₁) (appFunIdCtx₂ ())
+determinism⇝ (appFunIdCtx₃ s₁) (appFunIdCtx₃ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (appFunIdCtx₃ ()) appFunId
+determinism⇝ appFunId (appFunIdCtx₁ ())
+determinism⇝ appFunId (appFunIdCtx₂ ())
+determinism⇝ appFunId (appFunIdCtx₃ ())
+determinism⇝ appFunId appFunId = refl
 determinism⇝ Return Return = refl
 determinism⇝ Throw Throw = refl
 determinism⇝ Bind Bind = refl
@@ -92,6 +108,33 @@ determinism⇝ appFun₂ₓ appFun₂ₓ = refl
 determinism⇝ appFun₁₂ₓ (appFunCtx₁ ()) 
 determinism⇝ appFun₁₂ₓ (appFunCtx₂ₓ ()) 
 determinism⇝ appFun₁₂ₓ appFun₁₂ₓ = refl
+determinism⇝ (appFunCtx∙₁ s₁) (appFunCtx∙₁ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (appFunCtx∙₁ ()) (appFunCtx∙₂ s₂)
+determinism⇝ (appFunCtx∙₁ ()) (appFunCtx∙₂ₓ s₂)
+determinism⇝ (appFunCtx∙₁ ()) appFun∙
+determinism⇝ (appFunCtx∙₁ ()) appFun∙₁ₓ
+determinism⇝ (appFunCtx∙₁ ()) appFun∙₂ₓ
+determinism⇝ (appFunCtx∙₁ ()) appFun∙₁₂ₓ
+determinism⇝ (appFunCtx∙₂ s₁) (appFunCtx∙₁ ())
+determinism⇝ (appFunCtx∙₂ s₁) (appFunCtx∙₂ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (appFunCtx∙₂ ()) appFun∙ 
+determinism⇝ (appFunCtx∙₂ ()) appFun∙₂ₓ
+determinism⇝ (appFunCtx∙₂ₓ s₁) (appFunCtx∙₁ ())
+determinism⇝ (appFunCtx∙₂ₓ s₁) (appFunCtx∙₂ₓ s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (appFunCtx∙₂ₓ ()) appFun∙₁ₓ
+determinism⇝ (appFunCtx∙₂ₓ ()) appFun∙₁₂ₓ
+determinism⇝ appFun∙ (appFunCtx∙₁ ())
+determinism⇝ appFun∙ (appFunCtx∙₂ ())
+determinism⇝ appFun∙ appFun∙ = refl
+determinism⇝ appFun∙₁ₓ (appFunCtx∙₁ ())
+determinism⇝ appFun∙₁ₓ (appFunCtx∙₂ₓ ())
+determinism⇝ appFun∙₁ₓ appFun∙₁ₓ = refl
+determinism⇝ appFun∙₂ₓ (appFunCtx∙₁ ())
+determinism⇝ appFun∙₂ₓ (appFunCtx∙₂ ())
+determinism⇝ appFun∙₂ₓ appFun∙₂ₓ = refl
+determinism⇝ appFun∙₁₂ₓ (appFunCtx∙₁ ())
+determinism⇝ appFun∙₁₂ₓ (appFunCtx∙₂ₓ ())
+determinism⇝ appFun∙₁₂ₓ appFun∙₁₂ₓ = refl
 determinism⇝ (relabelCtx p s₁) (relabelCtx .p s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (relabelCtx p ()) (relabel .p)
 determinism⇝ (relabelCtx p ()) (relabelEx .p)
@@ -117,6 +160,12 @@ determinismMixedC IfTrue (Pure s) = determinism⇝ IfTrue s
 determinismMixedC IfFalse (Pure s) = determinism⇝ IfFalse s
 determinismMixedC (unIdCtx s₁) (Pure s₂) = determinism⇝ (unIdCtx s₁) s₂
 determinismMixedC unId (Pure s₂) = determinism⇝ unId s₂
+
+determinismMixedC (appFunIdCtx₁ s₁) (Pure s₂) = determinism⇝ (appFunIdCtx₁ s₁) s₂
+determinismMixedC (appFunIdCtx₂ s₁) (Pure s₂) = determinism⇝ (appFunIdCtx₂ s₁) s₂
+determinismMixedC (appFunIdCtx₃ s₁) (Pure s₂) = determinism⇝ (appFunIdCtx₃ s₁) s₂
+determinismMixedC appFunId (Pure s₂) = determinism⇝ appFunId s₂
+
 determinismMixedC Hole (Pure s) = determinism⇝ Hole s
 determinismMixedC Return (Pure s) = determinism⇝ Return s
 determinismMixedC Throw (Pure x) = determinism⇝ Throw x
@@ -140,6 +189,15 @@ determinismMixedC appFun (Pure s₂) = determinism⇝ appFun s₂
 determinismMixedC appFun₁ₓ (Pure s₂) = determinism⇝ appFun₁ₓ s₂
 determinismMixedC appFun₂ₓ (Pure s₂) = determinism⇝ appFun₂ₓ s₂
 determinismMixedC appFun₁₂ₓ (Pure s₂) = determinism⇝ appFun₁₂ₓ s₂
+
+determinismMixedC (appFunCtx∙₁ s₁) (Pure s₂) = determinism⇝ (appFunCtx∙₁ s₁) s₂
+determinismMixedC (appFunCtx∙₂ s₁) (Pure s₂) = determinism⇝ (appFunCtx∙₂ s₁) s₂
+determinismMixedC (appFunCtx∙₂ₓ s₁) (Pure s₂) = determinism⇝ (appFunCtx∙₂ₓ s₁) s₂
+determinismMixedC appFun∙ (Pure s₂) = determinism⇝ appFun∙ s₂
+determinismMixedC appFun∙₁ₓ (Pure s₂) = determinism⇝ appFun∙₁ₓ s₂
+determinismMixedC appFun∙₂ₓ (Pure s₂) = determinism⇝ appFun∙₂ₓ s₂
+determinismMixedC appFun∙₁₂ₓ (Pure s₂) = determinism⇝ appFun∙₁₂ₓ s₂
+
 determinismMixedC (relabelCtx p s₂) (Pure x) = determinism⇝ (relabelCtx p s₂) x
 determinismMixedC (relabel p) (Pure s₂) = determinism⇝ (relabel p) s₂ 
 determinismMixedC (relabelEx p) (Pure s₂) = determinism⇝ (relabelEx p) s₂
@@ -229,6 +287,12 @@ determinismMixedS IfTrue (Pure x) = refl
 determinismMixedS IfFalse (Pure x) = refl
 determinismMixedS (unIdCtx s) (Pure s₂) = refl
 determinismMixedS unId (Pure s₂) = refl
+
+determinismMixedS (appFunIdCtx₁ s₁) (Pure s₂) = refl
+determinismMixedS (appFunIdCtx₂ s₁) (Pure s₂) = refl
+determinismMixedS (appFunIdCtx₃ s₁) (Pure s₂) = refl
+determinismMixedS appFunId (Pure s₂) = refl
+
 determinismMixedS Return (Pure x) = refl
 determinismMixedS Throw (Pure x) = refl
 determinismMixedS Bind (Pure x) = refl
@@ -252,6 +316,15 @@ determinismMixedS appFun (Pure s₂) = refl
 determinismMixedS appFun₁ₓ (Pure s₂) = refl
 determinismMixedS appFun₂ₓ (Pure s₂) = refl
 determinismMixedS appFun₁₂ₓ (Pure s₂) = refl
+
+determinismMixedS (appFunCtx∙₁ s₁) (Pure s₂) = refl
+determinismMixedS (appFunCtx∙₂ s₁) (Pure s₂) = refl
+determinismMixedS (appFunCtx∙₂ₓ s₁) (Pure s₂) = refl
+determinismMixedS appFun∙ (Pure s₂) = refl
+determinismMixedS appFun∙₁ₓ (Pure s₂) = refl
+determinismMixedS appFun∙₂ₓ (Pure s₂) = refl
+determinismMixedS appFun∙₁₂ₓ (Pure s₂) = refl
+
 determinismMixedS (relabelCtx p s₁) (Pure s₂) = refl
 determinismMixedS (relabel p) (Pure s₂) = refl
 determinismMixedS (relabelEx p) (Pure s₂) = refl 
