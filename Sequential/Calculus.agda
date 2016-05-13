@@ -46,10 +46,12 @@ mutual
     relabel∙  : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Labeled h α)
 
     label : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Labeled h α))
+    label∙ : ∀ {l h α} -> l ⊑ h -> Term Δ α -> Term Δ (Mac l (Labeled h α))
+
     unlabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Mac h α)
 
-    -- TODO this should produce Labeled 
     join : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
+    join∙ : ∀ {l h α} -> l ⊑ h -> Term Δ (Mac h α) -> Term Δ (Mac l (Labeled h α))
 
     zero : Term Δ Nat
     suc : Term Δ Nat -> Term Δ Nat
@@ -247,8 +249,10 @@ wken (Resₓ t) p = Resₓ (wken t p)
 wken (relabel x c) p = relabel x (wken c p)
 wken (relabel∙ x c) p = relabel∙ x (wken c p)
 wken (label x t) p = label x (wken t p)
+wken (label∙ x t) p = label∙ x (wken t p)
 wken (unlabel x t) p = unlabel x (wken t p)
 wken (join x t) p = join x (wken t p)
+wken (join∙ x t) p = join∙ x (wken t p)
 wken zero p = zero
 wken (suc n) p = suc (wken n p)
 wken (read x t) p = read x (wken t p)
@@ -295,8 +299,10 @@ tm-subst Δ₁ Δ₂ v (Resₓ t) = Resₓ (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (relabel p t) = relabel p (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (relabel∙ p t) = relabel∙ p (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (label x t) = label x (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (label∙ x t) = label∙ x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (unlabel x t) = unlabel x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v (join x t) = join x (tm-subst Δ₁ Δ₂ v t)
+tm-subst Δ₁ Δ₂ v (join∙ x t) = join∙ x (tm-subst Δ₁ Δ₂ v t)
 tm-subst Δ₁ Δ₂ v zero = zero
 tm-subst Δ₁ Δ₂ v (suc n) = suc (tm-subst Δ₁ Δ₂ v n)
 tm-subst Δ₁ Δ₂ v (read x t) = read x (tm-subst Δ₁ Δ₂ v t)

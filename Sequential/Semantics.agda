@@ -50,7 +50,13 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   label : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> label p t ⇝ Return (Res (Id t))
 
-  unlabel : ∀ {l h α} {t : CTerm (Id α)} -> (p : l ⊑ h) -> unlabel p (Res t) ⇝ Return (unId t)
+  label∙ : ∀ {l h α} {t : CTerm α} -> (p : l ⊑ h) -> label∙ p t ⇝ Return (Res ∙)
+
+  unlabelCtx₁ : ∀ {l h α} {c₁ c₂ : CTerm (Labeled l α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> unlabel p c₁ ⇝ unlabel p c₂
+
+  unlabelCtx₂ : ∀ {l h α} {c₁ c₂ : CTerm (Id α)} -> (p : l ⊑ h) -> c₁ ⇝ c₂ -> unlabel p (Res c₁) ⇝ unlabel p (Res c₂)
+
+  unlabel : ∀ {l h α} {t : CTerm (Id α)} -> (p : l ⊑ h) -> unlabel p (Res (Id t)) ⇝ Return t
 
   unlabelEx : ∀ {l h α} {e : CTerm Exception} -> (p : l ⊑ h) -> unlabel {α = α} p (Resₓ e) ⇝  Throw e
 
@@ -136,17 +142,17 @@ mutual
                  ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
                  ⟨ s₁ ∥ Catch c₁ h ⟩ ⟼ ⟨ s₂ ∥ Catch c₂ h ⟩
 
-    unlabelCtx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c₁ c₂ : CTerm (Labeled l α)} -> (p : l ⊑ h) ->
-                   ⟨ s₁ ∥ c₁ ⟩ ⟼ ⟨ s₂ ∥ c₂ ⟩ ->
-                   ⟨ s₁ ∥ unlabel p c₁ ⟩ ⟼ ⟨ s₂ ∥ unlabel p c₂ ⟩
-                 
+    -- we shall not use label here because for distributivity we need to end up with Return (Res ∙) so that join∙ applies
     join : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls}  {c : CTerm (Mac h α)} {t : CTerm α} (p : l ⊑ h) ->
              ⟨ s₁ ∥ c ⟩ ⇓ ⟨ s₂ ∥  Mac t ⟩ ->
-             ⟨ s₁ ∥ join p c ⟩ ⟼ ⟨ s₂ ∥ label p t ⟩
+             ⟨ s₁ ∥ join p c ⟩ ⟼ ⟨ s₂ ∥ Return (Res (Id t)) ⟩ 
 
     joinEx : ∀ {l h α} {s₁ : Store ls} {s₂ : Store ls} {c : CTerm (Mac h α)} {e : CTerm Exception} (p : l ⊑ h) ->
                ⟨ s₁ ∥ c ⟩ ⇓ ⟨ s₂ ∥  Macₓ e ⟩ ->
                ⟨ s₁ ∥ join p c ⟩ ⟼ ⟨ s₂ ∥ (Return (Resₓ e)) ⟩
+
+    join∙ : ∀ {l h α} {s : Store ls} {c : CTerm (Mac h α)} (p : l ⊑ h) ->
+               ⟨ s ∥ join∙ p c ⟩ ⟼ ⟨ s ∥ (Return (Res ∙)) ⟩
 
     -- In this rule we don't actually compute the proper reference but we just assume that is there and points
     -- to a fresh location. Unfortunately computing the reference in the rule makes the types too complex for reasoning.

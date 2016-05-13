@@ -45,11 +45,13 @@ open import Data.List as L hiding (drop)
 ε-Mac lₐ (yes p) (Macₓ t) = Macₓ (ε lₐ t)
 ε-Mac lₐ (yes p) (label {l = lᵈ} {h = lʰ} x t) with lʰ ⊑? lₐ
 ε-Mac lₐ (yes p₁) (label x t) | yes p = label x (ε lₐ t)
-ε-Mac lₐ (yes p) (label x t) | no ¬p = label x ∙
+ε-Mac lₐ (yes p) (label x t) | no ¬p = label∙ x (ε lₐ t)
+ε-Mac lₐ (yes p) (label∙ x t) = label∙ x (ε lₐ t)
 ε-Mac lₐ (yes p) (unlabel x t) = unlabel x (ε lₐ t)
 ε-Mac lₐ (yes p) (join {l = lᵈ} {h = lʰ} x t) with lʰ ⊑? lₐ
 ε-Mac lₐ (yes p₁) (join x t) | yes p = join x (ε-Mac lₐ (yes p) t)
-ε-Mac lₐ (yes p) (join x t) | no ¬p = join x (Mac ∙)
+ε-Mac lₐ (yes p) (join x t) | no ¬p = join∙ x (ε-Mac lₐ (no ¬p) t)
+ε-Mac lₐ (yes p) (join∙ {l = lᵈ} {h = lʰ} x t) = join∙ x (ε-Mac lₐ (lʰ ⊑? lₐ) t)
 ε-Mac lₐ (yes _) (read {l = l} p r) =  read p (ε lₐ r)
 ε-Mac lₐ (yes _) (write {h = h} p r t) = write p (ε lₐ r) (ε lₐ t)
 ε-Mac lₐ (yes _) (new {h = lʰ} p t) = new p (ε lₐ t)
@@ -166,6 +168,10 @@ open import Data.List as L hiding (drop)
 ε-Mac-extensional (yes p) (no ¬p) (label x₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (label x₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (no ¬p₁) (label x₁ t) = refl
+ε-Mac-extensional (yes p) (yes p₁) (label∙ p₂ t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (label∙ p₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (label∙ p₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (label∙ p t) = refl
 ε-Mac-extensional (yes p) (yes p₁) (unlabel x₁ t) = refl
 ε-Mac-extensional (yes p) (no ¬p) (unlabel x₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (unlabel x₁ t) = ⊥-elim (¬p p)
@@ -173,6 +179,10 @@ open import Data.List as L hiding (drop)
 ε-Mac-extensional {lₐ = lₐ} (yes p) (yes p₁) (join {h = lʰ} x₁ t) with lʰ ⊑? lₐ
 ε-Mac-extensional (yes p₁) (yes p₂) (join x₁ t) | yes p = refl
 ε-Mac-extensional (yes p) (yes p₁) (join x₁ t) | no ¬p = refl
+ε-Mac-extensional (yes p) (yes p₁) (join∙ x₁ t) = refl
+ε-Mac-extensional (yes p) (no ¬p) (join∙ x₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (yes p) (join∙ x₁ t) = ⊥-elim (¬p p)
+ε-Mac-extensional (no ¬p) (no ¬p₁) (join∙ x₁ t) = refl
 ε-Mac-extensional (yes p) (no ¬p) (join x₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (yes p) (join x₁ t) = ⊥-elim (¬p p)
 ε-Mac-extensional (no ¬p) (no ¬p₁) (join x₁ t) = refl
@@ -279,14 +289,18 @@ open import Data.List as L hiding (drop)
 ε-Mac-wken lₐ (no ¬p) (Macₓ t) p = refl
 ε-Mac-wken lₐ (yes p) (label {h = lʰ} x₁ t) p₁ with lʰ ⊑? lₐ
 ε-Mac-wken lₐ (yes p₁) (label x₁ t) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
-ε-Mac-wken lₐ (yes p) (label x₁ t) p₁ | no ¬p = refl 
+ε-Mac-wken lₐ (yes p) (label x₁ t) p₁ | no ¬p rewrite ε-wken lₐ t p₁ = refl
 ε-Mac-wken lₐ (no ¬p) (label x₁ t) p = refl
+ε-Mac-wken lₐ (yes p) (label∙ x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (label∙ x₁ t) p rewrite ε-wken lₐ t p = refl
 ε-Mac-wken lₐ (yes p) (unlabel x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
 ε-Mac-wken lₐ (no ¬p) (unlabel x₁ t) p = refl
 ε-Mac-wken lₐ (yes p) (join {h = lʰ} x₁ t) p₁ with lʰ ⊑? lₐ
 ε-Mac-wken lₐ (yes p₁) (join x₁ t) p₂ | yes p rewrite ε-Mac-wken lₐ (yes p) t p₂ = refl
-ε-Mac-wken lₐ (yes p) (join x₁ t) p₁ | no ¬p = refl
+ε-Mac-wken lₐ (yes p) (join x₁ t) p₁ | no ¬p rewrite ε-Mac-wken lₐ (no ¬p) t p₁ = refl
 ε-Mac-wken lₐ (no ¬p) (join x₁ t) p = refl
+ε-Mac-wken lₐ (yes p) (join∙ {h = h} x₁ t) p₁ rewrite ε-Mac-wken lₐ (h ⊑? lₐ) t p₁ = refl
+ε-Mac-wken lₐ (no ¬p) (join∙ {h = h} x₁ t) p₁ rewrite ε-Mac-wken lₐ (h ⊑? lₐ) t p₁ = refl 
 ε-Mac-wken lₐ (yes p) (read {l = l} x₁ t) p₁ rewrite ε-wken lₐ t p₁ = refl
 -- with l ⊑? lₐ
 -- ε-Mac-wken lₐ (yes p₁) (read x₁ t) p₂ | yes p rewrite ε-wken lₐ t p₂ = refl
@@ -538,12 +552,14 @@ open import Data.List as L hiding (drop)
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label {h = h} x₂ t₁) (yes p) with h ⊑? lₐ
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label x₂ t₁) (yes p₁) | yes p 
           rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label x₂ t₁) (yes p) | no ¬p = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label x₂ t₁) (yes p) | no ¬p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label∙ {h = h} x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (unlabel x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join {h = h} x₂ t₁) (yes p) with h ⊑? lₐ
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (yes p₁) | yes p
           rewrite ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₁ (yes p) = refl
-        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (yes p) | no ¬p = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (yes p) | no ¬p rewrite ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₁ (no ¬p)  = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join∙ {h = h} x₂ t₁) (yes p) rewrite ε-Mac-tm-subst Δ₁ Δ₂ x₁ t₁ (h ⊑? lₐ) = refl 
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read {l = l} x₂ t₁) (yes p) rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
         -- with l ⊑? lₐ
         -- ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (yes p₁) | yes p rewrite ε-tm-subst Δ₁ Δ₂ x₁ t₁ = refl
@@ -569,8 +585,10 @@ open import Data.List as L hiding (drop)
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Mac t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (Macₓ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label x₂ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (label∙ x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (unlabel x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join x₂ t₁) (no ¬p) = refl
+        ε-Mac-tm-subst Δ₁ Δ₂ x₁ (join∙ {h = h} x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (read x₂ t₁) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (write x₂ t₁ t₂) (no ¬p) = refl
         ε-Mac-tm-subst Δ₁ Δ₂ x₁ (new x₂ t₁) (no ¬p) = refl
@@ -596,8 +614,10 @@ open import Data.List as L hiding (drop)
 ε-Mac-CTerm≡∙ lₐ (Mac c) x = refl
 ε-Mac-CTerm≡∙ lₐ (Macₓ c) x = refl
 ε-Mac-CTerm≡∙ lₐ (label x c) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (label∙ x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (unlabel x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (join x c) x₁ = refl
+ε-Mac-CTerm≡∙ lₐ (join∙ x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (read x c) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (write x c c₁) x₁ = refl
 ε-Mac-CTerm≡∙ lₐ (new x c) x₁ = refl

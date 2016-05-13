@@ -34,13 +34,20 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-Mac-dist⇝ lₐ (yes p) CatchEx = CatchEx
 ε-Mac-dist⇝ lₐ (yes p) (label {h = lʰ} p₁) with lʰ ⊑? lₐ
 ε-Mac-dist⇝ lₐ (yes p₁) (label p₂) | yes p = label p₂
-ε-Mac-dist⇝ lₐ (yes p) (label p₁) | no ¬p = {!label p₁!} -- does not work because Id ∙ ≠ ∙, fixable with label∙
+ε-Mac-dist⇝ lₐ (yes p) (label p₁) | no ¬p = label∙ p₁
+ε-Mac-dist⇝ lₐ (yes p) (unlabelCtx₁ {l = l} p₁ s) = unlabelCtx₁ p₁ (ε-dist⇝ lₐ s)
+ε-Mac-dist⇝ lₐ (yes p) (unlabelCtx₂ {l = l} p₁ s) with l ⊑? lₐ
+ε-Mac-dist⇝ lₐ (yes p₁) (unlabelCtx₂ p₂ s) | yes p = unlabelCtx₂ p₂ (ε-dist⇝ lₐ s)
+ε-Mac-dist⇝ lₐ (yes p) (unlabelCtx₂ p₁ s) | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
 ε-Mac-dist⇝ lₐ (yes p) (unlabel {l = l} p₁) with l ⊑? lₐ
-ε-Mac-dist⇝ lₐ (yes p₁) (unlabel p₂) | yes p = {!unlabel p₂!} -- does not work because unId (ε lₐ t) ≠ ε lₐ (unId t) when unId t has type Mac H τ
+ε-Mac-dist⇝ lₐ (yes p₁) (unlabel p₂) | yes p = unlabel p₂ 
 ε-Mac-dist⇝ lₐ (yes d⊑a) (unlabel l⊑d) | no ¬l⊑a = ⊥-elim (¬l⊑a (trans-⊑ l⊑d d⊑a))
 ε-Mac-dist⇝ lₐ (yes d⊑a) (unlabelEx {l = l} l⊑d) with l ⊑? lₐ
 ε-Mac-dist⇝ lₐ (yes d⊑a) (unlabelEx l⊑d) | yes p = unlabelEx l⊑d
 ε-Mac-dist⇝ lₐ (yes d⊑a) (unlabelEx l⊑d) | no ¬l⊑a = ⊥-elim (¬l⊑a (trans-⊑ l⊑d d⊑a))
+ε-Mac-dist⇝ lₐ (yes p) (label∙ {h = h} p') with h ⊑? lₐ
+ε-Mac-dist⇝ lₐ (yes p₁) (label∙ p') | yes p = label∙ p'
+ε-Mac-dist⇝ lₐ (yes p) (label∙ p') | no ¬p = label∙ p'
 ε-Mac-dist⇝ lₐ (yes p) (unIdCtx t) = unIdCtx (ε-dist⇝ lₐ t)
 ε-Mac-dist⇝ {lᵈ} {c₂ = c₂} lₐ (yes p) unId rewrite ε-Mac-extensional (lᵈ ⊑? lₐ) (yes p) c₂ = unId
 ε-Mac-dist⇝ lₐ (yes p) Hole = Hole
@@ -280,8 +287,8 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 εˢ-≡ lₐ ¬p (Pure x) = refl
 εˢ-≡ lₐ ¬p (BindCtx s) = εˢ-≡ lₐ ¬p s
 εˢ-≡ lₐ ¬p (CatchCtx s) = εˢ-≡ lₐ ¬p s
-εˢ-≡ lₐ ¬p (unlabelCtx p (Pure x)) = refl
 εˢ-≡ lₐ ¬p (join p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (trans-⋢ p ¬p) ss = refl
+εˢ-≡ lₐ ¬p (join∙ p) = refl
 εˢ-≡ lₐ ¬p (joinEx p (BigStep x ss)) rewrite εˢ-≡⋆ lₐ (trans-⋢ p ¬p) ss = refl
 εˢ-≡ lₐ ¬p (new {s = s} p q) = εˢ-new-≡ (trans-⋢ p ¬p) s q _
 εˢ-≡ lₐ ¬p (writeCtx p (Pure x)) = refl
@@ -447,14 +454,15 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 ε-Mac-dist lₐ (yes p) (Pure x) = Pure (ε-Mac-dist⇝ lₐ (yes p) x)
 ε-Mac-dist lₐ (yes p) (BindCtx s) = BindCtx (ε-Mac-dist lₐ (yes p) s)
 ε-Mac-dist lₐ (yes p) (CatchCtx s) = CatchCtx (ε-Mac-dist lₐ (yes p) s)
-ε-Mac-dist lₐ (yes p) (unlabelCtx p₁ s) = unlabelCtx p₁ (εᵖ-dist lₐ s)
-ε-Mac-dist lₐ (yes p) (join {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (join {h = h} p₂ bs) with h ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (join p₂ bs) | yes p = join p₂ (ε-Mac-dist⇓ lₐ p bs)
--- We need to solve this using join∙
-ε-Mac-dist lₐ (yes p) (join p₁ (BigStep isV ss) ) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = {!!} -- join p₁ (BigStep (Mac ∙) [])
+ε-Mac-dist lₐ (yes p₁) (join p₂ (BigStep isV ss)) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = join∙ p₂
+ε-Mac-dist lₐ (yes p₁) (join∙ {h = h} p₂) with h ⊑? lₐ
+ε-Mac-dist lₐ (yes p₁) (join∙ p₂) | yes p = join∙ p₂
+ε-Mac-dist lₐ (yes p₁) (join∙ p₂) | no ¬p = join∙ p₂
 ε-Mac-dist lₐ (yes p) (joinEx {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (joinEx p₂ bs) | yes p = joinEx p₂ (ε-Mac-distₓ⇓ lₐ p bs)
-ε-Mac-dist lₐ (yes p) (joinEx p₁ (BigStep x ss)) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = {!!} 
+ε-Mac-dist lₐ (yes p) (joinEx p₁ (BigStep x ss)) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = join∙ p₁ 
 ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) with h ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p₂ q) | yes p rewrite newˢ-≡ lₐ q s ⟦ t ⟧ | count-≡ p q s = new p₂ q
 ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p q) | no ¬p rewrite newˢ-≡ lₐ q s ⟦ t ⟧ | count≡∙ ¬p q s = new p q
