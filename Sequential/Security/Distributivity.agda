@@ -34,9 +34,9 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-Mac-dist⇝ lₐ (yes p) CatchEx = CatchEx
 ε-Mac-dist⇝ lₐ (yes p) (label {h = lʰ} p₁) with lʰ ⊑? lₐ
 ε-Mac-dist⇝ lₐ (yes p₁) (label p₂) | yes p = label p₂
-ε-Mac-dist⇝ lₐ (yes p) (label p₁) | no ¬p = label p₁
+ε-Mac-dist⇝ lₐ (yes p) (label p₁) | no ¬p = {!label p₁!} -- does not work because Id ∙ ≠ ∙, fixable with label∙
 ε-Mac-dist⇝ lₐ (yes p) (unlabel {l = l} p₁) with l ⊑? lₐ
-ε-Mac-dist⇝ lₐ (yes p₁) (unlabel p₂) | yes p = unlabel p₂
+ε-Mac-dist⇝ lₐ (yes p₁) (unlabel p₂) | yes p = {!unlabel p₂!} -- does not work because unId (ε lₐ t) ≠ ε lₐ (unId t) when unId t has type Mac H τ
 ε-Mac-dist⇝ lₐ (yes d⊑a) (unlabel l⊑d) | no ¬l⊑a = ⊥-elim (¬l⊑a (trans-⊑ l⊑d d⊑a))
 ε-Mac-dist⇝ lₐ (yes d⊑a) (unlabelEx {l = l} l⊑d) with l ⊑? lₐ
 ε-Mac-dist⇝ lₐ (yes d⊑a) (unlabelEx l⊑d) | yes p = unlabelEx l⊑d
@@ -147,36 +147,36 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₁₂ₓ | yes p = appFun∙₁₂ₓ
 ε-dist⇝ {Res lᵈ ._} lₐ appFun∙₁₂ₓ | no ¬p = appFun∙
 
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p₁ s) | yes p = relabelCtx p₁ (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx p s) | no ¬p = relabelCtx∙ p (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel {l = l} p) with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel {l = l} p₁) | yes p with l ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel p₂) | yes p₁ | yes p = relabel p₂
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel p₁) | yes p | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel {l = l} p) | no ¬p with l ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel p₁) | no ¬p | yes p = relabel∙ p₁
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel p) | no ¬p₁ | no ¬p = relabel∙ p
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p) with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx {l = l} p₁) | yes p with l ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p₂) | yes p₁ | yes p = relabelEx p₂
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p₁) | yes p | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx {l = l} p) | no ¬p with l ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p₁) | no ¬p | yes p = relabelEx∙ p₁
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx p) | no ¬p₁ | no ¬p = relabel∙ p
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelCtx∙ p s) = relabelCtx∙ p (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p) with lᵈ ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ {l = l} p₁) | yes p with l ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p₂) | yes p₁ | yes p rewrite ε∙≡∙ {τ} {[]} lₐ = relabel∙ p₂
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p₁) | yes p | no ¬p rewrite ε∙≡∙ {τ} {[]} lₐ = relabel∙ p₁
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ {l = l} p) | no ¬p with l ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p₁) | no ¬p | yes p = relabel∙ p₁
-ε-dist⇝ {Res lᵈ τ} lₐ (relabel∙ p) | no ¬p₁ | no ¬p = relabel∙ p
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ {l = l} p) with lᵈ ⊑? lₐ | l ⊑? lₐ
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ p₂) | yes p | yes p₁ rewrite ε∙≡∙ {τ} {[]} lₐ = relabelEx∙ p₂
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ p₁) | yes p | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ p₁) | no ¬p | yes p = relabelEx∙ p₁
-ε-dist⇝ {Res lᵈ τ} lₐ (relabelEx∙ p) | no ¬p | no ¬p₁ = relabel∙ p
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelCtx p s) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelCtx p₁ s) | yes p = relabelCtx p₁ (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelCtx p s) | no ¬p = relabelCtx∙ p (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel {l = l} p) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel {l = l} p₁) | yes p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel p₂) | yes p₁ | yes p = relabel p₂
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel p₁) | yes p | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel {l = l} p) | no ¬p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel p₁) | no ¬p | yes p = relabel∙ p₁
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel p) | no ¬p₁ | no ¬p = relabel∙ p
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx p) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx {l = l} p₁) | yes p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx p₂) | yes p₁ | yes p = relabelEx p₂
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx p₁) | yes p | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx {l = l} p) | no ¬p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx p₁) | no ¬p | yes p = relabelEx∙ p₁
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx p) | no ¬p₁ | no ¬p = relabel∙ p
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelCtx∙ p s) = relabelCtx∙ p (ε-dist⇝ lₐ s)
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel∙ p) with lᵈ ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel∙ {l = l} p₁) | yes p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel∙ p₂) | yes p₁ | yes p rewrite ε∙≡∙ {(Id τ)} {[]} lₐ = relabel∙ p₂
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel∙ p₁) | yes p | no ¬p rewrite ε∙≡∙ {(Id τ)} {[]} lₐ = relabel∙ p₁
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel∙ {l = l} p) | no ¬p with l ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel∙ p₁) | no ¬p | yes p = relabel∙ p₁
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabel∙ p) | no ¬p₁ | no ¬p = relabel∙ p
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx∙ {l = l} p) with lᵈ ⊑? lₐ | l ⊑? lₐ
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx∙ p₂) | yes p | yes p₁ rewrite ε∙≡∙ {(Id τ)} {[]} lₐ = relabelEx∙ p₂
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx∙ p₁) | yes p | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx∙ p₁) | no ¬p | yes p = relabelEx∙ p₁
+ε-dist⇝ {Res lᵈ (Id τ)} lₐ (relabelEx∙ p) | no ¬p | no ¬p₁ = relabel∙ p
 ε-dist⇝ {Res lᵈ τ} lₐ Hole = Hole
 
 ε-dist⇝ {Exception} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
@@ -450,10 +450,11 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 ε-Mac-dist lₐ (yes p) (unlabelCtx p₁ s) = unlabelCtx p₁ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p) (join {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (join p₂ bs) | yes p = join p₂ (ε-Mac-dist⇓ lₐ p bs)
-ε-Mac-dist lₐ (yes p) (join p₁ (BigStep isV ss) ) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = join p₁ (BigStep (Mac ∙) [])
+-- We need to solve this using join∙
+ε-Mac-dist lₐ (yes p) (join p₁ (BigStep isV ss) ) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = {!!} -- join p₁ (BigStep (Mac ∙) [])
 ε-Mac-dist lₐ (yes p) (joinEx {h = lʰ} p₁ bs) with lʰ ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (joinEx p₂ bs) | yes p = joinEx p₂ (ε-Mac-distₓ⇓ lₐ p bs)
-ε-Mac-dist lₐ (yes p) (joinEx p₁ (BigStep x ss)) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = join p₁ (BigStep (Mac ∙) [])
+ε-Mac-dist lₐ (yes p) (joinEx p₁ (BigStep x ss)) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = {!!} 
 ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) with h ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p₂ q) | yes p rewrite newˢ-≡ lₐ q s ⟦ t ⟧ | count-≡ p q s = new p₂ q
 ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p q) | no ¬p rewrite newˢ-≡ lₐ q s ⟦ t ⟧ | count≡∙ ¬p q s = new p q
