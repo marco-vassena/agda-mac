@@ -114,6 +114,7 @@ inspectValue {{lₐ}} isV (ε-≡ eq) = aux isV eq
          aux {Res lᵈ τ} (Resₓ e) eq | no ¬p rewrite eq = inj₁ (Res ∙)
          aux zero eq rewrite eq = inj₁ zero
          aux (suc n) eq rewrite eq = inj₁ (suc (ε lₐ n))
+         aux (Id t) eq rewrite eq = inj₁ (Id (ε lₐ t))
 
 -- Bullet can only reduce to itself, therefore it will not change the program
 ∙⟼⋆∙ : ∀ {τ ls} {p₁ p₂ : Program ls τ} -> p₁ ⟼⋆ p₂ -> term p₁ ≡ ∙ -> p₁ ≡ p₂
@@ -153,17 +154,21 @@ mac-is-value {t₂ = Macₓ t₂} p Macₓ refl = Macₓ t₂
 mac-is-value {lₐ = lₐ} {t₂ = label {h = h} x t₂} p isM refl with h ⊑? lₐ
 mac-is-value {._} {lₐ} {l} {._} {label x t₂} p₁ () refl | yes p
 mac-is-value {._} {lₐ} {l} {._} {label x t₂} p () refl | no ¬p
+mac-is-value {t₂ = label∙ x t₂} p () refl
 mac-is-value {t₂ = unlabel x t₂} p () refl 
 mac-is-value {lₐ = lₐ} {t₂ = join {h = h} x t₂} p isM refl  with h ⊑? lₐ
 mac-is-value {._} {lₐ} {l} {._} {join x t₂} p₁ () refl | yes p
-mac-is-value {._} {lₐ} {l} {._} {join x t₂} p () refl | no ¬p 
+mac-is-value {._} {lₐ} {l} {._} {join x t₂} p () refl | no ¬p
+mac-is-value {t₂ = join∙ x t₂} p Mac ()
+mac-is-value {t₂ = join∙ x t₂} p Macₓ ()
 mac-is-value {t₂ = read x t₂} p () refl 
 mac-is-value {t₂ = write x t₂ t₃} p () refl 
 mac-is-value {t₂ = new x t₂} p () refl 
 mac-is-value {t₂ = fork x t₂} p () refl 
 mac-is-value {t₂ = newMVar x} p () refl 
 mac-is-value {t₂ = takeMVar t₂} p () refl 
-mac-is-value {t₂ = putMVar t₂ t₃} p () refl 
+mac-is-value {t₂ = putMVar t₂ t₃} p () refl
+mac-is-value {t₂ = unId t} p () refl
 mac-is-value {t₂ = ∙} p () refl 
 
 valueᴸ : ∀ {l lₐ τ} {t₁ t₂ : CTerm (Mac l τ)} -> l ⊑ lₐ -> IsValue t₁ -> t₁ ≈-⟨ lₐ ⟩ t₂ -> IsValue t₂
