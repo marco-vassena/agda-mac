@@ -79,7 +79,18 @@ determinism⇝ BindEx BindEx = refl
 determinism⇝ Catch Catch = refl
 determinism⇝ CatchEx CatchEx = refl
 determinism⇝ (label p) (label .p) = refl
+determinism⇝ (label∙ p) (label∙ .p) = refl
+determinism⇝ (unlabelCtx₁ p s₁) (unlabelCtx₁ .p s₂) rewrite determinism⇝ s₁ s₂ = refl
+determinism⇝ (unlabelCtx₁ p ()) (unlabelCtx₂ .p s₂)
+determinism⇝ (unlabelCtx₁ p ()) (unlabel .p)
+determinism⇝ (unlabelCtx₁ p ()) (unlabelEx .p)
+determinism⇝ (unlabelCtx₂ p s₁) (unlabelCtx₁ .p ())
+determinism⇝ (unlabelCtx₂ p s₁) (unlabelCtx₂ .p s₂) rewrite determinism⇝ s₁ s₂ = refl 
+determinism⇝ (unlabelCtx₂ p ()) (unlabel .p)
+determinism⇝ (unlabel p) (unlabelCtx₁ .p ())
+determinism⇝ (unlabel p) (unlabelCtx₂ .p ())
 determinism⇝ (unlabel p) (unlabel .p) = refl
+determinism⇝ (unlabelEx p) (unlabelCtx₁ .p ())
 determinism⇝ (unlabelEx p) (unlabelEx .p) = refl
 determinism⇝ (appFunCtx₁ s₁) (appFunCtx₁ s₂) rewrite determinism⇝ s₁ s₂ = refl
 determinism⇝ (appFunCtx₁ ()) (appFunCtx₂ s₂)
@@ -178,10 +189,11 @@ determinismMixedC Catch (CatchCtx (Pure ()))
 determinismMixedC CatchEx (Pure x) = determinism⇝ CatchEx x
 determinismMixedC CatchEx (CatchCtx (Pure ()))
 determinismMixedC (label p) (Pure x) = determinism⇝ (label p) x
+determinismMixedC (label∙ p) (Pure s₂) = determinism⇝ (label∙ p) s₂
+determinismMixedC (unlabelCtx₁ p s₁) (Pure s₂) = determinism⇝ (unlabelCtx₁ p s₁) s₂
+determinismMixedC (unlabelCtx₂ p s₁) (Pure s₂) = determinism⇝ (unlabelCtx₂ p s₁) s₂
 determinismMixedC (unlabel p) (Pure x) = determinism⇝ (unlabel p) x
-determinismMixedC (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedC (unlabelEx p) (Pure x) = determinism⇝ (unlabelEx p) x
-determinismMixedC (unlabelEx p) (unlabelCtx .p (Pure ()))
 determinismMixedC (appFunCtx₁ s₁) (Pure s₂) = determinism⇝ (appFunCtx₁ s₁) s₂
 determinismMixedC (appFunCtx₂ s₁) (Pure s₂) = determinism⇝ (appFunCtx₂ s₁) s₂
 determinismMixedC (appFunCtx₂ₓ s₁) (Pure s₂) = determinism⇝ (appFunCtx₂ₓ s₁) s₂
@@ -239,13 +251,13 @@ determinismC (Pure s₁) s₂ = determinismMixedC s₁ s₂
 determinismC s₁ (Pure s₂) = P.sym (determinismMixedC s₂ s₁)
 determinismC (BindCtx s₁) (BindCtx s₂) rewrite determinismC s₁ s₂ = refl
 determinismC (CatchCtx s₁) (CatchCtx s₂) rewrite determinismC s₁ s₂ = refl
-determinismC (unlabelCtx p s₁) (unlabelCtx .p s₂) rewrite determinismC s₁ s₂ = refl
 determinismC (join p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) with determinismC⋆ ss₁ isV₁ ss₂ isV₂
 determinismC (join p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) | refl = refl
 determinismC (join p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
 determinismC (joinEx p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) with determinismC⋆  ss₁ isV₁ ss₂ isV₂
 determinismC (joinEx p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) | refl = refl
 determinismC (joinEx p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
+determinismC (join∙ p) (join∙ .p) = refl
 determinismC {s₁ = s₁} (new p q₁) (new .p q₂) rewrite store-unique s₁ q₁ q₂ = refl
 determinismC (writeCtx p s₁) (writeCtx .p s₂) rewrite determinismC s₁ s₂ = refl
 determinismC (writeCtx p (Pure ())) (write .p q r)
@@ -304,10 +316,11 @@ determinismMixedS Catch (CatchCtx (Pure ()))
 determinismMixedS CatchEx (Pure x) = refl
 determinismMixedS CatchEx (CatchCtx (Pure ()))
 determinismMixedS (label p) (Pure (label .p)) = refl
+determinismMixedS (label∙ p) (Pure x) = refl
+determinismMixedS (unlabelCtx₁ p s) (Pure x) = refl
+determinismMixedS (unlabelCtx₂ p s) (Pure x) = refl
 determinismMixedS (unlabel p) (Pure x) = refl
-determinismMixedS (unlabel p) (unlabelCtx .p (Pure ()))
 determinismMixedS (unlabelEx p) (Pure x) = refl
-determinismMixedS (unlabelEx p) (unlabelCtx .p (Pure ()))
 determinismMixedS Hole (Pure Hole) = refl
 determinismMixedS (appFunCtx₁ s₁) (Pure s₂) = refl
 determinismMixedS (appFunCtx₂ s₁) (Pure s₂) = refl
@@ -344,11 +357,11 @@ determinismS (Pure s₁) s₂ = determinismMixedS  s₁ s₂
 determinismS s₁ (Pure s₂) = sym (determinismMixedS s₂ s₁)
 determinismS (BindCtx s₁) (BindCtx s₂) = determinismS s₁ s₂
 determinismS (CatchCtx s₁) (CatchCtx s₂) = determinismS s₁ s₂
-determinismS (unlabelCtx p s₁) (unlabelCtx .p s₂) = determinismS s₁ s₂
 determinismS (join p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = determinismS⋆ ss₁ isV₁ ss₂ isV₂
 determinismS (join p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
 determinismS (joinEx p (BigStep isV₁ ss₁)) (joinEx .p (BigStep isV₂ ss₂)) = determinismS⋆ ss₁ isV₁ ss₂ isV₂
 determinismS (joinEx p (BigStep isV₁ ss₁)) (join .p (BigStep isV₂ ss₂)) = ⊥-elim (nonDeterminismC⋆-⊥ ss₁ isV₁ ss₂ isV₂ (λ ()))
+determinismS (join∙ p) (join∙ .p) = refl
 determinismS {s₁ = s} (new p q₁) (new .p q₂) rewrite store-unique s q₁ q₂ = refl
 determinismS (writeCtx p s₁) (writeCtx .p s₂) = determinismS s₁ s₂
 determinismS (writeCtx p (Pure ())) (write .p q r)
