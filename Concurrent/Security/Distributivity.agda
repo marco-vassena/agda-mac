@@ -52,6 +52,7 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
         aux (yes p) (Var x) nF ()
         aux (yes p) (App t t₁) nF ()
         aux (yes p) (If t Then t₁ Else t₂) nF ()
+        aux (yes p) (unId t) nF ()        
         aux (yes p) (Return t) nF ()
         aux (yes p) (t >>= t₁) nF ()
         aux (yes p) (Throw t) nF ()
@@ -59,8 +60,10 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
         aux (yes p) (Mac t) nF ()
         aux (yes p) (Macₓ t) nF ()
         aux (yes p) (label x t) nF ()
+        aux (yes p) (label∙ x t) nF ()
         aux (yes p) (unlabel x t) nF ()
         aux (yes p) (join x t) nF ()
+        aux (yes p) (join∙ x t) nF ()
         aux (yes p) (read x t) nF ()
         aux (yes p) (write x t t₁) nF ()
         aux (yes p) (new x t) nF ()
@@ -76,6 +79,7 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ε-Is∙ {t = Var x} p ¬∙ ()
 ε-Is∙ {t = App t t₁} p ¬∙ ()
 ε-Is∙ {t = If t Then t₁ Else t₂} p ¬∙ ()
+ε-Is∙ {t = unId t} p ¬∙ ()
 ε-Is∙ {t = Return t} p ¬∙ ()
 ε-Is∙ {t = t >>= t₁} p ¬∙ ()
 ε-Is∙ {t = Throw t} p ¬∙ ()
@@ -84,11 +88,13 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ε-Is∙ {t = Macₓ t} p ¬∙ ()
 ε-Is∙ {lₐ} {t = label {h = h} x t} p ¬∙ is∙ with h ⊑? lₐ
 ε-Is∙ {lₐ} {._} {l} {label x t} p₁ ¬∙ () | yes p
-ε-Is∙ {lₐ} {._} {l} {label x t} p ¬∙ () | no ¬p 
+ε-Is∙ {lₐ} {._} {l} {label x t} p ¬∙ () | no ¬p
+ε-Is∙ {t = label∙ x t} p ¬∙ ()
 ε-Is∙ {t = unlabel x t} p ¬∙ ()
 ε-Is∙ {lₐ} {t = join {h = h} x t} p ¬∙ is∙ with h ⊑? lₐ
 ε-Is∙ {lₐ} {._} {l} {join x t} p₁ ¬∙ () | yes p
-ε-Is∙ {lₐ} {._} {l} {join x t} p ¬∙ () | no ¬p 
+ε-Is∙ {lₐ} {._} {l} {join x t} p ¬∙ () | no ¬p
+ε-Is∙ {t = join∙ x t} p ¬∙ ()
 ε-Is∙ {t = read x t} p ¬∙ ()
 ε-Is∙ {t = write x t t₁} p ¬∙ ()
 ε-Is∙ {t = new x t} p ¬∙ ()
@@ -180,6 +186,7 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ε-fork? l⊑h (yes p₁) (Var x) | no ¬p | yes p = refl
 ε-fork? l⊑h (yes p₁) (App t t₁) | no ¬p | yes p = refl
 ε-fork? l⊑h (yes p₁) (If t Then t₁ Else t₂) | no ¬p | yes p = refl
+ε-fork? l⊑h (yes p₁) (unId t) | no ¬p | yes p = refl
 ε-fork? l⊑h (yes p₁) (Return t) | no ¬p | yes p = refl
 ε-fork? l⊑h (yes p₁) (t >>= t₁) | no ¬p | yes p = refl
 ε-fork? l⊑h (yes p₁) (Throw t) | no ¬p | yes p = refl
