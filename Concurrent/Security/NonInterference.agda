@@ -263,6 +263,10 @@ postulate same-event : ∀ {ls l lₐ e₁ e₂} {p₁ p₂ p₁' p₂' : Progra
 -- however due to the mutual dependency we cannot retrieve s₁ ⟶ s₂ ↑ _ if we don't know the event e already.
 -- postulate getScheduledThread : ∀ {ls l n s₂ e} (g₁ : Global ls) -> let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁ in s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> ∃ (λ t -> ps₁ [ l ][ n ]= t)
 postulate getThread : ∀ {ls} (l : Label) (n : ℕ) (ps : Pools ls) -> ∃ (λ t -> ps [ l ][ n ]= t)
+
+-- When a thread is forked we can find the corresponding thread pool.
+postulate getPoolThread : ∀ {ls} (l : Label) (ps : Pools ls) -> ∃ (λ n -> Σ (Pool l n) (λ ts -> ps [ l ]= ts))
+
 --------------------------------------------------------------------------------
 
 -- Here we need some proof that ps [ h ] [ n ] does actually generate e
@@ -273,8 +277,16 @@ postulate scheduler2global : ∀ {ls h n e} {g₁ g₂ : Global ls} ->
 -- TODO move to semantics module?
 -- If we can read from a pool, then we can write something to it
 postulate writePool : ∀ {l n ls t₁ t₂} {ps₁ : Pools ls} -> ps₁ [ l ][ n ]= t₁ -> ∃ (λ ps₂ -> ps₂ ← ps₁ [ l ][ n ]≔ t₂)
-                            
+postulate forkPool : ∀ {h n ls} {ps₁ : Pools ls} {ts : Pool h n} -> ps₁ [ h ]= ts -> (t : Thread h) -> ∃ (λ ps₂ -> ps₂ ← ps₁ [ h ]≔ (ts ▻ t))
+
 -- Inner module defined to break mutual dependency between Security.Scheduler and specific scheduler modules (e.g. RoundRobin)
+
+-- fork? never produces a • event
+fork?≠∙ : ∀ {l h n} {tʰ :  Thread h} {p : l ⊑ h} -> fork? p tʰ n ≢ ∙
+fork?≠∙ {tʰ = t} {p} with is∙? t
+... | yes _ = λ ()
+... | no _ = λ ()
+
 
 module PS
     (highˢ : ∀ {s₁ s₁' s₂ l lₐ n e i j} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ suc j ⟩ s₁' ->
@@ -283,25 +295,46 @@ module PS
   where
 
     low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
+    -- The two configurations are aligned
     low-step {n₂ = zero} p s eq₁ eq₂ with aligned p (getSchedulerStep s) {!!} eq₁ -- This is my assumption
     ... | low sc' eq₁' with square p sc' eq₂ s
     ... | Σ₂' , ps₂' , s' , eq' = isNI (s' ∷ []) eq'                        
+
+    -- The other global configuration performs a high step
     low-step {n₂ = suc n₂} {g₁ = g₁} {g₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep gs) {!!} eq₁ -- IDEM
     ... | h , n , k with getThread h n ps₁'
-    ... | t' , r' with programStatus Σ₁' t' 
+    ... | t' , r' with programStatus Σ₁' t'
+
+    -- Done Event
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | V isV with k Done (λ ())
     ... | high ¬p sc' eq₁' with low-step p gs eq₁' ⟨ forget eq₁' , b , c ⟩
     ... | isNI ss eq₂' = isNI ((exit r' isV sc') ∷ ss) eq₂'
+    
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) with effectOf t' | stepWithEvent st
+
+    -- Hole Event (absurd)
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | ∙ | st' = {!!} -- Can be ruled out assuming ps[ l ][ n ]≠ ∙
+
+    -- Step Event
     low-step {n₂ = suc n₂} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | ∅ | st' with k Step (λ ())
     ... | high ¬p sc' eq₁' with writePool r'
     ... | ps₂' , w' with high-step ¬p (step r' st' sc' w')
     ... | eq'' with low-step p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
     ... | isNI {g₂'} ss eq₂' = isNI (step r' st' sc' w' ∷ ss) eq₂'
-    low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | fork t'' | st' = {!!}
-    -- Here case analysis on the step t₁' ⟼ t₂' ↑ e. The • case is ⊥ because of our assumptions
-    -- 
+
+    -- Fork Event
+    -- TODO here we need to assume that the label of the forked thread is in the pool.
+    -- Then we can compute nʰ as the length of the corresponding thread pool.
+    low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | fork {hⁿ} tⁿ | st'
+      with getPoolThread hⁿ ps₁'
+    ... | nⁿ , tsⁿ , rⁿ with k (fork? (fork-⊑ st') tⁿ nⁿ) fork?≠∙
+    ... | high ¬p sc' eq₁' with writePool r'
+    ... | ps₂' , w' with forkPool rⁿ tⁿ
+    ... | ps₃' , w'' with high-step ¬p (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' {!w''!}) -- TODO fix order of writes
+    ... | eq'' with low-step p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
+    ... | isNI ss eq₂' = isNI (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' {!w''!} ∷ ss) eq₂'
+
+    -- NoStep Event
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | S isS with k NoStep (λ ())
     ... | high ¬p sc' eq₁' with low-step p gs eq₁' ⟨ forget eq₁' , b , c ⟩
     ... | isNI ss eq₂' = isNI ((skip r' isS sc') ∷ ss) eq₂'
