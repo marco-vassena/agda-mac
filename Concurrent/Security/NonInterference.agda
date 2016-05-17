@@ -210,18 +210,18 @@ open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_�
 data NI {ls} (lₐ : Label) (g₁' g₂ : Global ls) : Set where
   isNI : ∀ {g₂'} -> g₁' ↪⋆ g₂' -> g₂ ≈ᵍ-⟨ lₐ ⟩ g₂' -> NI lₐ g₁' g₂
 
-postulate square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} ->
+-- I need to show that low-equivalent terms have the same status (Stuck, Value, Redex)
+-- and in the Redex case that they generate the same event! 
+
+-- TODO I don't have to do this by induction on the global step, but on the event of the scheduler.
+-- 
+
+postulate square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ ->
                                 let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
                                     ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁'
                                     ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁' ⟶ s₂' ↑ ⟪ l , n , e ⟫ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ ->
                                 ∃ (λ Σ₂' -> (∃ (λ ps₂' ->
                                   let g₂' = ⟨ s₂' , Σ₂' , ps₂' ⟩ in (l , n ⊢ g₁' ↪ g₂') × (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂'))))
-
-
--- Here we need some proof that ps [ h ] [ n ] does actually generate e
-postulate scheduler2global : ∀ {ls h n e} {g₁ g₂ : Global ls} ->
-                             let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
-                                 ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁ ⟶ s₂ ↑ ⟪ h , n , e ⟫ -> h , n ⊢ g₁ ↪ g₂
 
 data _≈ᵉ_ {lₐ : Label} {l} : Effect l -> Effect l -> Set where
   ∙ : ∙ ≈ᵉ ∙
@@ -258,9 +258,22 @@ open import Sequential.Security.NonInterference
 
 postulate same-event : ∀ {ls l lₐ e₁ e₂} {p₁ p₂ p₁' p₂' : Program ls (Mac l _)} -> l ⊑ lₐ -> p₁ ≈ᵖ-⟨ lₐ ⟩ p₂ -> p₁ ⟼ p₂ ↑ e₁ -> p₁' ⟼ p₂' ↑ e₂ -> e₁ ≈ᵉ-⟨ lₐ ⟩ e₂
 
-
+-- At the moment I am assuming that the scheduler state contains only valid thread id, that is
+-- Ideally it should be: if the scheduler s₁ ⟶ s₂ ↑ (l , n , e) and g₁ = ⟨ s₁ , Σ₁ , ps₁ ⟩ then there is a thread at ps₁ [ l ][ n ],
+-- however due to the mutual dependency we cannot retrieve s₁ ⟶ s₂ ↑ _ if we don't know the event e already.
+-- postulate getScheduledThread : ∀ {ls l n s₂ e} (g₁ : Global ls) -> let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁ in s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> ∃ (λ t -> ps₁ [ l ][ n ]= t)
+postulate getThread : ∀ {ls} (l : Label) (n : ℕ) (ps : Pools ls) -> ∃ (λ t -> ps [ l ][ n ]= t)
 --------------------------------------------------------------------------------
 
+-- Here we need some proof that ps [ h ] [ n ] does actually generate e
+postulate scheduler2global : ∀ {ls h n e} {g₁ g₂ : Global ls} ->
+                             let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
+                                 ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁ ⟶ s₂ ↑ ⟪ h , n , e ⟫ -> h , n ⊢ g₁ ↪ g₂
+
+-- TODO move to semantics module?
+-- If we can read from a pool, then we can write something to it
+postulate writePool : ∀ {l n ls t₁ t₂} {ps₁ : Pools ls} -> ps₁ [ l ][ n ]= t₁ -> ∃ (λ ps₂ -> ps₂ ← ps₁ [ l ][ n ]≔ t₂)
+                            
 -- Inner module defined to break mutual dependency between Security.Scheduler and specific scheduler modules (e.g. RoundRobin)
 
 module PS
@@ -271,12 +284,31 @@ module PS
 
     low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
     low-step {n₂ = zero} p s eq₁ eq₂ with aligned p (getSchedulerStep s) {!!} eq₁ -- This is my assumption
-    ... | low sc' eq₁' with square sc' eq₂ s
-    ... | Σ₂' , ps₂' , s' , eq' = isNI (s' ∷ []) eq'                         
-    low-step {n₂ = suc n₂} p s eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep s) {!!} eq₁ -- IDEM
-    ... | h , n , k with k Step (λ ())
-    ... | high ¬p sc' eq₁' with low-step p s eq₁' ⟨ forget eq₁' , b , c ⟩
-    ... | isNI ss eq₂' = isNI (scheduler2global sc' ∷ ss) eq₂' -- This is somehow suspicious ... why don't I need to use the fact that this is am high-step?
+    ... | low sc' eq₁' with square p sc' eq₂ s
+    ... | Σ₂' , ps₂' , s' , eq' = isNI (s' ∷ []) eq'                        
+    low-step {n₂ = suc n₂} {g₁ = g₁} {g₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep gs) {!!} eq₁ -- IDEM
+    ... | h , n , k with getThread h n ps₁'
+    ... | t' , r' with programStatus Σ₁' t' 
+    low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | V isV with k Done (λ ())
+    ... | high ¬p sc' eq₁' with low-step p gs eq₁' ⟨ forget eq₁' , b , c ⟩
+    ... | isNI ss eq₂' = isNI ((exit r' isV sc') ∷ ss) eq₂'
+    low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) with effectOf t' | stepWithEvent st
+    low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | ∙ | st' = {!!} -- Can be ruled out assuming ps[ l ][ n ]≠ ∙
+    low-step {n₂ = suc n₂} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | ∅ | st' with k Step (λ ())
+    ... | high ¬p sc' eq₁' with writePool r'
+    ... | ps₂' , w' with high-step ¬p (step r' st' sc' w')
+    ... | eq'' with low-step p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
+    ... | isNI {g₂'} ss eq₂' = isNI (step r' st' sc' w' ∷ ss) eq₂'
+    low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | fork t'' | st' = {!!}
+    -- Here case analysis on the step t₁' ⟼ t₂' ↑ e. The • case is ⊥ because of our assumptions
+    -- 
+    low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | S isS with k NoStep (λ ())
+    ... | high ¬p sc' eq₁' with low-step p gs eq₁' ⟨ forget eq₁' , b , c ⟩
+    ... | isNI ss eq₂' = isNI ((skip r' isS sc') ∷ ss) eq₂'
+    -- k Step (λ ())
+    -- ... | high ¬p sc' eq₁' 
+    -- ... | isNI ss eq₂' = isNI (scheduler2global sc' ∷ ss) eq₂' -- This is somehow suspicious ... why don't I need to use the fact that this is am high-step?
+                                                               -- Because scheduler2global is overly simplifying! 
 
     -- TODO maybe use NI data-type for clarity
     ps-ni-dispatch : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
