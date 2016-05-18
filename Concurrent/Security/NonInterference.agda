@@ -272,6 +272,24 @@ postulate getPoolThread : ∀ {ls} (l : Label) (ps : Pools ls) -> ∃ (λ n -> �
 
 --------------------------------------------------------------------------------
 
+-- Essentially we rule out ∙ steps.
+data Valid {ls} (g : Global ls) : Set where
+  isValid : (∀ {l n t} -> (pools g) [ l ][ n ]= t -> t ≢ ∙) -> Valid g
+
+-- fork? never produces a • event
+fork?≠∙ : ∀ {l h n} {tʰ :  Thread h} {p : l ⊑ h} -> fork? p tʰ n ≢ ∙
+fork?≠∙ {tʰ = t} {p} with is∙? t
+... | yes _ = λ ()
+... | no _ = λ ()
+
+-- Only ∙ triggers the event •
+∙↑∙ : ∀ {ls l n} {g₁ g₂ : Global ls} -> Valid g₁ -> (s : l , n ⊢ g₁ ↪ g₂) -> getEvent s ≢ ∙
+∙↑∙ v (step x x₁ x₂ x₃) ()
+∙↑∙ v (fork x x₁ x₂ x₃ x₄ x₅) eq = ⊥-elim (fork?≠∙ eq)
+∙↑∙ (isValid f) (hole r (bullet s) x₂) refl = ⊥-elim (f r refl)
+∙↑∙ v (skip x x₁ x₂) ()
+∙↑∙ v (exit x x₁ x₂) ()
+
 -- TODO move to semantics module?
 -- If we can read from a pool, then we can write something to it
 postulate writePool : ∀ {l n ls t₁ t₂} {ps₁ : Pools ls} -> ps₁ [ l ][ n ]= t₁ -> ∃ (λ ps₂ -> ps₂ ← ps₁ [ l ][ n ]≔ t₂)
@@ -280,12 +298,6 @@ postulate forkPool : ∀ {h n ls} {ps₁ : Pools ls} {ts : Pool h n} -> ps₁ [ 
 -- ps [ l ][ n ]= t, ps' ← ps [ h ] = ts ▻ t' => ps [ l ][ n ]= t
 postulate writeAfterFork : ∀ {l h n n' ls t₁ t₂} {ps₁ ps₂ : Pools ls} (ts : Pool h n')
                              -> ps₁ [ l ][ n ]= t₁ -> ps₂ ← ps₁ [ h ]≔ ts -> ∃ (λ ps₃ -> ps₃ ← ps₂ [ l ][ n ]≔ t₂)
-
--- fork? never produces a • event
-fork?≠∙ : ∀ {l h n} {tʰ :  Thread h} {p : l ⊑ h} -> fork? p tʰ n ≢ ∙
-fork?≠∙ {tʰ = t} {p} with is∙? t
-... | yes _ = λ ()
-... | no _ = λ ()
 
 square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ ->
                                 let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
@@ -317,14 +329,15 @@ module PS
      (aligned : ∀ {l lₐ n i e s₁ s₂ s₁'} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' ⟪ l , n , e ⟫ lₐ)
   where
 
-    low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
+    low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} {{v₁ : Valid g₁}}  -> l ⊑ lₐ ->
+                 (s : l , n ⊢ g₁ ↪ g₂) -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
     -- The two configurations are aligned
-    low-step {n₂ = zero} p gs eq₁ eq₂ with aligned p (getSchedulerStep gs) {!!} eq₁ -- This is my assumption
+    low-step {n₂ = zero} {{v₁}} p gs eq₁ eq₂ with aligned p (getSchedulerStep gs) (∙↑∙ v₁ gs) eq₁
     ... | low sc' eq₁' with square p sc' eq₂ (withMsg gs)
     ... | Σ₂' , ps₂' , gs' = isNI (gs' ∷ []) (simulation↪ eq₂ gs gs')                        
 
     -- The other global configuration performs a high step
-    low-step {n₂ = suc n₂} {g₁ = g₁} {g₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep gs) {!!} eq₁ -- IDEM
+    low-step {n₂ = suc n₂} {g₁ = g₁} {g₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} {{v₁}} p gs eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep gs) (∙↑∙ v₁ gs) eq₁
     ... | h , n , k with getThread h n ps₁'
     ... | t' , r' with programStatus Σ₁' t'
 
@@ -336,7 +349,7 @@ module PS
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) with effectOf t' | stepWithEvent st
 
     -- Hole Event (absurd)
-    low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | ∙ | st' = {!!} -- Can be ruled out assuming ps[ l ][ n ]≠ ∙
+    low-step {n₂ = suc n₂} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | .∙ , r' | R (Step st) | ∙ | bullet (Pure Hole) = {!!}
 
     -- Step Event
     low-step {n₂ = suc n₂} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | ∅ | st' with k Step (λ ())
@@ -363,19 +376,25 @@ module PS
     ... | isNI ss eq₂' = isNI ((skip r' isS sc') ∷ ss) eq₂'
 
     -- TODO maybe use NI data-type for clarity
-    ps-ni-dispatch : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
+    ps-ni-dispatch : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} {{v₁ : Valid g₁}} -> Dec (l ⊑ lₐ) ->
+                          g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> (s : l , n ⊢ g₁ ↪ g₂) -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
     ps-ni-dispatch {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s with low-step p s (align eq₁) ⟨ eq₁ , eq₂ , eq₃ ⟩
     ... | isNI ss eq'  = _ Σ., (eq' Σ., ss)
     ps-ni-dispatch {g₁' = g₁'} (no ¬p) eq s = g₁' , trans-≈ᵍ (sym-≈ᵍ (high-step ¬p s)) eq , []
 
     -- TODO I will probably need to add the assumption ps [ l ][ n ] ≠ ∙
-    progress-sensitive-ni : ∀ {l ls n} {g₁ g₁' g₂ : Global ls} -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂')
+    progress-sensitive-ni : ∀ {l ls n} {g₁ g₁' g₂ : Global ls} {{v₁ : Valid g₁}}  -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' ->
+                              l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂')
     progress-sensitive-ni {l} lₐ = ps-ni-dispatch (l ⊑? lₐ)
 
+    allValid : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ↪⋆ g₂ -> Set
+    allValid [] = ⊤
+    allValid (_∷_ {g₁ = g₁} s ss) = Valid g₁  × allValid ss
 
     -- TODO I will need the assumption that every thread is non ∙
-    progress-sensitive-ni⋆ : ∀ {ls} {g₁ g₁' g₂ : Global ls} -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> g₁ ↪⋆ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂')
-    progress-sensitive-ni⋆ lₐ eq [] = _ , (eq , [])
-    progress-sensitive-ni⋆ lₐ eq (s ∷ ss) with progress-sensitive-ni lₐ eq s
-    ... | g₂' , eq₂' , ss₂' with progress-sensitive-ni⋆ lₐ eq₂' ss
+    progress-sensitive-ni⋆ : ∀ {ls} {g₁ g₁' g₂ : Global ls} -> (lₐ : Label) ->
+                                g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> (ss : g₁ ↪⋆ g₂) -> allValid ss -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂')
+    progress-sensitive-ni⋆ lₐ eq [] _ = _ , (eq , [])
+    progress-sensitive-ni⋆ lₐ eq (s ∷ ss) (v , vs) with progress-sensitive-ni lₐ eq s
+    ... | g₂' , eq₂' , ss₂' with progress-sensitive-ni⋆ lₐ eq₂' ss vs
     ... | g₃' , eq₃' , ss₃' = g₃' , (eq₃' , ss₂' ++ˢ ss₃')
