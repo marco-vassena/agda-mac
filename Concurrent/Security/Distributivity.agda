@@ -218,9 +218,9 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 εᵍ-dist {l} lₐ (fork r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ
 εᵍ-dist {l} lₐ (fork {h = h} {nʰ = nʰ} {tʰ = tʰ} {{l⊑h}} r₁ r₂ st sc w₁ w₂) | yes p with ε-sch-dist (yes p) sc
 ... | sc' rewrite ε-fork? {n = nʰ} l⊑h (h ⊑? lₐ) tʰ
-  =  fork (ε-readᵖ (yes p) r₁) (ε-readᵗ (h ⊑? lₐ) r₂) (ε-↑ p st) sc' (ε-updateᵖ p w₁) (ε-update-▻ (h ⊑? lₐ) w₂)
+  = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ (h ⊑? lₐ) r₂) (ε-↑ p st) sc' (ε-update-▻ (h ⊑? lₐ) w₁) (ε-updateᵖ p w₂)
 εᵍ-dist lₐ (fork r₁ r₂ st sc w₁ w₂) | no ¬p with ε-read∙ ¬p r₁ | (ε-sch-dist (no ¬p) sc)
-... | x | sc' rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-updateᵖ-≡ ¬p w₁ | ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₂ | ε-sch-≡ ¬p sc = hole x (bullet (Pure Hole)) sc'
+... | x | sc' rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₁ | ε-updateᵖ-≡ ¬p w₂ | ε-sch-≡ ¬p sc = hole x (bullet (Pure Hole)) sc'
 
 εᵍ-dist {l} lₐ (hole r (bullet (Pure Hole)) sc) with l ⊑? lₐ
 ... | yes p = hole (ε-readᵖ (yes p) r) (bullet (Pure Hole)) (ε-sch-dist (yes p) sc)

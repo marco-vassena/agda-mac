@@ -133,7 +133,7 @@ determinism↪ (step r st sc w) (exit r' isV sc') rewrite lookup-tpool r r' = �
 determinism↪ (fork r₁ r₂ st sc w₁ w₂) (step r' st' sc' w') rewrite lookup-tpool r₁ r' = ⊥-elim (single-event st' (λ ()) st)
 determinism↪ (fork {{p₁}} r₁ r₂ st sc w₁ w₂) (fork {{p₂}} r₁' r₂' st' sc' w₁' w₂') rewrite
   lookup-tpool r₁ r₁' | determinismS (stepOf st) (stepOf st') | determinismC (stepOf st) (stepOf st') with unique-event st st'
-... | refl rewrite lookup-pool-size r₂ r₂' |  lookup-pool r₂ r₂' | write-tpool w₁ w₁' | write-pool w₂ w₂' | extensional-⊑ p₁ p₂ | deterministic-scheduler sc sc' = refl
+... | refl rewrite lookup-pool-size r₂ r₂' |  lookup-pool r₂ r₂' | write-pool w₁ w₁' | write-tpool w₂ w₂'  | extensional-⊑ p₁ p₂ | deterministic-scheduler sc sc' = refl
 determinism↪ (fork r₁ r₂ st sc w₁ w₂) (hole r' st' sc') rewrite lookup-tpool r₁ r' = ⊥-elim (single-event st (λ ()) st')
 determinism↪ (fork r₁ r₂ st sc w₁ w₂) (skip r' st' sc') rewrite lookup-tpool r₁ r' = ⊥-elim (stuck-no-redex st' (redexOf st))
 determinism↪ (fork r₁ r₂ st sc w₁ w₂) (exit r' st' sc') rewrite lookup-tpool r₁ r' = ⊥-elim (valueNotRedex _ st' (redexOf st))

@@ -190,7 +190,7 @@ open import Sequential.Semantics
 high-step : ∀ {lₐ l ls n} {g₁ g₂ : Global ls} -> ¬ (l ⊑ lₐ) -> l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₂
 high-step ¬p (step r st sc w) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (ε-updateᵖ-≡ ¬p w) ⟩
 high-step ¬p (fork r₁ r₂ st sc  w₁ w₂)
-  = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (trans (ε-updateᵖ-≡ ¬p w₁) (ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₂)) ⟩
+  = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (trans (ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₁) (ε-updateᵖ-≡ ¬p w₂)) ⟩
 high-step ¬p (hole r st sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
 high-step ¬p (skip r b sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
 high-step ¬p (exit r isV sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
@@ -276,19 +276,16 @@ postulate getPoolThread : ∀ {ls} (l : Label) (ps : Pools ls) -> ∃ (λ n -> �
 -- If we can read from a pool, then we can write something to it
 postulate writePool : ∀ {l n ls t₁ t₂} {ps₁ : Pools ls} -> ps₁ [ l ][ n ]= t₁ -> ∃ (λ ps₂ -> ps₂ ← ps₁ [ l ][ n ]≔ t₂)
 postulate forkPool : ∀ {h n ls} {ps₁ : Pools ls} {ts : Pool h n} -> ps₁ [ h ]= ts -> (t : Thread h) -> ∃ (λ ps₂ -> ps₂ ← ps₁ [ h ]≔ (ts ▻ t))
-
--- Inner module defined to break mutual dependency between Security.Scheduler and specific scheduler modules (e.g. RoundRobin)
+-- TODO could be proved by showing that forking preserves the validity of old references, that is
+-- ps [ l ][ n ]= t, ps' ← ps [ h ] = ts ▻ t' => ps [ l ][ n ]= t
+postulate writeAfterFork : ∀ {l h n n' ls t₁ t₂} {ps₁ ps₂ : Pools ls} (ts : Pool h n')
+                             -> ps₁ [ l ][ n ]= t₁ -> ps₂ ← ps₁ [ h ]≔ ts -> ∃ (λ ps₃ -> ps₃ ← ps₂ [ l ][ n ]≔ t₂)
 
 -- fork? never produces a • event
 fork?≠∙ : ∀ {l h n} {tʰ :  Thread h} {p : l ⊑ h} -> fork? p tʰ n ≢ ∙
 fork?≠∙ {tʰ = t} {p} with is∙? t
 ... | yes _ = λ ()
 ... | no _ = λ ()
-
--- I need to show that low-equivalent terms have the same status (Stuck, Value, Redex)
--- and in the Redex case that they generate the same event! 
-
--- TODO split square: one lemma says that another step is possible, and then use simulation↪ for low-equivalence
 
 square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ ->
                                 let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
@@ -298,24 +295,22 @@ square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -
                                 ∃ (λ Σ₂' -> (∃ (λ ps₂' ->
                                   let g₂' = ⟨ s₂' , Σ₂' , ps₂' ⟩ in (l , n ⊢ g₁' ↪ g₂'))))
 square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps≈ps₁' ⟩ (withMsg (step r (none ¬fork ¬∙ s) sc w)) with read-≈ p ps≈ps₁' r
-... | t' , r' , t≈t' with redexᴸ p s (εᵖ-≡ Σ₁≈Σ₁' t≈t')
+... | t₁' , r' , t₁≈t₁' with redexᴸ p s (εᵖ-≡ Σ₁≈Σ₁' t₁≈t₁')
 ... | Step s' with writePool r'
-... | ps₂' , w' = _ , ps₂' , step r' (none (isNotForkᴸ p ¬fork t≈t') (isNot∙ᴸ p ¬∙ t≈t') s') sc' w'
-square p sc'  ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps≈ps₁' ⟩ (withMsg (fork r₁ r₂ (fork p' t s) sc w₁ w₂))  with read-≈ p ps≈ps₁' r₁
-... | t' , r₁' , t≈t' with redexᴸ p s (εᵖ-≡ Σ₁≈Σ₁' t≈t')  -- Here by pattern matching on the equivalence proof I would learn that t₁' is also fork
-... | Step s' with writePool r₁'
-... | ps₂' , w' with readPool-≈ ps≈ps₁' r₂
-... | _ , r₂' , ts₁≈ts₁' = {!!} , {!!} , fork r₁' r₂' {!fork ? ? ?!} sc' {!!} {!!} -- Fix the order of write
--- We can discharge this one assuming ps [ l ][ n ] ≢ ∙  
-square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (hole r (bullet (Pure Hole)) sc)) = {!!} 
--- with read-≈ p ps₁≈ps₁' r
--- ... | t' , r' , t≈t' = {!!} , {!!} , {!hole r' ? sc' !}
+... | ps₂' , w' = _ , ps₂' , step r' (none (isNotForkᴸ p ¬fork t₁≈t₁') (isNot∙ᴸ p ¬∙ t₁≈t₁') s') sc' w'
+square p sc'  ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps≈ps₁' ⟩ (withMsg (fork r₁ r₂ (fork p' t₁ s) sc w₁ w₂))  with read-≈ p ps≈ps₁' r₁
+... | t₁' , r₁' , t₁≈t₁' with redexᴸ p s (εᵖ-≡ Σ₁≈Σ₁' t₁≈t₁')  -- Here by pattern matching on the equivalence proof I would learn that t₁' is also fork
+... | Step s' with readPool-≈ ps≈ps₁' r₂
+... | ts₁' , r₂' , ts₁≈ts₁' with forkPool r₂' t₁
+... | ps₂' , w₁' with writeAfterFork (ts₁' ▻ {!!})  r₁' w₁' -- We should get the forked thread from the l-equivalence proof
+... | ps₃' , w₂' = {!!} , {!!} , {!fork r₁' r₂' (fork ? ? ?) sc' w₁' w₂'!}
+square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (hole r (bullet (Pure Hole)) sc)) = {!!}  -- We can discharge this one assuming ps [ l ][ n ] ≢ ∙  
 square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (skip r isS sc)) with read-≈ p ps₁≈ps₁' r
-... | t' , r' , t≈t' = _ , _ , skip r' (stuckᴸ p (εᵖ-≡ Σ₁≈Σ₁' t≈t') isS) sc'
+... | t₁' , r' , t₁≈t₁' = _ , _ , skip r' (stuckᴸ p (εᵖ-≡ Σ₁≈Σ₁' t₁≈t₁') isS) sc'
 square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (exit r isV sc)) with read-≈ p ps₁≈ps₁' r
-... | t' , r' , t≈t' = _ , _ , exit r' (valueᴸ p isV t≈t') sc'
+... | t₁' , r' , t₁≈t₁' = _ , _ , exit r' (valueᴸ p isV t₁≈t₁') sc'
 
-
+-- Inner module defined to break mutual dependency between Security.Scheduler and specific scheduler modules (e.g. RoundRobin)
 module PS
     (highˢ : ∀ {s₁ s₁' s₂ l lₐ n e i j} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ suc j ⟩ s₁' ->
                     ∃ λ h -> ∃ λ n -> (e' : Event h) -> e' ≢ ∙ -> HighStep lₐ h n e' s₁ s₂ s₁' i j)
@@ -356,20 +351,16 @@ module PS
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | fork {hⁿ} tⁿ | st'
       with getPoolThread hⁿ ps₁'
     ... | nⁿ , tsⁿ , rⁿ with k (fork? (fork-⊑ st') tⁿ nⁿ) fork?≠∙
-    ... | high ¬p sc' eq₁' with writePool r'
-    ... | ps₂' , w' with forkPool rⁿ tⁿ
-    ... | ps₃' , w'' with high-step ¬p (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' {!w''!}) -- TODO fix order of writes
+    ... | high ¬p sc' eq₁' with forkPool rⁿ tⁿ
+    ... | ps₂' , w' with writeAfterFork (tsⁿ ▻ tⁿ) r' w'
+    ... | ps₃' , w'' with high-step ¬p (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' w'')
     ... | eq'' with low-step p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
-    ... | isNI ss eq₂' = isNI (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' {!w''!} ∷ ss) eq₂'
+    ... | isNI ss eq₂' = isNI (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' w'' ∷ ss) eq₂'
 
     -- NoStep Event
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | S isS with k NoStep (λ ())
     ... | high ¬p sc' eq₁' with low-step p gs eq₁' ⟨ forget eq₁' , b , c ⟩
     ... | isNI ss eq₂' = isNI ((skip r' isS sc') ∷ ss) eq₂'
-    -- k Step (λ ())
-    -- ... | high ¬p sc' eq₁' 
-    -- ... | isNI ss eq₂' = isNI (scheduler2global sc' ∷ ss) eq₂' -- This is somehow suspicious ... why don't I need to use the fact that this is am high-step?
-                                                               -- Because scheduler2global is overly simplifying! 
 
     -- TODO maybe use NI data-type for clarity
     ps-ni-dispatch : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} -> Dec (l ⊑ lₐ) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )

@@ -183,9 +183,8 @@ data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global l
            ⟨ Σ₁ ∥ t₁ ⟩ ⟼ ⟨ Σ₂ ∥ t₂ ⟩ ↑ (fork tʰ) ->
            s₁ ⟶ s₂ ↑ (l , n , fork? p tʰ nʰ) ->
 
-           -- TODO swap the order. If l = h the second write overwrites the first!
-           ps₂ ← ps₁ [ l ][ n ]≔ t₂ ->
-           ps₃ ← ps₂ [ h ]≔ (tsʰ ▻ tʰ) -> 
+           ps₂ ← ps₁ [ h ]≔ (tsʰ ▻ tʰ) -> 
+           ps₃ ← ps₂ [ l ][ n ]≔ t₂ ->
          
            l , n ⊢ ⟨ s₁ , Σ₁ , ps₁ ⟩ ↪ ⟨ s₂ , Σ₂ , ps₃ ⟩
 
