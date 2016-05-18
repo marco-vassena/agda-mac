@@ -164,6 +164,14 @@ lift-≈ᵍ :  ∀ {lₐ ls} {g₁ g₂ : Global ls}  -> εᵍ lₐ g₁ ≡ ε�
 lift-≈ᵍ {g₁ = ⟨ state , storeᵍ , pools ⟩} {⟨ state₁ , storeᵍ₁ , pools₁ ⟩} eq = ⟨ ≡-≈ᵀ (state-≡ eq) , εˢ-≡ (storeᵍ-≡ eq) , ≡-≈ᴾ (pools-≡ eq) ⟩
 
 --------------------------------------------------------------------------------
+-- Easy access without explicit pattern matching,
+-- TODO not useful remove
+
+-- ≈ᵍ-≈ᴾ : ∀ {lₐ ls} {g₁ g₂ : Global ls} -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₂ -> pools g₁ ≈ᴾ-⟨ lₐ ⟩ pools g₂
+-- ≈ᵍ-≈ᴾ ⟨ s₁≈s₂ , Σ₁≈Σ₂ , ps₁≈ps₂ ⟩ = ps₁≈ps₂
+
+
+--------------------------------------------------------------------------------
 
 -- Progress insensitive non-interference
 simulation↪ : ∀ {ls l n} {{lₐ : Label}} {g₁ g₂ g₁' g₂' : Global ls} ->
@@ -202,6 +210,13 @@ read-≈ p (eq₁ ∷ _) (Here r₁) with read-≌ᴾ p eq₁ r₁
 read-≈ p (_ ∷ eq₁) (There r₁)  with read-≈ p eq₁ r₁
 ... | t₂ , r₂ , eq' = t₂ , There r₂ , eq'
 
+-- Why do not we need the contstraint l ⊑ lₐ here?
+readPool-≈ : ∀ {ls l lₐ n} {ps₁ ps₂ : Pools ls} {ts₁ : Pool l n} -> ps₁ ≈ᴾ-⟨ lₐ ⟩ ps₂ -> ps₁ [ l ]= ts₁ ->
+                   Σ (Pool l n) (λ ts₂ -> (ps₂ [ l ]= ts₂) × (ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂))
+readPool-≈ (ts₁≈ts₂ ∷ eq) Here = _ , (Here , ts₁≈ts₂)
+readPool-≈ (ts₁≈ts₂ ∷ eq) (There r) with readPool-≈ eq r
+... | _ , r' , eq' = _ , (There r') , eq'
+
 -- TODO USE CONSISTENT NAMES
 open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_
 
@@ -209,19 +224,6 @@ open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_�
 
 data NI {ls} (lₐ : Label) (g₁' g₂ : Global ls) : Set where
   isNI : ∀ {g₂'} -> g₁' ↪⋆ g₂' -> g₂ ≈ᵍ-⟨ lₐ ⟩ g₂' -> NI lₐ g₁' g₂
-
--- I need to show that low-equivalent terms have the same status (Stuck, Value, Redex)
--- and in the Redex case that they generate the same event! 
-
--- TODO I don't have to do this by induction on the global step, but on the event of the scheduler.
--- 
-
-postulate square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ ->
-                                let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
-                                    ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁'
-                                    ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁' ⟶ s₂' ↑ ⟪ l , n , e ⟫ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> l , n ⊢ g₁ ↪ g₂ ->
-                                ∃ (λ Σ₂' -> (∃ (λ ps₂' ->
-                                  let g₂' = ⟨ s₂' , Σ₂' , ps₂' ⟩ in (l , n ⊢ g₁' ↪ g₂') × (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂'))))
 
 data _≈ᵉ_ {lₐ : Label} {l} : Effect l -> Effect l -> Set where
   ∙ : ∙ ≈ᵉ ∙
@@ -256,6 +258,7 @@ e₁ ≈ᵉ-⟨ lₐ ⟩ e₂ = _≈ᵉ_ {lₐ} e₁ e₂
 
 open import Sequential.Security.NonInterference
 
+-- TODO maybe we don't need this
 postulate same-event : ∀ {ls l lₐ e₁ e₂} {p₁ p₂ p₁' p₂' : Program ls (Mac l _)} -> l ⊑ lₐ -> p₁ ≈ᵖ-⟨ lₐ ⟩ p₂ -> p₁ ⟼ p₂ ↑ e₁ -> p₁' ⟼ p₂' ↑ e₂ -> e₁ ≈ᵉ-⟨ lₐ ⟩ e₂
 
 -- At the moment I am assuming that the scheduler state contains only valid thread id, that is
@@ -268,11 +271,6 @@ postulate getThread : ∀ {ls} (l : Label) (n : ℕ) (ps : Pools ls) -> ∃ (λ 
 postulate getPoolThread : ∀ {ls} (l : Label) (ps : Pools ls) -> ∃ (λ n -> Σ (Pool l n) (λ ts -> ps [ l ]= ts))
 
 --------------------------------------------------------------------------------
-
--- Here we need some proof that ps [ h ] [ n ] does actually generate e
-postulate scheduler2global : ∀ {ls h n e} {g₁ g₂ : Global ls} ->
-                             let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
-                                 ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂ in s₁ ⟶ s₂ ↑ ⟪ h , n , e ⟫ -> h , n ⊢ g₁ ↪ g₂
 
 -- TODO move to semantics module?
 -- If we can read from a pool, then we can write something to it
@@ -287,18 +285,48 @@ fork?≠∙ {tʰ = t} {p} with is∙? t
 ... | yes _ = λ ()
 ... | no _ = λ ()
 
+-- I need to show that low-equivalent terms have the same status (Stuck, Value, Redex)
+-- and in the Redex case that they generate the same event! 
+
+-- TODO split square: one lemma says that another step is possible, and then use simulation↪ for low-equivalence
+
+square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ ->
+                                let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
+                                    ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁'
+                                    ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
+                                    m = ⟪ l , n , e ⟫ in s₁' ⟶ s₂' ↑ m -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> m ⊢ᴹ g₁ ↪ g₂ ->
+                                ∃ (λ Σ₂' -> (∃ (λ ps₂' ->
+                                  let g₂' = ⟨ s₂' , Σ₂' , ps₂' ⟩ in (l , n ⊢ g₁' ↪ g₂'))))
+square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps≈ps₁' ⟩ (withMsg (step r (none ¬fork ¬∙ s) sc w)) with read-≈ p ps≈ps₁' r
+... | t' , r' , t≈t' with redexᴸ p s (εᵖ-≡ Σ₁≈Σ₁' t≈t')
+... | Step s' with writePool r'
+... | ps₂' , w' = _ , ps₂' , step r' (none (isNotForkᴸ p ¬fork t≈t') (isNot∙ᴸ p ¬∙ t≈t') s') sc' w'
+square p sc'  ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps≈ps₁' ⟩ (withMsg (fork r₁ r₂ (fork p' t s) sc w₁ w₂))  with read-≈ p ps≈ps₁' r₁
+... | t' , r₁' , t≈t' with redexᴸ p s (εᵖ-≡ Σ₁≈Σ₁' t≈t')  -- Here by pattern matching on the equivalence proof I would learn that t₁' is also fork
+... | Step s' with writePool r₁'
+... | ps₂' , w' with readPool-≈ ps≈ps₁' r₂
+... | _ , r₂' , ts₁≈ts₁' = {!!} , {!!} , fork r₁' r₂' {!fork ? ? ?!} sc' {!!} {!!} -- Fix the order of write
+-- We can discharge this one assuming ps [ l ][ n ] ≢ ∙  
+square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (hole r (bullet (Pure Hole)) sc)) = {!!} 
+-- with read-≈ p ps₁≈ps₁' r
+-- ... | t' , r' , t≈t' = {!!} , {!!} , {!hole r' ? sc' !}
+square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (skip r isS sc)) with read-≈ p ps₁≈ps₁' r
+... | t' , r' , t≈t' = _ , _ , skip r' (stuckᴸ p (εᵖ-≡ Σ₁≈Σ₁' t≈t') isS) sc'
+square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (exit r isV sc)) with read-≈ p ps₁≈ps₁' r
+... | t' , r' , t≈t' = _ , _ , exit r' (valueᴸ p isV t≈t') sc'
+
 
 module PS
     (highˢ : ∀ {s₁ s₁' s₂ l lₐ n e i j} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ suc j ⟩ s₁' ->
                     ∃ λ h -> ∃ λ n -> (e' : Event h) -> e' ≢ ∙ -> HighStep lₐ h n e' s₁ s₂ s₁' i j)
-    (aligned : ∀ {l lₐ n i e s₁ s₂ s₁'} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' ⟪ l , n , e ⟫ lₐ)
+     (aligned : ∀ {l lₐ n i e s₁ s₂ s₁'} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' ⟪ l , n , e ⟫ lₐ)
   where
 
     low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ -> l , n ⊢ g₁ ↪ g₂ -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
     -- The two configurations are aligned
-    low-step {n₂ = zero} p s eq₁ eq₂ with aligned p (getSchedulerStep s) {!!} eq₁ -- This is my assumption
-    ... | low sc' eq₁' with square p sc' eq₂ s
-    ... | Σ₂' , ps₂' , s' , eq' = isNI (s' ∷ []) eq'                        
+    low-step {n₂ = zero} p gs eq₁ eq₂ with aligned p (getSchedulerStep gs) {!!} eq₁ -- This is my assumption
+    ... | low sc' eq₁' with square p sc' eq₂ (withMsg gs)
+    ... | Σ₂' , ps₂' , gs' = isNI (gs' ∷ []) (simulation↪ eq₂ gs gs')                        
 
     -- The other global configuration performs a high step
     low-step {n₂ = suc n₂} {g₁ = g₁} {g₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep gs) {!!} eq₁ -- IDEM

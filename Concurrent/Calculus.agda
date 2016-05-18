@@ -4,9 +4,6 @@ open import Data.List
 open import Sequential.Calculus public
 open import Data.Nat
 
-Thread : Label -> Set
-Thread l = CTerm (Mac l （）)
-
 --------------------------------------------------------------------------------
 
 -- Pool of threads at a certain label

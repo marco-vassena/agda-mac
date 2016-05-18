@@ -136,6 +136,8 @@ non-interference  : ∀ {l ls τ} {p₁ p₂ v₁ v₂ : Program ls τ} -> p₁ 
 non-interference eq (BigStep isV₁ ss₁) (BigStep isV₂ ss₂) = simulation⋆ eq ss₁ isV₁ ss₂ isV₂
 
 --------------------------------------------------------------------------------
+-- TODO move to Concurrent.NonInterference ?
+-- Or wherever you have structural equivalence
 
 data IsMacValue {l : Label} {τ : Ty} : CTerm (Mac l τ) -> Set where
   Mac : ∀ {t} -> IsMacValue (Mac t)
@@ -184,6 +186,7 @@ valueᴸ p (Macₓ e) (ε-≡ x) | no ¬p = ⊥-elim (¬p p)
 -- It might be easier to prove the following lemmas instead: Σ₁ ≈ Σ₂ ∧ t₁ ≈ t₂ ∧ Redex Σ₁ t₁ ∧ Stuck Σ₂ t₂ => ⊥
 
 -- TODO this seems very tricky to prove, especially with the current non-structural definition of l-equivalence
+-- TODO for consistency Redex Σ₁ p₁ should be the input
 postulate redexᴸ : ∀ {l τ lₐ ls} {p₁ p₂ p₁' : Program ls (Mac l τ)} -> 
               let ⟨ Σ₁ ∥ t₁ ⟩ = p₁
                   ⟨ Σ₂ ∥ t₂ ⟩ = p₂
@@ -195,3 +198,7 @@ postulate stuckᴸ : ∀ {τ l ls lₐ} -> {p p' : Program ls (Mac l τ)} ->
                          ⟨ Σ' ∥ t' ⟩ = p' in l ⊑ lₐ -> p ≈ᵖ-⟨ lₐ ⟩ p' -> Stuck Σ t -> Stuck Σ' t'
 
 --------------------------------------------------------------------------------
+
+-- It should be easy to prove these other lemmas with a structural definition of low-equivalence
+postulate isNotForkᴸ : ∀ {τ lₐ l} {t₁ t₂ : CTerm (Mac l τ)} -> l ⊑ lₐ -> ¬ (IsFork t₁) -> t₁ ≈-⟨ lₐ ⟩ t₂ -> ¬ (IsFork t₂)
+postulate isNot∙ᴸ : ∀ {τ lₐ l} {t₁ t₂ : CTerm (Mac l τ)} -> l ⊑ lₐ -> ¬ (Is∙ t₁) -> t₁ ≈-⟨ lₐ ⟩ t₂ -> ¬ (Is∙ t₂)
