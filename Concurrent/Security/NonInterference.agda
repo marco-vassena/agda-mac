@@ -276,6 +276,14 @@ postulate getPoolThread : ∀ {ls} (l : Label) (ps : Pools ls) -> ∃ (λ n -> �
 data Valid {ls} (g : Global ls) : Set where
   isValid : (∀ {l n t} -> (pools g) [ l ][ n ]= t -> t ≢ ∙) -> Valid g
 
+-- In order to actually prove this we need the stronger condition ps [ l ][ n ]= t ∧ • ∉ t
+postulate stepValid : ∀ {ls l n} {g₁ g₂ : Global ls} {{ v₁ : Valid g₁ }} -> l , n ⊢ g₁ ↪ g₂ -> Valid g₂
+
+stepValid⋆ : ∀ {ls} {g₁ g₂ : Global ls} {{v₁ : Valid g₁}} -> g₁ ↪⋆ g₂ -> Valid g₂
+stepValid⋆ {{v₁}} [] = v₁
+stepValid⋆ {{v₁}} (s ∷ ss) = stepValid⋆ {{ stepValid s }} ss
+
+
 -- fork? never produces a • event
 fork?≠∙ : ∀ {l h n} {tʰ :  Thread h} {p : l ⊑ h} -> fork? p tʰ n ≢ ∙
 fork?≠∙ {tʰ = t} {p} with is∙? t
@@ -299,7 +307,7 @@ postulate forkPool : ∀ {h n ls} {ps₁ : Pools ls} {ts : Pool h n} -> ps₁ [ 
 postulate writeAfterFork : ∀ {l h n n' ls t₁ t₂} {ps₁ ps₂ : Pools ls} (ts : Pool h n')
                              -> ps₁ [ l ][ n ]= t₁ -> ps₂ ← ps₁ [ h ]≔ ts -> ∃ (λ ps₃ -> ps₃ ← ps₂ [ l ][ n ]≔ t₂)
 
-square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} -> l ⊑ lₐ ->
+square : ∀ {l n e ls s₂' lₐ} {g₁ g₂ g₁' : Global ls} {{v₁ : Valid g₁}} -> l ⊑ lₐ ->
                                 let ⟨ s₁ , Σ₁ , ps₁ ⟩ = g₁
                                     ⟨ s₁' , Σ₁' , ps₁' ⟩ = g₁'
                                     ⟨ s₂ , Σ₂ , ps₂  ⟩ = g₂
@@ -316,7 +324,7 @@ square p sc'  ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps≈ps₁' ⟩ (withMsg (fork
 ... | ts₁' , r₂' , ts₁≈ts₁' with forkPool r₂' t₁
 ... | ps₂' , w₁' with writeAfterFork (ts₁' ▻ {!!})  r₁' w₁' -- We should get the forked thread from the l-equivalence proof
 ... | ps₃' , w₂' = {!!} , {!!} , {!fork r₁' r₂' (fork ? ? ?) sc' w₁' w₂'!}
-square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (hole r (bullet (Pure Hole)) sc)) = {!!}  -- We can discharge this one assuming ps [ l ][ n ] ≢ ∙  
+square {{isValid ¬∙}} p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (hole r (bullet (Pure Hole)) sc)) = ⊥-elim (¬∙ r refl)
 square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (skip r isS sc)) with read-≈ p ps₁≈ps₁' r
 ... | t₁' , r' , t₁≈t₁' = _ , _ , skip r' (stuckᴸ p (εᵖ-≡ Σ₁≈Σ₁' t₁≈t₁') isS) sc'
 square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (exit r isV sc)) with read-≈ p ps₁≈ps₁' r
@@ -329,7 +337,7 @@ module PS
      (aligned : ∀ {l lₐ n i e s₁ s₂ s₁'} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ 0 ⟩ s₁' -> Aligned s₁ s₂ s₁' ⟪ l , n , e ⟫ lₐ)
   where
 
-    low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} {{v₁ : Valid g₁}}  -> l ⊑ lₐ ->
+    low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} {{v₁ : Valid g₁}} {{v₁' : Valid g₁'}} -> l ⊑ lₐ ->
                  (s : l , n ⊢ g₁ ↪ g₂) -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
     -- The two configurations are aligned
     low-step {n₂ = zero} {{v₁}} p gs eq₁ eq₂ with aligned p (getSchedulerStep gs) (∙↑∙ v₁ gs) eq₁
@@ -343,19 +351,19 @@ module PS
 
     -- Done Event
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | V isV with k Done (λ ())
-    ... | high ¬p sc' eq₁' with low-step p gs eq₁' ⟨ forget eq₁' , b , c ⟩
+    ... | high ¬p sc' eq₁' with low-step {{ v₁' = stepValid (exit r' isV sc') }} p gs eq₁' ⟨ forget eq₁' , b , c ⟩
     ... | isNI ss eq₂' = isNI ((exit r' isV sc') ∷ ss) eq₂'
     
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) with effectOf t' | stepWithEvent st
 
     -- Hole Event (absurd)
-    low-step {n₂ = suc n₂} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | .∙ , r' | R (Step st) | ∙ | bullet (Pure Hole) = {!!}
+    low-step {n₂ = suc n₂} {{v₁' = isValid f}} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | .∙ , r' | R (Step st) | ∙ | bullet (Pure Hole) = ⊥-elim (f r' refl)
 
     -- Step Event
     low-step {n₂ = suc n₂} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | R (Step st) | ∅ | st' with k Step (λ ())
     ... | high ¬p sc' eq₁' with writePool r'
     ... | ps₂' , w' with high-step ¬p (step r' st' sc' w')
-    ... | eq'' with low-step p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
+    ... | eq'' with low-step {{ v₁' = stepValid (step r' st' sc' w') }} p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
     ... | isNI {g₂'} ss eq₂' = isNI (step r' st' sc' w' ∷ ss) eq₂'
 
     -- Fork Event
@@ -367,34 +375,29 @@ module PS
     ... | high ¬p sc' eq₁' with forkPool rⁿ tⁿ
     ... | ps₂' , w' with writeAfterFork (tsⁿ ▻ tⁿ) r' w'
     ... | ps₃' , w'' with high-step ¬p (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' w'')
-    ... | eq'' with low-step p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
+    ... | eq'' with low-step {{ v₁' = stepValid (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' w'') }} p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
     ... | isNI ss eq₂' = isNI (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' w'' ∷ ss) eq₂'
 
     -- NoStep Event
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | S isS with k NoStep (λ ())
-    ... | high ¬p sc' eq₁' with low-step p gs eq₁' ⟨ forget eq₁' , b , c ⟩
-    ... | isNI ss eq₂' = isNI ((skip r' isS sc') ∷ ss) eq₂'
+    ... | high ¬p sc' eq₁' with low-step {{ v₁' = stepValid (skip r' isS sc') }}  p gs eq₁' ⟨ forget eq₁' , b , c ⟩
+    ... | isNI ss eq₂' = isNI (skip r' isS sc' ∷ ss) eq₂'
 
     -- TODO maybe use NI data-type for clarity
-    ps-ni-dispatch : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} {{v₁ : Valid g₁}} -> Dec (l ⊑ lₐ) ->
+    ps-ni-dispatch : ∀ {l n ls lₐ} {g₁ g₁' g₂ : Global ls} {{v₁ : Valid g₁}} {{v₁' : Valid g₁'}} -> Dec (l ⊑ lₐ) ->
                           g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> (s : l , n ⊢ g₁ ↪ g₂) -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂' )
     ps-ni-dispatch {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩ } (yes p) ⟨ eq₁ , eq₂ , eq₃ ⟩ s with low-step p s (align eq₁) ⟨ eq₁ , eq₂ , eq₃ ⟩
     ... | isNI ss eq'  = _ Σ., (eq' Σ., ss)
     ps-ni-dispatch {g₁' = g₁'} (no ¬p) eq s = g₁' , trans-≈ᵍ (sym-≈ᵍ (high-step ¬p s)) eq , []
 
     -- TODO I will probably need to add the assumption ps [ l ][ n ] ≠ ∙
-    progress-sensitive-ni : ∀ {l ls n} {g₁ g₁' g₂ : Global ls} {{v₁ : Valid g₁}}  -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' ->
+    progress-sensitive-ni : ∀ {l ls n} {g₁ g₁' g₂ : Global ls} {{v₁ : Valid g₁}} {{v₁' : Valid g₁'}}  -> (lₐ : Label) -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' ->
                               l , n ⊢ g₁ ↪ g₂ -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂')
     progress-sensitive-ni {l} lₐ = ps-ni-dispatch (l ⊑? lₐ)
-
-    allValid : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ↪⋆ g₂ -> Set
-    allValid [] = ⊤
-    allValid (_∷_ {g₁ = g₁} s ss) = Valid g₁  × allValid ss
-
-    -- TODO I will need the assumption that every thread is non ∙
-    progress-sensitive-ni⋆ : ∀ {ls} {g₁ g₁' g₂ : Global ls} -> (lₐ : Label) ->
-                                g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> (ss : g₁ ↪⋆ g₂) -> allValid ss -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂')
-    progress-sensitive-ni⋆ lₐ eq [] _ = _ , (eq , [])
-    progress-sensitive-ni⋆ lₐ eq (s ∷ ss) (v , vs) with progress-sensitive-ni lₐ eq s
-    ... | g₂' , eq₂' , ss₂' with progress-sensitive-ni⋆ lₐ eq₂' ss vs
+    
+    progress-sensitive-ni⋆ : ∀ {ls} {g₁ g₁' g₂ : Global ls} {{v₁ : Valid g₁}} {{v₁' : Valid g₁'}} -> (lₐ : Label) ->
+                                g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> (ss : g₁ ↪⋆ g₂) -> ∃ (λ g₂' → (g₂ ≈ᵍ-⟨ lₐ ⟩ g₂') × g₁' ↪⋆ g₂')
+    progress-sensitive-ni⋆ lₐ eq [] = _ , (eq , [])
+    progress-sensitive-ni⋆ {{v₁}} {{v₁'}} lₐ eq (s ∷ ss) with progress-sensitive-ni lₐ eq s
+    ... | g₂' , eq₂' , ss₂' with progress-sensitive-ni⋆ {{ stepValid s }} {{ stepValid⋆ ss₂' }} lₐ eq₂' ss
     ... | g₃' , eq₃' , ss₃' = g₃' , (eq₃' , ss₂' ++ˢ ss₃')
