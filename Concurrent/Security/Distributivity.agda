@@ -1,7 +1,7 @@
 open import Types
 open import Concurrent.Communication
 open import Relation.Binary.PropositionalEquality
-open import Concurrent.Security.Erasure
+open import Concurrent.Security.Erasure hiding (εˢ-≡)
 
 module Concurrent.Security.Distributivity
   (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)

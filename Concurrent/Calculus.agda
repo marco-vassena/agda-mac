@@ -1,8 +1,8 @@
-module Concurrent.Calculus where
+open import Scheduler
 
-open import Data.List
+module Concurrent.Calculus (S : Scheduler) where
+
 open import Sequential.Calculus public
-open import Data.Nat
 
 --------------------------------------------------------------------------------
 

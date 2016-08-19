@@ -4,7 +4,8 @@ open import Types public
 import Data.List as L
 open import Relation.Binary.PropositionalEquality hiding ([_] ; subst)
 open import Data.List.All
-open import Data.Nat
+open import Data.Nat using (ℕ ; zero ; suc) public
+open import Data.List using (List ; [] ; _∷_ ; _++_) public
 
 mutual 
 

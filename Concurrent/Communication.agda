@@ -1,7 +1,7 @@
 module Concurrent.Communication where
 
-open import Types
-open import Data.Nat public
+open import Types public
+open import Data.Nat
 
 data Event (l : Label) : Set where
   NoStep : Event l 

@@ -1,10 +1,9 @@
+
 module Sequential.Security.Distributivity where
 
-open import Sequential.Security.Erasure public
+open import Sequential.Security.Erasure.Base public
 open import Sequential.Semantics
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
-open import Data.Product
-open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 
 --------------------------------------------------------------------------------
 -- The main distributivity theorem: 
@@ -275,6 +274,7 @@ open import Data.List as L hiding (drop ; _∷ʳ_ ; [_])
 -- A sensitive, non-visible computation can only affect high memories of the store, which
 -- are collapsed when erased. Hence the erased memory are low-equivalent, i.e. their erasures
 -- are equivalent.
+-- TODO better name to avoid clashes?
 εˢ-≡ : ∀ {τ h ls} {Σ₁ Σ₂ : Store ls} {c₁ c₂ : CTerm (Mac h τ)} -> (lₐ : Label) -> ¬ (h ⊑ lₐ) ->
             ⟨ Σ₁ ∥ c₁ ⟩ ⟼ ⟨ Σ₂ ∥ c₂ ⟩ -> εˢ lₐ Σ₁ ≡ εˢ lₐ Σ₂
 
