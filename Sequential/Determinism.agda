@@ -1,10 +1,11 @@
-module Sequential.Determinism where
+open import Lattice
+module Sequential.Determinism (𝓛 : Lattice) where
 
 open import Data.Sum
 open import Data.Product hiding (Σ)
 open import Relation.Binary.PropositionalEquality as P
 
-open import Sequential.Semantics public
+open import Sequential.Semantics 𝓛
 
 -- Value and Redex are mutually exclusive. A term is either a value or a redex, but not both.
 valueNotRedex : ∀ {τ ls} {s : Store ls} -> (c : CTerm τ) -> IsValue c -> NormalForm s c

@@ -1,11 +1,9 @@
-module Sequential.Semantics where
+open import Lattice
+
+module Sequential.Semantics (𝓛 : Lattice) where
 
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
-open import Sequential.Calculus public
-import Data.List as L
-open import Data.List.All
-open import Data.Stream using (_∷_ ; Stream)
-open import Coinduction
+open import Sequential.Calculus 𝓛 public
 
 data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
@@ -34,9 +32,9 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   appFunId : ∀ {α β} {t : Term (α ∷ []) β} {x : CTerm α} -> (Id (Abs t) <*>ᴵ (Id x)) ⇝ (Id (subst x t))
 
-  Return : ∀ {τ} {l : Label} {t : CTerm τ} -> Return t ⇝ Mac t
+  Return : ∀ {τ} {l : Label} {t : CTerm τ} -> Return {l = l} t ⇝ Mac t
 
-  Throw : ∀ {l : Label}  {α : Ty} {e : CTerm Exception} -> Throw {{l}} {{α}} e ⇝ Macₓ e 
+  Throw : ∀ {l : Label}  {α : Ty} {e : CTerm Exception} -> Throw {l = l} {α} e ⇝ Macₓ e 
 
   Bind : ∀ {l α β} {t : CTerm α} {k : CTerm (α => Mac l β)} -> (Mac t >>= k) ⇝ App k t
 
@@ -71,14 +69,14 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
   appFunCtx₂ₓ : ∀ {l β α} {e : CTerm Exception} {x₁ x₂ : CTerm (Labeled l α)} -> x₁ ⇝ x₂ -> (Resₓ {α = Id (α => β)} e <*> x₁) ⇝ ((Resₓ e) <*> x₂)
 
  -- Using the Id Applicative functor instance
-  appFun : ∀ {l α β} {f : CTerm (Id (α => β))} {x : CTerm (Id α)} -> (Res f <*> Res x) ⇝ Res (f <*>ᴵ x)
+  appFun : ∀ {l α β} {f : CTerm (Id (α => β))} {x : CTerm (Id α)} -> (Res {l = l} f <*> Res x) ⇝ Res (f <*>ᴵ x)
 
-  appFun₁ₓ : ∀ {l α β} {e : CTerm Exception} {x : CTerm (Id α)} -> (Resₓ {α = Id (α => β)} e <*> Res x) ⇝ Resₓ e
+  appFun₁ₓ : ∀ {l α β} {e : CTerm Exception} {x : CTerm (Id α)} -> (Resₓ {l = l} {α = Id (α => β)} e <*> Res x) ⇝ Resₓ e
 
-  appFun₂ₓ : ∀ {l α β} {f : CTerm (Id (α => β))} {e : CTerm Exception} -> (Res f <*> Resₓ e) ⇝ Resₓ e
+  appFun₂ₓ : ∀ {l α β} {f : CTerm (Id (α => β))} {e : CTerm Exception} -> (Res {l = l} f <*> Resₓ e) ⇝ Resₓ e
 
    -- We need also this case. We report exceptions in the same order as in lazy evaluation
-  appFun₁₂ₓ : ∀ {l α β} {e₁ e₂ : CTerm Exception} -> (Resₓ {α = Id (α => β)} e₁ <*> Resₓ e₂) ⇝ Resₓ e₁
+  appFun₁₂ₓ : ∀ {l α β} {e₁ e₂ : CTerm Exception} -> (Resₓ {l = l} {α = Id (α => β)} e₁ <*> Resₓ e₂) ⇝ Resₓ e₁
 
   --------------------------------------------------------------------------------
   -- Bulletized rules for <*>∙
@@ -88,13 +86,13 @@ data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 
   appFunCtx∙₂ₓ : ∀ {l β α} {e : CTerm Exception} {x₁ x₂ : CTerm (Labeled l α)} -> x₁ ⇝ x₂ -> (Resₓ {α = Id (α => β)} e <*>∙ x₁) ⇝ ((Resₓ e) <*>∙ x₂)
 
-  appFun∙ : ∀ {l α β} {f : CTerm (Id (α => β))} {x : CTerm (Id α)} -> (Res f <*>∙ Res x) ⇝ Res ∙
+  appFun∙ : ∀ {l α β} {f : CTerm (Id (α => β))} {x : CTerm (Id α)} -> (Res {l = l} f <*>∙ Res x) ⇝ Res ∙
 
-  appFun∙₁ₓ : ∀ {l α β} {e : CTerm Exception} {x : CTerm (Id α)} -> (Resₓ {α = Id (α => β)} e <*>∙ Res x) ⇝ Resₓ e
+  appFun∙₁ₓ : ∀ {l α β} {e : CTerm Exception} {x : CTerm (Id α)} -> (Resₓ {l = l} {α = Id (α => β)} e <*>∙ Res x) ⇝ Resₓ e
 
-  appFun∙₂ₓ : ∀ {l α β} {f : CTerm (Id (α => β))} {e : CTerm Exception} -> (Res f <*>∙ Resₓ e) ⇝ Resₓ e
+  appFun∙₂ₓ : ∀ {l α β} {f : CTerm (Id (α => β))} {e : CTerm Exception} -> (Res {l = l} f <*>∙ Resₓ e) ⇝ Resₓ e
 
-  appFun∙₁₂ₓ : ∀ {l α β} {e₁ e₂ : CTerm Exception} -> (Resₓ {α = Id (α => β)} e₁ <*>∙ Resₓ e₂) ⇝ Resₓ e₁
+  appFun∙₁₂ₓ : ∀ {l α β} {e₁ e₂ : CTerm Exception} -> (Resₓ {l = l} {α = Id (α => β)} e₁ <*>∙ Resₓ e₂) ⇝ Resₓ e₁
 
   --------------------------------------------------------------------------------
 
@@ -196,7 +194,7 @@ mutual
 
     -- Deciding whether r points to E or F is a read operation!!!
     putMVar : ∀ {l τ n} {Σ : Store ls} {t : CTerm τ} -> (q : l ∈ ls) (r : TypedIx τ E n (getMemory q Σ)) ->
-               ⟨ Σ ∥ putMVar (Res n) t ⟩ ⟼ ⟨ Σ [ q ][ r ]≔ ⟦ t ⟧ ∥ Return （） ⟩
+               ⟨ Σ ∥ putMVar (Res {l = l} n) t ⟩ ⟼ ⟨ Σ [ q ][ r ]≔ ⟦ t ⟧ ∥ Return （） ⟩
               
     putMVarEx : ∀ {l τ} {Σ : Store ls} {e : CTerm Exception} {t : CTerm τ} -> ⟨ Σ ∥ putMVar {l = l} (Resₓ e) t ⟩ ⟼ ⟨ Σ ∥ Throw e ⟩
 
@@ -208,7 +206,7 @@ mutual
     takeMVar : ∀ {l : Label} {τ : Ty} {n : CTerm Nat} {Σ : Store ls} -> (q : l ∈ ls) (r : TypedIx τ F n (getMemory q Σ)) ->
                ⟨ Σ ∥ takeMVar {α = τ}  (Res n) ⟩ ⟼ ⟨ Σ ∥  unlabel refl-⊑ (Σ [ q ][ r ]) ⟩
               
-    takeMVarEx : ∀ {l τ} {Σ : Store ls} {e : CTerm Exception} -> ⟨ Σ ∥ takeMVar {α = τ} (Resₓ e) ⟩ ⟼ ⟨ Σ ∥ Throw e ⟩
+    takeMVarEx : ∀ {l τ} {Σ : Store ls} {e : CTerm Exception} -> ⟨ Σ ∥ takeMVar {α = τ} (Resₓ {l = l} e) ⟩ ⟼ ⟨ Σ ∥ Throw e ⟩
 
   -- A program is a Redex if it can be reduced further in a certain memory configuration
   data Redex {ls : List Label} {τ : Ty} (s₁ : Store ls) (c₁ : CTerm τ) : Set where

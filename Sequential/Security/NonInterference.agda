@@ -1,8 +1,10 @@
-module Sequential.Security.NonInterference where
+open import Lattice
 
-open import Sequential.Security.Distributivity hiding (εˢ-≡)
-open import Sequential.Determinism
-open import Sequential.Security.Erasure.LowEq
+module Sequential.Security.NonInterference (𝓛 : Lattice) where
+
+open import Sequential.Security.Distributivity 𝓛 hiding (εˢ-≡)
+open import Sequential.Determinism 𝓛
+open import Sequential.Security.Erasure.LowEq 𝓛
 open import Relation.Binary.PropositionalEquality
 open import Data.Sum
 
@@ -27,14 +29,19 @@ simulation {l} eq Σ₁ Σ₂ = lift-≈ᵖ (aux (unlift-≈ᵖ eq) (εᵖ-dist 
 
 
 -- Given two l-equivalent terms if one is a value then either also the other is a value or it is ∙
-inspectValue : ∀ {{lₐ}} {τ} {t v : CTerm τ} -> IsValue v -> t ≈ v ->  IsValue (ε lₐ t) ⊎ ε lₐ t ≡ ∙
-inspectValue {{lₐ}} isV (ε-≡ eq) = aux isV eq
+inspectValue : ∀ {lₐ} {τ} {t v : CTerm τ} -> IsValue v -> t ≈ v ->  IsValue (ε lₐ t) ⊎ ε lₐ t ≡ ∙
+inspectValue {lₐ} isV (ε-≡ eq) = aux isV eq
   where  aux : ∀ {τ} {t v : CTerm τ} -> IsValue v -> ε lₐ t ≡ ε lₐ v ->  IsValue (ε lₐ t) ⊎ ε lₐ t ≡ ∙  
-         aux （） eq rewrite eq = inj₁ （）
-         aux True eq rewrite eq = inj₁ True
-         aux False eq rewrite eq = inj₁ False
-         aux (Abs t₁) eq rewrite eq = inj₁ (Abs _)
-         aux ξ eq rewrite eq = inj₁ ξ
+         aux （） eq with eq
+         ... | eq' rewrite eq' = inj₁ （）
+         aux True eq with  eq
+         ... | eq' rewrite eq = inj₁ True
+         aux False eq with eq
+         ... | eq' rewrite eq' = inj₁ False
+         aux (Abs t₁) eq with eq
+         ... | eq' rewrite eq' = inj₁ (Abs _)
+         aux ξ eq with eq
+         ... | eq' rewrite eq' = inj₁ ξ
          aux {τ = Mac lᵈ τ} (Mac t₁) eq with lᵈ ⊑? lₐ
          aux {Mac lᵈ τ} (Mac t₁) eq | yes p rewrite eq = inj₁ (Mac (ε lₐ t₁))
          aux {Mac lᵈ τ} {t = t} (Mac t₁) eq | no ¬p rewrite eq = inj₂ eq
@@ -47,9 +54,12 @@ inspectValue {{lₐ}} isV (ε-≡ eq) = aux isV eq
          aux {Res lᵈ τ} (Resₓ e) eq with lᵈ ⊑? lₐ
          aux {Res lᵈ τ} (Resₓ e) eq | yes p rewrite eq = inj₁ (Resₓ (ε lₐ e))
          aux {Res lᵈ τ} (Resₓ e) eq | no ¬p rewrite eq = inj₁ (Res ∙)
-         aux zero eq rewrite eq = inj₁ zero
-         aux (suc n) eq rewrite eq = inj₁ (suc (ε lₐ n))
-         aux (Id t) eq rewrite eq = inj₁ (Id (ε lₐ t))
+         aux zero eq with eq
+         ... | eq' rewrite eq' = inj₁ zero
+         aux (suc n) eq with eq
+         ... | eq' rewrite eq' = inj₁ (suc (ε lₐ n))
+         aux (Id t) eq with eq
+         ... | eq' rewrite eq' = inj₁ (Id (ε lₐ t))
 
 -- Bullet can only reduce to itself, therefore it will not change the program
 ∙⟼⋆∙ : ∀ {τ ls} {p₁ p₂ : Program ls τ} -> p₁ ⟼⋆ p₂ -> term p₁ ≡ ∙ -> p₁ ≡ p₂
@@ -67,7 +77,7 @@ simulation⋆ (εᵖ-≡ x y) (s ∷ ss) isV₁ [] isV₂ | inj₁ isVε = ⊥-e
 simulation⋆ {lₐ} (εᵖ-≡ x y) (s ∷ ss) isV₁ [] isV₂ | inj₂ ε≡∙ = sym-≈ᵖ (trans-≈ᵖ (sym-≈ᵖ (εᵖ-≡ x y)) (lift-≈ᵖ (∙⟼⋆∙ (εᵖ-dist⋆ lₐ (s ∷ ss)) ε≡∙)))
 simulation⋆ eq (Σ₁ ∷ ss₁) isV₁ (Σ₂ ∷ ss₂) isV₂ = simulation⋆ (simulation eq Σ₁ Σ₂) ss₁ isV₁ ss₂ isV₂
 
-non-interference  : ∀ {l ls τ} {p₁ p₂ v₁ v₂ : Program ls τ} -> p₁ ≈ᵖ p₂ -> p₁ ⇓ v₁ -> p₂ ⇓ v₂ -> v₁ ≈ᵖ v₂
+non-interference  : ∀ {l ls τ} {p₁ p₂ v₁ v₂ : Program ls τ} -> p₁ ≈ᵖ-⟨ l ⟩ p₂ -> p₁ ⇓ v₁ -> p₂ ⇓ v₂ -> v₁ ≈ᵖ v₂
 non-interference eq (BigStep isV₁ ss₁) (BigStep isV₂ ss₂) = simulation⋆ eq ss₁ isV₁ ss₂ isV₂
 
 --------------------------------------------------------------------------------

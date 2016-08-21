@@ -1,11 +1,12 @@
-module Sequential.Calculus where
+open import Lattice
 
-open import Types public
-import Data.List as L
+module Sequential.Calculus (𝓛 : Lattice) where
+
+open import Types 𝓛 public
 open import Relation.Binary.PropositionalEquality hiding ([_] ; subst)
 open import Data.List.All
 open import Data.Nat using (ℕ ; zero ; suc) public
-open import Data.List using (List ; [] ; _∷_ ; _++_) public
+import Data.List as L
 
 mutual 
 
@@ -27,18 +28,18 @@ mutual
 
     If_Then_Else_ : ∀ {α} -> Term Δ Bool -> Term Δ α -> Term Δ α -> Term Δ α
 
-    Return : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Mac l α)
-    _>>=_ : ∀ {{l}} {α β} -> Term Δ (Mac l α) -> Term Δ (α => Mac l β) -> Term Δ (Mac l β)
+    Return : ∀ {l} {α} -> Term Δ α -> Term Δ (Mac l α)
+    _>>=_ : ∀ {l} {α β} -> Term Δ (Mac l α) -> Term Δ (α => Mac l β) -> Term Δ (Mac l β)
 
     ξ : Term Δ Exception
-    Throw : ∀ {{l α}} -> Term Δ Exception -> Term Δ (Mac l α)
-    Catch : ∀ {{l}} {α} -> Term Δ (Mac l α) -> Term Δ (Exception => Mac l α) -> Term Δ (Mac l α)
+    Throw : ∀ {l α} -> Term Δ Exception -> Term Δ (Mac l α)
+    Catch : ∀ {l α} -> Term Δ (Mac l α) -> Term Δ (Exception => Mac l α) -> Term Δ (Mac l α)
 
-    Mac : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Mac l α)
-    Macₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Mac l α)
+    Mac : ∀ {l α} -> Term Δ α -> Term Δ (Mac l α)
+    Macₓ : ∀ {l α} -> Term Δ Exception -> Term Δ (Mac l α)
 
-    Res : ∀ {{l}} {α} -> Term Δ α -> Term Δ (Res l α)
-    Resₓ : ∀ {{l}} {α} -> Term Δ Exception -> Term Δ (Res l α)
+    Res : ∀ {l α} -> Term Δ α -> Term Δ (Res l α)
+    Resₓ : ∀ {l α} -> Term Δ Exception -> Term Δ (Res l α)
 
     -- It is fine to strenghten the level of a labeled resource
     relabel : ∀ {l h α} -> l ⊑ h -> Term Δ (Labeled l α) -> Term Δ (Labeled h α)
@@ -217,10 +218,10 @@ data IsValue {Δ : Context} : ∀ {τ} -> Term Δ τ -> Set where
   Abs : ∀ {α β} (t : Term (α ∷ Δ) β) -> IsValue (Abs t)
   ξ : IsValue ξ
   Id : ∀ {τ} -> (t : Term Δ τ) -> IsValue (Id t) 
-  Mac : ∀ {α} {l : Label} (t : Term Δ α) -> IsValue (Mac t)
-  Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Macₓ {α = α} e)
-  Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsValue (Res t)
-  Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Resₓ {α = α} e)
+  Mac : ∀ {α} {l : Label} (t : Term Δ α) -> IsValue (Mac {l = l} t)
+  Macₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Macₓ {l = l} {α} e)
+  Res : ∀ {α} {l : Label} (t : Term Δ α) -> IsValue (Res {l = l} t)
+  Resₓ : ∀ {α} {l : Label} (e : Term Δ Exception) -> IsValue (Resₓ {l = l} {α} e)
   zero : IsValue zero
   suc : (n : Term Δ Nat) -> IsValue (suc n)
 

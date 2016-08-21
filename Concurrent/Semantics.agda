@@ -1,10 +1,11 @@
-open import Concurrent.Communication
-open import Concurrent.Calculus public
+open import Lattice
+open import Scheduler 
 
+module Concurrent.Semantics (𝓛 : Lattice) (𝓢 : Scheduler) where
 
--- TODO pack everything scheduler related in a single record called Scheduler
-module Concurrent.Semantics (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set) where
+open Scheduler.Scheduler 𝓛 𝓢
 
+open import Concurrent.Calculus 𝓛 𝓢
 open import Data.Nat
 open import Data.List
 open import Sequential.Semantics 
@@ -139,24 +140,6 @@ fork? p t n | yes _ = Step
 fork? p t n | no ¬p = Fork _ n p
 
 -------------------------------------------------------------------------------
--- The global configuration is a thread pool paired with some shared split memory Σ
-record Global (ls : List Label) : Set where
-  constructor ⟨_,_,_⟩
-  field state : State
-  field storeᵍ : Store ls
-  field pools : Pools ls
-
-open Global
-open import Relation.Binary.PropositionalEquality
-
-state-≡ : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ≡ g₂ -> state g₁ ≡ state g₂
-state-≡ refl = refl
-
-storeᵍ-≡ : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ≡ g₂ -> storeᵍ g₁ ≡ storeᵍ g₂
-storeᵍ-≡ refl = refl
-
-pools-≡ : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ≡ g₂ -> pools g₁ ≡ pools g₂
-pools-≡ refl = refl
 
 -- Concurrent semantics
 data _,_⊢_↪_ {ls : List Label} (l : Label) (n : ℕ) : Global ls -> Global ls -> Set where

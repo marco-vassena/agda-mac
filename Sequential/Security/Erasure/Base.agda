@@ -1,10 +1,12 @@
 -- This module defines the erasure function, auxiliary lemmas and definitions.
 
-module Sequential.Security.Erasure.Base where
+open import Lattice
 
-open import Sequential.Semantics
+module Sequential.Security.Erasure.Base (𝓛 : Lattice) where
+
+open import Sequential.Semantics 𝓛 public
 open import Relation.Binary.PropositionalEquality hiding (subst)
-open import Data.List as L hiding (drop)
+import Data.List as L
 
 εˢ : ∀ {ls} -> (lₐ : Label) -> Store ls -> Store ls
 
@@ -358,8 +360,8 @@ open import Data.List as L hiding (drop)
 ε-wken {Bool} lₐ (unId t) p rewrite ε-wken lₐ t p = refl
 ε-wken {Bool} lₐ ∙ p = refl
 ε-wken {α => α₁} lₐ (Var x) p = refl
-ε-wken {α => α₁} lₐ (Abs t) p
-  rewrite ε-wken lₐ t (cons p) = refl
+ε-wken {α => α₁} lₐ (Abs t) p with ε-wken lₐ t (cons p)  -- Strangely just rewrite leads to unsolved unification about 𝓛
+... | eq rewrite eq = refl 
 ε-wken {α => α₁} lₐ (App t t₁) p
   rewrite ε-wken lₐ t p | ε-wken lₐ t₁ p = refl
 ε-wken {α => α₁} lₐ (If t Then t₁ Else t₂) p

@@ -1,8 +1,8 @@
+open import Lattice
 
-module Sequential.Security.Distributivity where
+module Sequential.Security.Distributivity (𝓛 : Lattice) where
 
-open import Sequential.Security.Erasure.Base public
-open import Sequential.Semantics
+open import Sequential.Security.Erasure.Base 𝓛 public
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 
 --------------------------------------------------------------------------------
@@ -21,7 +21,8 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 -- The erasure function distributes over the pure term reduction of Mac computations.
 ε-Mac-dist⇝ : ∀ {lᵈ τ} {c₁ c₂ : CTerm (Mac lᵈ τ)} (lₐ : Label) (x : Dec (lᵈ ⊑ lₐ)) -> c₁ ⇝ c₂ -> ε-Mac lₐ x c₁ ⇝ ε-Mac lₐ x c₂
 ε-Mac-dist⇝ lₐ (yes p) (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-Mac-dist⇝ {c₁ = App (Abs t) x} lₐ (yes p) Beta rewrite sym (ε-Mac-subst lₐ (yes p) x t) = Beta
+ε-Mac-dist⇝ lₐ (yes p) (Beta {t = t} {x = x}) with sym (ε-Mac-subst lₐ (yes p) x t)
+... | eq rewrite eq = Beta
 ε-Mac-dist⇝ lₐ (yes p) (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-Mac-dist⇝ lₐ (yes p) IfTrue = IfTrue
 ε-Mac-dist⇝ lₐ (yes p) IfFalse = IfFalse
@@ -48,16 +49,19 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 ε-Mac-dist⇝ lₐ (yes p₁) (label∙ p') | yes p = label∙ p'
 ε-Mac-dist⇝ lₐ (yes p) (label∙ p') | no ¬p = label∙ p'
 ε-Mac-dist⇝ lₐ (yes p) (unIdCtx t) = unIdCtx (ε-dist⇝ lₐ t)
-ε-Mac-dist⇝ {lᵈ} {c₂ = c₂} lₐ (yes p) unId rewrite ε-Mac-extensional (lᵈ ⊑? lₐ) (yes p) c₂ = unId
+ε-Mac-dist⇝ {lᵈ} {c₂ = c₂} lₐ (yes p) unId with ε-Mac-extensional (lᵈ ⊑? lₐ) (yes p) c₂
+... | eq rewrite eq = unId
 ε-Mac-dist⇝ lₐ (yes p) Hole = Hole
-ε-Mac-dist⇝ {c₁ = c₁} {c₂} lₐ (no ¬p) s rewrite ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p = Hole
+ε-Mac-dist⇝ {c₁ = c₁} {c₂} lₐ (no ¬p) s with ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p
+... | eq₁ | eq₂ rewrite eq₁ | eq₂ = Hole
 
 -- This proof is repetitive because, even though the erasure
 -- function is defined with a default case for all non Mac lᵈ τ types
 -- reasoning requires to explicitly pattern match on each of them.
 ε-dist⇝ {Mac lᵈ τ} lₐ s = ε-Mac-dist⇝ lₐ (lᵈ ⊑? lₐ) s
 ε-dist⇝ {（）} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-dist⇝ {（）} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
+ε-dist⇝ {（）}  lₐ (Beta {t = t} {x}) with sym (ε-subst lₐ x t)
+... | eq rewrite eq = Beta
 ε-dist⇝ {（）} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {（）} lₐ IfTrue = IfTrue
 ε-dist⇝ {（）} lₐ IfFalse = IfFalse
@@ -65,7 +69,8 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 ε-dist⇝ {（）} lₐ unId = unId
 ε-dist⇝ {（）} lₐ Hole = Hole
 ε-dist⇝ {Bool} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-dist⇝ {Bool} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
+ε-dist⇝ {Bool} lₐ (Beta {t = t} {x}) with sym (ε-subst lₐ x t)
+... | eq rewrite eq = Beta
 ε-dist⇝ {Bool} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {Bool} lₐ IfTrue = IfTrue
 ε-dist⇝ {Bool} lₐ IfFalse = IfFalse
@@ -73,7 +78,8 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 ε-dist⇝ {Bool} lₐ unId = unId
 ε-dist⇝ {Bool} lₐ Hole = Hole
 ε-dist⇝ {τ => τ₁} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-dist⇝ {τ => τ₁} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
+ε-dist⇝ {τ => τ₁}  lₐ (Beta {t = t} {x}) with sym (ε-subst lₐ x t)
+... | eq rewrite eq = Beta
 ε-dist⇝ {τ => τ₁} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {τ => τ₁} lₐ IfTrue = IfTrue
 ε-dist⇝ {τ => τ₁} lₐ IfFalse = IfFalse
@@ -82,7 +88,8 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 ε-dist⇝ {τ => τ₁} lₐ Hole = Hole
 
 ε-dist⇝ {Res lᵈ τ} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-dist⇝ {Res lᵈ τ} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
+ε-dist⇝ {Res lᵈ τ} lₐ (Beta {t = t} {x}) with sym (ε-subst lₐ x t)
+... | eq rewrite eq = Beta
 ε-dist⇝ {Res lᵈ τ} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {Res lᵈ τ} lₐ IfTrue = IfTrue
 ε-dist⇝ {Res lᵈ τ} lₐ IfFalse = IfFalse
@@ -186,7 +193,8 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 ε-dist⇝ {Res lᵈ τ} lₐ Hole = Hole
 
 ε-dist⇝ {Exception} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-dist⇝ {Exception} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
+ε-dist⇝ {Exception} lₐ (Beta {t = t} {x}) with sym (ε-subst lₐ x t)
+... | eq rewrite eq = Beta
 ε-dist⇝ {Exception} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {Exception} lₐ IfTrue = IfTrue
 ε-dist⇝ {Exception} lₐ IfFalse = IfFalse
@@ -195,7 +203,8 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 ε-dist⇝ {Exception} lₐ Hole = Hole
 
 ε-dist⇝ {Nat} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-dist⇝ {Nat} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
+ε-dist⇝ {Nat} lₐ (Beta {t = t} {x}) with sym (ε-subst lₐ x t)
+... | eq rewrite eq = Beta
 ε-dist⇝ {Nat} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {Nat} lₐ IfTrue = IfTrue
 ε-dist⇝ {Nat} lₐ IfFalse = IfFalse
@@ -204,7 +213,8 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 ε-dist⇝ {Nat} lₐ Hole = Hole
 
 ε-dist⇝ {Id τ} lₐ (AppL s) = AppL (ε-dist⇝ lₐ s)
-ε-dist⇝ {Id τ} {c₁ = App (Abs t) x} lₐ Beta rewrite sym (ε-subst lₐ x t) = Beta
+ε-dist⇝ {Id τ} lₐ (Beta {t = t} {x}) with sym (ε-subst lₐ x t)
+... | eq rewrite eq = Beta
 ε-dist⇝ {Id τ} lₐ (IfCond s) = IfCond (ε-dist⇝ lₐ s)
 ε-dist⇝ {Id τ} lₐ IfTrue = IfTrue
 ε-dist⇝ {Id τ} lₐ IfFalse = IfFalse
@@ -213,7 +223,8 @@ open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 ε-dist⇝ {Id τ} lₐ (appFunIdCtx₁ s) = appFunIdCtx₁ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Id τ} lₐ (appFunIdCtx₂ s) = appFunIdCtx₂ (ε-dist⇝ lₐ s)
 ε-dist⇝ {Id τ} lₐ (appFunIdCtx₃ s) = appFunIdCtx₃ (ε-dist⇝ lₐ s)
-ε-dist⇝ {Id τ} lₐ (appFunId {t = t} {x = x}) rewrite sym (ε-subst lₐ x t) = appFunId
+ε-dist⇝ {Id τ} lₐ (appFunId {t = t} {x = x}) with sym (ε-subst lₐ x t)
+... | eq rewrite eq = appFunId
 ε-dist⇝ {Id τ} lₐ Hole = Hole
 
 --------------------------------------------------------------------------------
@@ -343,7 +354,8 @@ newᵐ-≡ (no ¬p) m t = refl
 countᵐ-≡ : ∀ {l lₐ} -> l ⊑ lₐ -> (x : Dec (l ⊑ lₐ)) -> (m : Memory l) -> ε lₐ (count m) ≡ count (εᵐ lₐ x m)
 countᵐ-≡ p (yes p₁) ∙ = refl
 countᵐ-≡ p (yes p₁) [] = refl
-countᵐ-≡ p (yes p₁) (x ∷ m) rewrite countᵐ-≡ p (yes p₁) m = refl
+countᵐ-≡ p (yes p₁) (x ∷ m) with countᵐ-≡ p (yes p₁) m
+... | eq  rewrite eq = refl
 countᵐ-≡ p (no ¬p) m = ⊥-elim (¬p p)
 
 getMemory≡∙ : ∀ {l lₐ ls} -> ¬ (l ⊑ lₐ) -> (q : l ∈ ls) (s : Store ls) -> getMemory q (εˢ lₐ s) ≡ ∙
@@ -414,13 +426,15 @@ readˢ-≡∙ ¬p (x ∷ s) (There q) r = readˢ-≡∙ ¬p s q r
 writeᵐ-≡ : ∀ {l lₐ τ n Σ₁ Σ₂} -> (c : Cell τ Σ₁) (p : l ⊑ lₐ) (m : Memory l) (r : TypedIx τ Σ₂ n m) ->
              (εᵐ lₐ (yes p) m [ εᵐ-TypedIx p m r ]≔ εᶜ lₐ c) ≡ εᵐ lₐ (yes p) (m [ r ]≔ c) 
 writeᵐ-≡ c p ._ Here = refl
-writeᵐ-≡ c p ._ (There r) rewrite writeᵐ-≡ c p _ r = refl
+writeᵐ-≡ c p ._ (There r) with writeᵐ-≡ c p _ r
+... | eq rewrite eq = refl
 writeᵐ-≡ c p .∙ ∙ = refl
 
 writeˢ-≡ : ∀ {l lₐ ls τ n Σ₁ Σ₂} -> (c : Cell τ Σ₁) (p : l ⊑ lₐ) (q : l ∈ ls) (Σ : Store ls) (r : TypedIx τ Σ₂ n (getMemory q Σ)) ->
            εˢ lₐ (Σ [ q ][ r ]≔ c) ≡ εˢ lₐ Σ [ q ][ ε-TypedIx p Σ q r ]≔ εᶜ lₐ c
 writeˢ-≡ {l} {lₐ}  c p Here (x ∷ s) r with l ⊑? lₐ
-writeˢ-≡ c p₁ Here (m ∷ s) r | yes p rewrite writeᵐ-≡ c p m r = refl
+writeˢ-≡ c p₁ Here (m ∷ s) r | yes p with writeᵐ-≡ c p m r
+... | eq rewrite eq = refl
 writeˢ-≡ c p Here (x ∷ s) r | no ¬p = ⊥-elim (¬p p)
 writeˢ-≡ c p (There q) (x ∷ s) r rewrite writeˢ-≡ c p q s r = refl
 
@@ -464,14 +478,17 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 ε-Mac-dist lₐ (yes p₁) (joinEx p₂ bs) | yes p = joinEx p₂ (ε-Mac-distₓ⇓ lₐ p bs)
 ε-Mac-dist lₐ (yes p) (joinEx p₁ (BigStep x ss)) | no ¬p rewrite εˢ-≡⋆ lₐ ¬p ss = join∙ p₁ 
 ε-Mac-dist lₐ (yes p₁) (new {h = h} {s = s} {t = t} p q) with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p₂ q) | yes p rewrite newˢ-≡ lₐ q s ⟦ t ⟧ | count-≡ p q s = new p₂ q
+ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p₂ q) | yes p with newˢ-≡ lₐ q s ⟦ t ⟧ | count-≡ p q s
+... | eq₁ | eq₂ rewrite eq₁ | eq₂ = new p₂ q
 ε-Mac-dist lₐ (yes p₁) (new {s = s} {t = t} p q) | no ¬p rewrite newˢ-≡ lₐ q s ⟦ t ⟧ | count≡∙ ¬p q s = new p q
 ε-Mac-dist lₐ (yes p) (readCtx {l = l} p₁ s) with l ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (readCtx p₂ s) | yes p = readCtx p₂ (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p) (readCtx p₁ s) | no ¬p = ⊥-elim (¬p (trans-⊑ p₁ p))
 ε-Mac-dist {ls = ls} lₐ (yes p') (read {l = l} {s = s} p q r) with l ⊑? lₐ
-ε-Mac-dist lₐ (yes p') (read {s = s} p₁ q r) | yes p rewrite readˢ-≡ p s q r = read p₁ q (ε-TypedIx p s q r)
-ε-Mac-dist lₐ (yes p') (read {s = s} p q r) | no ¬p rewrite readˢ-≡∙ ¬p s q r = read p q (ε-TypedIx∙ ¬p s q r)
+ε-Mac-dist lₐ (yes p') (read {s = s} p₁ q r) | yes p with readˢ-≡ p s q r
+... | eq rewrite eq = read p₁ q (ε-TypedIx p s q r)
+ε-Mac-dist lₐ (yes p') (read {s = s} p q r) | no ¬p with readˢ-≡∙ ¬p s q r
+... | eq rewrite eq = read p q (ε-TypedIx∙ ¬p s q r)
 ε-Mac-dist lₐ (yes p₁) (readEx {l = l} {h = h} p) with l ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) (readEx p₂) | yes p = readEx p₂
 ε-Mac-dist lₐ (yes p₁) (readEx p) | no ¬p = ⊥-elim (¬p (trans-⊑ p p₁))
@@ -486,7 +503,8 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 ε-Mac-dist lₐ (yes p₁) (writeEx {s = s} {c = c} p q r) | no ¬p = writeEx' c p ¬p q s r
 ε-Mac-dist lₐ (yes p) (fork {h = h} p₁ t) = fork p₁ (ε-Mac lₐ (h ⊑? lₐ) t)
 ε-Mac-dist lₐ (yes p) (newMVar {h = h} {Σ = Σ} p₁ q) with h ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (newMVar {τ = τ} {Σ = Σ} p₂ q) | yes p rewrite newˢ-≡ {τ = τ} lₐ q Σ ⊞ | count-≡ p q Σ = newMVar p₂ q
+ε-Mac-dist lₐ (yes p₁) (newMVar {τ = τ} {Σ = Σ} p₂ q) | yes p with newˢ-≡ {τ = τ} lₐ q Σ ⊞ | count-≡ p q Σ
+... | eq₁ | eq₂ rewrite eq₁ | eq₂ = newMVar p₂ q
 ε-Mac-dist lₐ (yes p) (newMVar {τ = τ} {Σ = Σ} p₁ q) | no ¬p rewrite newˢ-≡ {τ = τ} lₐ q Σ ⊞ | count≡∙ ¬p q Σ = newMVar p₁ q
 ε-Mac-dist lₐ (yes p) (putMVarCtx s) = putMVarCtx (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p) (putMVar {l = lᵈ} {Σ = Σ} q r) with lᵈ ⊑? lₐ
@@ -497,13 +515,14 @@ writeEx' {lₐ = lₐ} c p ¬p q s r = aux (write p q (ε-TypedIx∙ ¬p s q r))
 ε-Mac-dist lₐ (yes p) putMVarEx | no ¬p = ⊥-elim (¬p p)
 ε-Mac-dist lₐ (yes p) (takeMVarCtx s) = takeMVarCtx (εᵖ-dist lₐ s)
 ε-Mac-dist lₐ (yes p) (takeMVar {l = lᵈ} {Σ = Σ} q r) with lᵈ ⊑? lₐ
-ε-Mac-dist lₐ (yes p₁) (takeMVar {Σ = Σ} q r) | yes p rewrite readˢ-≡ p Σ q r = takeMVar q (ε-TypedIx p Σ q r)
+ε-Mac-dist lₐ (yes p₁) (takeMVar {Σ = Σ} q r) | yes p with readˢ-≡ p Σ q r
+... | eq rewrite eq = takeMVar q (ε-TypedIx p Σ q r)
 ε-Mac-dist lₐ (yes p) (takeMVar q r) | no ¬p = ⊥-elim (¬p p) 
 ε-Mac-dist lₐ (yes p) (takeMVarEx {l = lᵈ})  with lᵈ ⊑? lₐ
 ε-Mac-dist lₐ (yes p₁) takeMVarEx | yes p = takeMVarEx
 ε-Mac-dist lₐ (yes p) takeMVarEx | no ¬p = ⊥-elim (¬p p)
-ε-Mac-dist {c₁ = c₁} {c₂ = c₂} lₐ (no ¬p) s
-  rewrite ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p | εˢ-≡ lₐ ¬p s = Pure Hole
+ε-Mac-dist {c₁ = c₁} {c₂ = c₂} lₐ (no ¬p) s with ε-Mac-CTerm≡∙ lₐ c₁ ¬p | ε-Mac-CTerm≡∙ lₐ c₂ ¬p | εˢ-≡ lₐ ¬p s
+... | eq₁ | eq₂ | eq₃ rewrite eq₁ | eq₂ | eq₃ = Pure Hole
 
 εᵖ-dist {（）} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)
 εᵖ-dist {Bool} lₐ (Pure s) = Pure (ε-dist⇝ lₐ s)

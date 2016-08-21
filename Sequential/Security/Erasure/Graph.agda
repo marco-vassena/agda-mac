@@ -1,8 +1,8 @@
-module Sequential.Security.Erasure.Graph where
+open import Lattice
 
-open import Types
-open import Sequential.Calculus
-open import Sequential.Security.Erasure.Base
+module Sequential.Security.Erasure.Graph (𝓛 : Lattice) where
+
+open import Sequential.Security.Erasure.Base  𝓛
 open import Data.Sum
 
 -- TODO consider using Sensitive and Insensitive view directly in ε
@@ -11,8 +11,8 @@ data Sensitive (lₐ : Label) : Ty -> Set where
   Resᴴ : ∀ {h τ} -> ¬ (h ⊑ lₐ) -> Sensitive lₐ (Res h τ)
 
 data Insensitive (lₐ : Label) : Ty -> Set where
-  Macᴸ : ∀ {τ l} {{p : l ⊑ lₐ}} -> Insensitive lₐ (Mac l τ)
-  Resᴸ : ∀ {τ l} {{p : l ⊑ lₐ}} -> Insensitive lₐ (Res l τ)
+  Macᴸ : ∀ {τ l} -> l ⊑ lₐ -> Insensitive lₐ (Mac l τ)
+  Resᴸ : ∀ {τ l} -> l ⊑ lₐ -> Insensitive lₐ (Res l τ)
   （） : Insensitive lₐ （）
   Bool : Insensitive lₐ Bool
   Nat : Insensitive lₐ Nat
@@ -22,18 +22,18 @@ data Insensitive (lₐ : Label) : Ty -> Set where
 
 -- Sensitive and insensitive are mutually exclusive
 sensOrInsens : ∀ {τ lₐ} -> Sensitive lₐ τ -> Insensitive lₐ τ -> ⊥
-sensOrInsens (Macᴴ ¬p) (Macᴸ {{p}}) = ¬p p
-sensOrInsens (Resᴴ ¬p) (Resᴸ {{p}}) = ¬p p
+sensOrInsens (Macᴴ ¬p) (Macᴸ p) = ¬p p
+sensOrInsens (Resᴴ ¬p) (Resᴸ p) = ¬p p
 
 isSensitive? : (lₐ : Label) (τ : Ty) -> (Sensitive lₐ τ) ⊎ (Insensitive lₐ τ)
 isSensitive? lₐ （） = inj₂ （）
 isSensitive? lₐ Bool = inj₂ Bool
 isSensitive? lₐ (τ => τ₁) = inj₂ (τ => τ₁)
 isSensitive? lₐ (Mac l τ) with l ⊑? lₐ
-isSensitive? lₐ (Mac l τ) | yes p = inj₂ Macᴸ
+isSensitive? lₐ (Mac l τ) | yes p = inj₂ (Macᴸ p)
 isSensitive? lₐ (Mac l τ) | no ¬p = inj₁ (Macᴴ ¬p)
 isSensitive? lₐ (Res l τ) with l ⊑? lₐ
-isSensitive? lₐ (Res l τ) | yes p = inj₂ Resᴸ
+isSensitive? lₐ (Res l τ) | yes p = inj₂ (Resᴸ p)
 isSensitive? lₐ (Res l τ) | no ¬p = inj₁ (Resᴴ ¬p)
 isSensitive? lₐ Exception = inj₂ Exception
 isSensitive? lₐ Nat = inj₂ Nat
@@ -97,55 +97,55 @@ mutual
                   ErasureIso (Id β) (f <*>ᴵ x) (fᵉ <*>ᴵ xᵉ)
 
     Star : ∀ {α β l} {f fᵉ : Term Δ (Labeled l (α => β))} {x xᵉ : Term Δ (Labeled l α)} -> (p : l ⊑ lₐ) ->
-                     ErasureIso {lₐ} Resᴸ f fᵉ ->
-                     ErasureIso {lₐ} Resᴸ x xᵉ ->
-                     ErasureIso Resᴸ (f <*> x) (fᵉ <*> xᵉ) 
+                     ErasureIso {lₐ} (Resᴸ p) f fᵉ ->
+                     ErasureIso {lₐ} (Resᴸ p) x xᵉ ->
+                     ErasureIso (Resᴸ p) (f <*> x) (fᵉ <*> xᵉ) 
 
     Star∙ : ∀ {α β l} {f fᵉ : Term Δ (Labeled l (α => β))} {x xᵉ : Term Δ (Labeled l α)} -> (p : l ⊑ lₐ) ->
-                     ErasureIso {lₐ} Resᴸ f fᵉ ->
-                     ErasureIso {lₐ} Resᴸ x xᵉ ->
-                     ErasureIso Resᴸ (f <*>∙ x) (fᵉ <*>∙ xᵉ) 
+                     ErasureIso {lₐ} (Resᴸ p) f fᵉ ->
+                     ErasureIso {lₐ} (Resᴸ p) x xᵉ ->
+                     ErasureIso (Resᴸ p) (f <*>∙ x) (fᵉ <*>∙ xᵉ) 
 
-    Res : ∀ {τ l} {t tᵉ : Term Δ τ} -> (p : l ⊑ lₐ) -> Erasure lₐ t tᵉ -> ErasureIso Resᴸ (Res t) (Res tᵉ)
-    Resₓ : ∀ {τ l} {t tᵉ : Term Δ Exception} -> (p : l ⊑ lₐ) -> ErasureIso {lₐ = lₐ} Exception t tᵉ -> ErasureIso (Resᴸ) (Resₓ {α = τ} t) (Resₓ tᵉ)
+    Res : ∀ {τ l} {t tᵉ : Term Δ τ} -> (p : l ⊑ lₐ) -> Erasure lₐ t tᵉ -> ErasureIso (Resᴸ p) (Res t) (Res tᵉ)
+    Resₓ : ∀ {τ l} {t tᵉ : Term Δ Exception} -> (p : l ⊑ lₐ) -> ErasureIso {lₐ = lₐ} Exception t tᵉ -> ErasureIso (Resᴸ p) (Resₓ {α = τ} t) (Resₓ tᵉ)
 
     relabel : ∀ {τ l h} {t tᵉ : Term Δ (Labeled l τ)} -> (p₁ : l ⊑ h) (p₂ : h ⊑ lₐ) -> Erasure lₐ t tᵉ ->
-                        ErasureIso Resᴸ (relabel p₁ t) (relabel p₁ tᵉ)
+                        ErasureIso (Resᴸ p₂) (relabel p₁ t) (relabel p₁ tᵉ)
     relabel∙ : ∀ {τ l h} {t tᵉ : Term Δ (Labeled l τ)} -> (p₁ : l ⊑ h) (p₂ : h ⊑ lₐ) -> Erasure lₐ t tᵉ ->
-                        ErasureIso Resᴸ (relabel∙ p₁ t) (relabel∙ p₁ tᵉ)
+                        ErasureIso (Resᴸ p₂) (relabel∙ p₁ t) (relabel∙ p₁ tᵉ)
 
-    Return : ∀ {τ l} {t tᵉ : Term Δ τ} -> (p : l ⊑ lₐ) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (Return t) (Return tᵉ)
+    Return : ∀ {τ l} {t tᵉ : Term Δ τ} -> (p : l ⊑ lₐ) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p) (Return t) (Return tᵉ)
     Bind : ∀ {α β l} {m mᵉ : Term Δ (Mac l α)} {k kᵉ : Term Δ (α => Mac l β)} -> (p : l ⊑ lₐ) ->
-                        ErasureIso Macᴸ m mᵉ -> ErasureIso {lₐ} (α => Mac l β) k kᵉ ->  ErasureIso Macᴸ (m >>= k) (mᵉ >>= kᵉ)
+                        ErasureIso (Macᴸ p) m mᵉ -> ErasureIso {lₐ} (α => Mac l β) k kᵉ ->  ErasureIso (Macᴸ p) (m >>= k) (mᵉ >>= kᵉ)
 
-    Throw : ∀ {τ l} {t tᵉ : Term Δ Exception} -> (p : l ⊑ lₐ) -> ErasureIso {lₐ} Exception t tᵉ -> ErasureIso Macᴸ (Throw {{α = τ}} t) (Throw tᵉ)
+    Throw : ∀ {τ l} {t tᵉ : Term Δ Exception} -> (p : l ⊑ lₐ) -> ErasureIso {lₐ} Exception t tᵉ -> ErasureIso (Macᴸ p) (Throw {α = τ} t) (Throw tᵉ)
 
     Catch : ∀ {τ l} {t tᵉ : Term Δ (Mac l τ)} {h hᵉ : Term Δ (Exception => (Mac l τ))} -> (p : l ⊑ lₐ) ->
-                       ErasureIso Macᴸ t tᵉ -> ErasureIso {lₐ} (Exception => Mac l τ) h hᵉ -> ErasureIso Macᴸ (Catch t h) (Catch tᵉ hᵉ)
+                       ErasureIso (Macᴸ p) t tᵉ -> ErasureIso {lₐ} (Exception => Mac l τ) h hᵉ -> ErasureIso (Macᴸ p) (Catch t h) (Catch tᵉ hᵉ)
 
-    Mac : ∀ {τ l} {t tᵉ : Term Δ τ} -> (p : l ⊑ lₐ) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (Mac t) (Mac tᵉ)
-    Macₓ : ∀ {τ l} {t tᵉ : Term Δ Exception} -> (p : l ⊑ lₐ) -> ErasureIso {lₐ} Exception t tᵉ -> ErasureIso Macᴸ (Macₓ {α = τ} t) (Macₓ tᵉ)
+    Mac : ∀ {τ l} {t tᵉ : Term Δ τ} -> (p : l ⊑ lₐ) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p) (Mac t) (Mac tᵉ)
+    Macₓ : ∀ {τ l} {t tᵉ : Term Δ Exception} -> (p : l ⊑ lₐ) -> ErasureIso {lₐ} Exception t tᵉ -> ErasureIso (Macᴸ p) (Macₓ {α = τ} t) (Macₓ tᵉ)
 
-    labelᴸ : ∀ {τ l h} {t tᵉ : Term Δ τ} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) (p₃ : h ⊑ lₐ) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (label p₂ t) (label p₂ tᵉ)
-    labelᴴ : ∀ {τ l h} {t tᵉ : Term Δ τ} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) (p₃ : ¬ (h ⊑ lₐ)) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (label p₂ t) (label∙ p₂ tᵉ)
-    label∙ : ∀ {τ l h} {t tᵉ : Term Δ τ} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (label∙ p₂ t) (label∙ p₂ tᵉ)
+    labelᴸ : ∀ {τ l h} {t tᵉ : Term Δ τ} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) (p₃ : h ⊑ lₐ) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p₁) (label p₂ t) (label p₂ tᵉ)
+    labelᴴ : ∀ {τ l h} {t tᵉ : Term Δ τ} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) (p₃ : ¬ (h ⊑ lₐ)) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p₁) (label p₂ t) (label∙ p₂ tᵉ)
+    label∙ : ∀ {τ l h} {t tᵉ : Term Δ τ} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p₁) (label∙ p₂ t) (label∙ p₂ tᵉ)
     
-    unlabel : ∀ {τ l h} {t tᵉ : Term Δ (Labeled l τ)} -> (p₁ : h ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (unlabel p₂ t) (unlabel p₂ tᵉ)
+    unlabel : ∀ {τ l h} {t tᵉ : Term Δ (Labeled l τ)} -> (p₁ : h ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p₁) (unlabel p₂ t) (unlabel p₂ tᵉ)
 
-    joinᴸ : ∀ {τ l h} {t tᵉ : Term Δ (Mac h τ)} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) (p₃ : h ⊑ lₐ) -> ErasureIso Macᴸ t tᵉ -> ErasureIso Macᴸ (join p₂ t) (join p₂ tᵉ)
-    joinᴴ : ∀ {τ l h} {t tᵉ : Term Δ (Mac h τ)} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) (p₃ : ¬ (h ⊑ lₐ)) -> ErasureMac∙ (Macᴴ p₃) t tᵉ -> ErasureIso Macᴸ (join p₂ t) (join∙ p₂ tᵉ)
-    join∙ : ∀ {τ l h} {t tᵉ : Term Δ (Mac h τ)} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (join∙ p₂ t) (join∙ p₂ tᵉ)
+    joinᴸ : ∀ {τ l h} {t tᵉ : Term Δ (Mac h τ)} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) (p₃ : h ⊑ lₐ) -> ErasureIso (Macᴸ p₃) t tᵉ -> ErasureIso (Macᴸ p₁) (join p₂ t) (join p₂ tᵉ)
+    joinᴴ : ∀ {τ l h} {t tᵉ : Term Δ (Mac h τ)} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) (p₃ : ¬ (h ⊑ lₐ)) -> ErasureMac∙ (Macᴴ p₃) t tᵉ -> ErasureIso (Macᴸ p₁) (join p₂ t) (join∙ p₂ tᵉ)
+    join∙ : ∀ {τ l h} {t tᵉ : Term Δ (Mac h τ)} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p₁) (join∙ p₂ t) (join∙ p₂ tᵉ)
 
-    read : ∀ {τ l h} {t tᵉ : Term Δ (Ref l τ)} -> (p₁ : h ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (read {α = τ} p₂ t) (read p₂ tᵉ)
+    read : ∀ {τ l h} {t tᵉ : Term Δ (Ref l τ)} -> (p₁ : h ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p₁) (read {α = τ} p₂ t) (read p₂ tᵉ)
     write : ∀ {τ l h} {r rᵉ : Term Δ (Ref h τ)} {t tᵉ : Term Δ τ} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) ->
-                   Erasure lₐ r rᵉ -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (write p₂ r t) (write p₂ rᵉ tᵉ)
-    new : ∀ {τ l h} {t tᵉ : Term Δ τ} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (new p₂ t) (new p₂ tᵉ)
-    fork : ∀ {l h} {t tᵉ : Term Δ (Mac h _)} ->  (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (fork p₂ t) (fork p₂ tᵉ)
+                   Erasure lₐ r rᵉ -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p₁) (write p₂ r t) (write p₂ rᵉ tᵉ)
+    new : ∀ {τ l h} {t tᵉ : Term Δ τ} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p₁) (new p₂ t) (new p₂ tᵉ)
+    fork : ∀ {l h} {t tᵉ : Term Δ (Mac h _)} ->  (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p₁) (fork p₂ t) (fork p₂ tᵉ)
     
-    newMVar : ∀ {τ l h} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> ErasureIso Macᴸ (newMVar {α = τ} p₂) (newMVar {α = τ} p₂)
-    takeMVar : ∀ {τ l} {t tᵉ : Term Δ (MVar l τ)} -> (p : l ⊑ lₐ) -> ErasureIso Resᴸ t tᵉ -> ErasureIso Macᴸ (takeMVar {α = τ} t) (takeMVar tᵉ)
+    newMVar : ∀ {τ l h} -> (p₁ : l ⊑ lₐ) (p₂ : l ⊑ h) -> ErasureIso (Macᴸ p₁) (newMVar {α = τ} p₂) (newMVar {α = τ} p₂)
+    takeMVar : ∀ {τ l} {t tᵉ : Term Δ (MVar l τ)} -> (p : l ⊑ lₐ) -> ErasureIso (Resᴸ p) t tᵉ -> ErasureIso (Macᴸ p) (takeMVar {α = τ} t) (takeMVar tᵉ)
     putMVar : ∀ {τ l} {r rᵉ : Term Δ (MVar l τ)} {t tᵉ : Term Δ τ} -> (p : l ⊑ lₐ) ->
-                ErasureIso Resᴸ r rᵉ -> Erasure lₐ t tᵉ -> ErasureIso Macᴸ (putMVar r t) (putMVar rᵉ tᵉ)
+                ErasureIso (Resᴸ p) r rᵉ -> Erasure lₐ t tᵉ -> ErasureIso (Macᴸ p) (putMVar r t) (putMVar rᵉ tᵉ)
     
     ξ : ErasureIso Exception ξ ξ
     zero : ErasureIso Nat zero zero
@@ -340,52 +340,52 @@ Erasure-ε (Res∙ ¬p x) = ErasureRes∙-ε ¬p x
 ε-Mac-yes-ErasureIso nonS p (Var x) = Var x nonS
 ε-Mac-yes-ErasureIso nonS p (App t t₁) = App nonS (ε-ErasureIso (_ => Mac _ _) t) (ε-Erasure t₁)
 ε-Mac-yes-ErasureIso nonS p (If t Then t₁ Else t₂) = Ite nonS (ε-ErasureIso Bool t) (ε-Mac-yes-ErasureIso nonS p t₁) (ε-Mac-yes-ErasureIso nonS p t₂)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (Return t) = Return _ (ε-Erasure t)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (t >>= t₁) = Bind _ (ε-Mac-yes-ErasureIso Macᴸ p₁ t) (ε-ErasureIso (_ => Mac _ _) t₁)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (Throw t) = Throw _ (ε-ErasureIso Exception t)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (Catch t t₁) = Catch _ (ε-Mac-yes-ErasureIso Macᴸ p₁ t) (ε-ErasureIso (Exception => Mac _ _) t₁)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (Mac t) = Mac _ (ε-Erasure t)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (Macₓ t) = Macₓ _ (ε-ErasureIso Exception t)
-ε-Mac-yes-ErasureIso {lₐ = lₐ} Macᴸ p₁ (label {h = h} x t) with h ⊑? lₐ
-ε-Mac-yes-ErasureIso Macᴸ p₂ (label x t) | yes p = labelᴸ _ x p (ε-Erasure t)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (label x t) | no ¬p = labelᴴ _ x ¬p (ε-Erasure t)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (label∙ x t) = label∙ _ x (ε-Erasure t)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (unlabel x t) = unlabel _ x (ε-Erasure t)
-ε-Mac-yes-ErasureIso {lₐ = lₐ} Macᴸ p (join {h = h} x t) with h ⊑? lₐ
-ε-Mac-yes-ErasureIso Macᴸ p₂ (join x t) | yes p = joinᴸ _ x p (ε-Mac-yes-ErasureIso Macᴸ p t)
-ε-Mac-yes-ErasureIso Macᴸ p₁ (join x t) | no ¬p = joinᴴ _ x ¬p (ε-Mac-no-ErasureIso ¬p t)
-ε-Mac-yes-ErasureIso Macᴸ p (join∙ x t) = join∙ _ x (ε-Erasure t)
-ε-Mac-yes-ErasureIso Macᴸ p (read x t) = read _ x (ε-Erasure t)
-ε-Mac-yes-ErasureIso Macᴸ p (write x t t₁) = write _ x (ε-Erasure t) (ε-Erasure t₁)
-ε-Mac-yes-ErasureIso Macᴸ p (new x t) = new _ x (ε-Erasure t)
-ε-Mac-yes-ErasureIso Macᴸ p (fork x t) = fork _ x (ε-Erasure t)
-ε-Mac-yes-ErasureIso Macᴸ p (newMVar x) = newMVar _ x
-ε-Mac-yes-ErasureIso Macᴸ p (takeMVar t) = takeMVar _ (ε-ErasureIso Resᴸ t)
-ε-Mac-yes-ErasureIso Macᴸ p (putMVar t t₁) = putMVar _ (ε-ErasureIso Resᴸ t) (ε-Erasure t₁)
-ε-Mac-yes-ErasureIso Macᴸ p ∙ = ∙ Macᴸ
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (Return t) = Return _ (ε-Erasure t)
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (t >>= t₁) = Bind _ (ε-Mac-yes-ErasureIso (Macᴸ p) p₁ t) (ε-ErasureIso (_ => Mac _ _) t₁)
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (Throw t) = Throw _ (ε-ErasureIso Exception t)
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (Catch t t₁) = Catch _ (ε-Mac-yes-ErasureIso (Macᴸ p) p₁ t) (ε-ErasureIso (Exception => Mac _ _) t₁)
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (Mac t) = Mac _ (ε-Erasure t)
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (Macₓ t) = Macₓ _ (ε-ErasureIso Exception t)
+ε-Mac-yes-ErasureIso {lₐ = lₐ} (Macᴸ p) p₁ (label {h = h} x t) with h ⊑? lₐ
+ε-Mac-yes-ErasureIso (Macᴸ p') p₂ (label x t) | yes p = labelᴸ _ x p (ε-Erasure t)
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (label x t) | no ¬p = labelᴴ _ x ¬p (ε-Erasure t)
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (label∙ x t) = label∙ _ x (ε-Erasure t)
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (unlabel x t) = unlabel _ x (ε-Erasure t)
+ε-Mac-yes-ErasureIso {lₐ = lₐ} (Macᴸ p') p (join {h = h} x t) with h ⊑? lₐ
+ε-Mac-yes-ErasureIso (Macᴸ p') p₂ (join x t) | yes p = joinᴸ _ x p (ε-Mac-yes-ErasureIso (Macᴸ p) p t)
+ε-Mac-yes-ErasureIso (Macᴸ p) p₁ (join x t) | no ¬p = joinᴴ _ x ¬p (ε-Mac-no-ErasureIso ¬p t)
+ε-Mac-yes-ErasureIso (Macᴸ p') p (join∙ x t) = join∙ _ x (ε-Erasure t)
+ε-Mac-yes-ErasureIso (Macᴸ p') p (read x t) = read _ x (ε-Erasure t)
+ε-Mac-yes-ErasureIso (Macᴸ p') p (write x t t₁) = write _ x (ε-Erasure t) (ε-Erasure t₁)
+ε-Mac-yes-ErasureIso (Macᴸ p') p (new x t) = new _ x (ε-Erasure t)
+ε-Mac-yes-ErasureIso (Macᴸ p') p (fork x t) = fork _ x (ε-Erasure t)
+ε-Mac-yes-ErasureIso (Macᴸ p') p (newMVar x) = newMVar _ x
+ε-Mac-yes-ErasureIso (Macᴸ p') p (takeMVar t) = takeMVar _ (ε-ErasureIso (Resᴸ p') t)
+ε-Mac-yes-ErasureIso (Macᴸ p') p (putMVar t t₁) = putMVar _ (ε-ErasureIso (Resᴸ p') t) (ε-Erasure t₁)
+ε-Mac-yes-ErasureIso (Macᴸ p') p ∙ = ∙ (Macᴸ p')
 
-ε-ErasureIso {Mac l τ} {lₐ} Macᴸ t with l ⊑? lₐ
-ε-ErasureIso {Mac l τ} Macᴸ t | yes p = ε-Mac-yes-ErasureIso Macᴸ p t
-ε-ErasureIso {Mac l τ} Macᴸ t | no ¬p = ⊥-elim (sensOrInsens (Macᴴ {τ = τ} ¬p) Macᴸ)
-ε-ErasureIso Resᴸ (unId t) = unId Resᴸ (ε-ErasureIso (Id (Res _ _)) t)
-ε-ErasureIso Resᴸ (Var x) = Var x Resᴸ
-ε-ErasureIso Resᴸ (App t t₁) = App Resᴸ (ε-ErasureIso (_ => _) t) (ε-Erasure t₁)
-ε-ErasureIso Resᴸ (If t Then t₁ Else t₂) = Ite Resᴸ (ε-ErasureIso Bool t) (ε-ErasureIso Resᴸ t₁) (ε-ErasureIso Resᴸ t₂)
-ε-ErasureIso {Res l τ} {lₐ} Resᴸ (Res t) with l ⊑? lₐ
-ε-ErasureIso {Res l τ} Resᴸ (Res t) | yes p = Res _ (ε-Erasure t)
-ε-ErasureIso {Res l τ} Resᴸ (Res t) | no ¬p = ⊥-elim (sensOrInsens (Resᴴ {τ = τ} ¬p) Resᴸ)
-ε-ErasureIso {Res l τ} {lₐ} Resᴸ (Resₓ t) with l ⊑? lₐ
-ε-ErasureIso {Res l τ} Resᴸ (Resₓ t) | yes p = Resₓ _ (ε-ErasureIso Exception t)
-ε-ErasureIso {Res l τ} Resᴸ (Resₓ t) | no ¬p = ⊥-elim (sensOrInsens (Resᴴ {τ = τ} ¬p) Resᴸ)
-ε-ErasureIso {Res l (Id τ)} {lₐ} Resᴸ (relabel x t) with l ⊑? lₐ
-ε-ErasureIso {Res l (Id τ)} Resᴸ (relabel x t) | yes p = relabel x _ (ε-Erasure t)
-ε-ErasureIso {Res l (Id τ)} Resᴸ (relabel x t) | no ¬p = ⊥-elim (sensOrInsens (Resᴴ {τ = τ} ¬p) Resᴸ)
-ε-ErasureIso {Res l (Id τ)} {lₐ} Resᴸ (relabel∙ x t) = relabel∙ x _ (ε-Erasure t)
-ε-ErasureIso {Res l (Id τ)} {lₐ} Resᴸ (t <*> t₁) with l ⊑? lₐ
-ε-ErasureIso {Res l (Id τ)} Resᴸ (t <*> t₁) | yes p = Star _ (ε-ErasureIso Resᴸ t) (ε-ErasureIso Resᴸ t₁)
-ε-ErasureIso {Res l (Id τ)} Resᴸ (t <*> t₁) | no ¬p = ⊥-elim (sensOrInsens (Resᴴ {τ = τ} ¬p) Resᴸ)
-ε-ErasureIso Resᴸ (t <*>∙ t₁) = Star∙ _ (ε-ErasureIso Resᴸ t) (ε-ErasureIso Resᴸ t₁)
-ε-ErasureIso Resᴸ ∙ = ∙ Resᴸ
+ε-ErasureIso {Mac l τ} {lₐ} (Macᴸ p) t with l ⊑? lₐ
+ε-ErasureIso {Mac l τ} (Macᴸ p') t | yes p = ε-Mac-yes-ErasureIso (Macᴸ p') p t
+ε-ErasureIso {Mac l τ} (Macᴸ p) t | no ¬p = ⊥-elim (¬p p)
+ε-ErasureIso (Resᴸ p) (unId t) = unId (Resᴸ p) (ε-ErasureIso (Id (Res _ _)) t)
+ε-ErasureIso (Resᴸ p) (Var x) = Var x (Resᴸ p)
+ε-ErasureIso (Resᴸ p) (App t t₁) = App (Resᴸ p) (ε-ErasureIso (_ => _) t) (ε-Erasure t₁)
+ε-ErasureIso (Resᴸ p) (If t Then t₁ Else t₂) = Ite (Resᴸ p) (ε-ErasureIso Bool t) (ε-ErasureIso (Resᴸ p) t₁) (ε-ErasureIso (Resᴸ p) t₂)
+ε-ErasureIso {Res l τ} {lₐ} (Resᴸ p') (Res t) with l ⊑? lₐ
+ε-ErasureIso {Res l τ} (Resᴸ _) (Res t) | yes p = Res _ (ε-Erasure t)
+ε-ErasureIso {Res l τ} (Resᴸ p) (Res t) | no ¬p = ⊥-elim (¬p p)
+ε-ErasureIso {Res l τ} {lₐ} (Resᴸ p) (Resₓ t) with l ⊑? lₐ
+ε-ErasureIso {Res l τ} (Resᴸ p') (Resₓ t) | yes p = Resₓ _ (ε-ErasureIso Exception t)
+ε-ErasureIso {Res l τ} (Resᴸ p) (Resₓ t) | no ¬p = ⊥-elim (¬p p)
+ε-ErasureIso {Res l (Id τ)} {lₐ} (Resᴸ p) (relabel x t) with l ⊑? lₐ
+ε-ErasureIso {Res l (Id τ)} (Resᴸ p') (relabel x t) | yes p = relabel x _ (ε-Erasure t)
+ε-ErasureIso {Res l (Id τ)} (Resᴸ p) (relabel x t) | no ¬p = ⊥-elim (¬p p)
+ε-ErasureIso {Res l (Id τ)} {lₐ} (Resᴸ p) (relabel∙ x t) = relabel∙ x _ (ε-Erasure t)
+ε-ErasureIso {Res l (Id τ)} {lₐ} (Resᴸ p) (t <*> t₁) with l ⊑? lₐ
+ε-ErasureIso {Res l (Id τ)} (Resᴸ p') (t <*> t₁) | yes p = Star _ (ε-ErasureIso (Resᴸ p') t) (ε-ErasureIso (Resᴸ p') t₁)
+ε-ErasureIso {Res l (Id τ)} (Resᴸ p) (t <*> t₁) | no ¬p = ⊥-elim (¬p p)
+ε-ErasureIso (Resᴸ p) (t <*>∙ t₁) = Star∙ _ (ε-ErasureIso (Resᴸ p) t) (ε-ErasureIso (Resᴸ p) t₁)
+ε-ErasureIso (Resᴸ p) ∙ = ∙ (Resᴸ p)
 ε-ErasureIso （） （） = （）
 ε-ErasureIso （） (unId t) = unId （） (ε-ErasureIso (Id （）) t)
 ε-ErasureIso （） (Var x) = Var x （）
