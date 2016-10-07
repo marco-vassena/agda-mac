@@ -1,18 +1,19 @@
-open import Concurrent.Communication renaming (_,_,_ to ⟪_,_,_⟫)
+open import Lattice
+open import Scheduler using (Scheduler)
+
+module Concurrent.Determinism (𝓛 : Lattice) (𝓢 : Scheduler 𝓛) where
+
+open import Types 𝓛
+open import Scheduler 𝓛 as S
+
+open import Sequential.Calculus 𝓛
+open import Sequential.Semantics 𝓛
+open import Sequential.Determinism 𝓛
+open import Concurrent.Calculus 𝓛 𝓢
+open import Concurrent.Semantics 𝓛 𝓢
+
 open import Relation.Binary.PropositionalEquality
-
-module Concurrent.Determinism
-  (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
-  (deterministic-scheduler : ∀ {s₁ s₂ s₃ l n e} ->
-                                   s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ ->
-                                   s₁ ⟶ s₃ ↑ ⟪ l , n , e ⟫ ->
-                                   s₂ ≡ s₃ ) where
-
-
-open import Sequential.Determinism
-open import Concurrent.Calculus
 open import Data.List.All
-open import Concurrent.Semantics State _⟶_↑_ 
 
 read-∈ : ∀ {l ls n} {ts : Pool l n} {ps : Pools ls} -> ps [ l ]= ts -> l ∈ ls
 read-∈ Here = Here
@@ -125,15 +126,20 @@ postulate extensional-⊑ : ∀ {l h} -> (p₁ p₂ : l ⊑ h) -> p₁ ≡ p₂
 -- rewrite the proofs l ∈ ls as equal to infer determinism
 determinism↪ : ∀ {l n ls} {t₁ t₂ t₃ : Global ls} -> l , n ⊢ t₁ ↪ t₂ -> l , n ⊢ t₁ ↪ t₃ -> t₂ ≡ t₃
 determinism↪ (step r st sc w) (step r' st' sc' w')
-  rewrite lookup-tpool r r' | determinismS (stepOf st) (stepOf st') | determinismC (stepOf st) (stepOf st') | deterministic-scheduler sc sc' | write-tpool w w' = refl
+  rewrite lookup-tpool r r'
+  -- For reasons beyond my understanding we need 𝓢 as an explicit paramter
+  with determinismS (stepOf st) (stepOf st') | determinismC (stepOf st) (stepOf st') | S.Scheduler.deterministic-scheduler 𝓢 sc sc'
+... | eq₁ | eq₂ | eq₃ rewrite eq₁ | eq₂ | eq₃ | write-tpool w w' = refl
 determinism↪ (step r st sc w) (fork r₁' r₂' st' sc' w₁' w₂') rewrite lookup-tpool r r₁' = ⊥-elim (single-event st' (λ ()) st)
 determinism↪ (step r st sc w) (hole r' st' sc') rewrite lookup-tpool r r' = ⊥-elim (single-event st' (λ ()) st)
 determinism↪ (step r st sc w) (skip r' st' sc') rewrite lookup-tpool r r' = ⊥-elim (stuck-no-redex st' (redexOf st))
 determinism↪ (step r st sc w) (exit r' isV sc') rewrite lookup-tpool r r' = ⊥-elim (valueNotRedex _ isV (redexOf st))
 determinism↪ (fork r₁ r₂ st sc w₁ w₂) (step r' st' sc' w') rewrite lookup-tpool r₁ r' = ⊥-elim (single-event st' (λ ()) st)
-determinism↪ (fork {{p₁}} r₁ r₂ st sc w₁ w₂) (fork {{p₂}} r₁' r₂' st' sc' w₁' w₂') rewrite
-  lookup-tpool r₁ r₁' | determinismS (stepOf st) (stepOf st') | determinismC (stepOf st) (stepOf st') with unique-event st st'
-... | refl rewrite lookup-pool-size r₂ r₂' |  lookup-pool r₂ r₂' | write-pool w₁ w₁' | write-tpool w₂ w₂'  | extensional-⊑ p₁ p₂ | deterministic-scheduler sc sc' = refl
+determinism↪ (fork {{p₁}} r₁ r₂ st sc w₁ w₂) (fork {{p₂}} r₁' r₂' st' sc' w₁' w₂')
+  rewrite lookup-tpool r₁ r₁' with determinismS (stepOf st) (stepOf st') | determinismC (stepOf st) (stepOf st')
+... | eq₁ | eq₂ rewrite eq₁ | eq₂ with unique-event st st'
+... | refl rewrite lookup-pool-size r₂ r₂' |  lookup-pool r₂ r₂' | write-pool w₁ w₁' | write-tpool w₂ w₂'
+    | extensional-⊑ p₁ p₂ | S.Scheduler.deterministic-scheduler 𝓢 sc sc' = refl
 determinism↪ (fork r₁ r₂ st sc w₁ w₂) (hole r' st' sc') rewrite lookup-tpool r₁ r' = ⊥-elim (single-event st (λ ()) st')
 determinism↪ (fork r₁ r₂ st sc w₁ w₂) (skip r' st' sc') rewrite lookup-tpool r₁ r' = ⊥-elim (stuck-no-redex st' (redexOf st))
 determinism↪ (fork r₁ r₂ st sc w₁ w₂) (exit r' st' sc') rewrite lookup-tpool r₁ r' = ⊥-elim (valueNotRedex _ st' (redexOf st))
@@ -145,11 +151,12 @@ determinism↪ (hole r st sc) (exit r' st' sc') rewrite lookup-tpool r r' = ⊥-
 determinism↪ (skip r st sc) (step r' st' sc' w') rewrite lookup-tpool r r' = ⊥-elim (stuck-no-redex st (redexOf st'))
 determinism↪ (skip r st sc) (fork r₁' r₂' st' sc' w₁' w₂') rewrite lookup-tpool r r₁' = ⊥-elim (stuck-no-redex st (redexOf st'))
 determinism↪ (skip r st sc) (hole r' st' sc') rewrite lookup-tpool r r' = ⊥-elim (stuck-no-redex st (redexOf st'))
-determinism↪ (skip r st sc) (skip r' st' sc') rewrite deterministic-scheduler sc sc' = refl
+determinism↪ (skip r st sc) (skip r' st' sc') with S.Scheduler.deterministic-scheduler 𝓢 sc sc'
+... | eq rewrite eq = refl
 determinism↪ (skip r st sc) (exit r' st' sc') rewrite lookup-tpool r r' = ⊥-elim (stuck-no-value st st')
 determinism↪ (exit r st sc) (step r' st' sc' w') rewrite lookup-tpool r r' = ⊥-elim (valueNotRedex _ st (redexOf st'))
 determinism↪ (exit r st sc) (fork r₁' r₂' st' sc' w₁' w₂') rewrite lookup-tpool r r₁' = ⊥-elim (valueNotRedex _ st (redexOf st'))
 determinism↪ (exit r st sc) (hole r' st' sc') rewrite lookup-tpool r r' = ⊥-elim (valueNotRedex _ st (redexOf st'))
 determinism↪ (exit r st sc) (skip r' st' sc') rewrite lookup-tpool r r' = ⊥-elim (stuck-no-value st' st)
-determinism↪ (exit r st sc) (exit r' st' sc') rewrite deterministic-scheduler sc sc' = refl
-
+determinism↪ (exit r st sc) (exit r' st' sc') with S.Scheduler.deterministic-scheduler 𝓢 sc sc'
+... | eq rewrite eq = refl

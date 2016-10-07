@@ -3,7 +3,8 @@ open import Scheduler public
 
 module Concurrent.Calculus (𝓛 : Lattice) (𝓢 : Scheduler 𝓛) where
 
-open import Sequential.Calculus public
+open import Types 𝓛
+open import Sequential.Calculus 𝓛
 
 --------------------------------------------------------------------------------
 
@@ -49,7 +50,7 @@ record Global (ls : List Label) : Set where
   field storeᵍ : Store ls
   field pools : Pools ls
 
-open Global
+open Global public
 open import Relation.Binary.PropositionalEquality
 
 state-≡ : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ≡ g₂ -> state g₁ ≡ state g₂
@@ -60,4 +61,3 @@ storeᵍ-≡ refl = refl
 
 pools-≡ : ∀ {ls} {g₁ g₂ : Global ls} -> g₁ ≡ g₂ -> pools g₁ ≡ pools g₂
 pools-≡ refl = refl
-

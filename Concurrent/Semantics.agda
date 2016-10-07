@@ -1,14 +1,15 @@
 open import Lattice
-open import Scheduler 
+open import Scheduler using (Scheduler)
 
-module Concurrent.Semantics (𝓛 : Lattice) (𝓢 : Scheduler) where
+module Concurrent.Semantics (𝓛 : Lattice) (𝓢 : Scheduler 𝓛) where
 
+open import Types 𝓛
+open import Scheduler 𝓛
 open Scheduler.Scheduler 𝓛 𝓢
 
 open import Concurrent.Calculus 𝓛 𝓢
-open import Data.Nat
-open import Data.List
-open import Sequential.Semantics 
+open import Sequential.Calculus 𝓛
+open import Sequential.Semantics 𝓛
 
 
 --------------------------------------------------------------------------------
@@ -134,7 +135,7 @@ stepWithEvent {l} {ls} {⟨ store ∥ ∙ ⟩} {⟨ store₁ ∥ term ⟩} s | n
 
 --------------------------------------------------------------------------------
 
-fork? : ∀ {l h} -> l ⊑ h ->  Thread h -> ℕ -> Event l
+fork? : ∀ {l h : Label} -> l ⊑ h ->  Thread h -> ℕ -> Event l
 fork? p t n with is∙? t
 fork? p t n | yes _ = Step
 fork? p t n | no ¬p = Fork _ n p
