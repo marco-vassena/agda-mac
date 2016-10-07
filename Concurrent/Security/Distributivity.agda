@@ -1,36 +1,28 @@
-open import Types
-open import Concurrent.Communication
+open import Lattice
+open import Scheduler using (Scheduler)
+
+-- open import Concurrent.Communication
+-- open import Relation.Binary.PropositionalEquality
+--open import Concurrent.Security.Erasure hiding (εˢ-≡)
+
+module Concurrent.Security.Distributivity (𝓛 : Lattice) (𝓢 : Scheduler 𝓛) where
+
+open import Types 𝓛
+open import Scheduler 𝓛
+
+open Scheduler.Scheduler using (ε-sch-dist ; ε-sch-≡)
+
+open import Sequential.Calculus 𝓛
+open import Sequential.Semantics 𝓛
+open import Sequential.Security 𝓛
+
+open import Concurrent.Calculus 𝓛 𝓢
+open import Concurrent.Semantics 𝓛 𝓢
+open import Concurrent.Security.Erasure.Base 𝓛 𝓢
+
 open import Relation.Binary.PropositionalEquality
-open import Concurrent.Security.Erasure hiding (εˢ-≡)
-
-module Concurrent.Security.Distributivity
-  (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
-  (ε-state : Label -> State -> State) -- Erasure function of the scheduler state
-  (ε-sch-dist : ∀ {s₁ s₂ l lₐ} {m : Message l} -> (x : Dec (l ⊑ lₐ)) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ⟶ (ε-state lₐ s₂) ↑ (εᴹ x m))
-  (ε-sch-≡ : ∀ {s₁ s₂ l lₐ} {m : Message l} -> ¬ (l ⊑ lₐ) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ≡ (ε-state lₐ s₂))
-  where
-
-open import Concurrent.Calculus
-open import Sequential.Security.Distributivity
-open import Sequential.Semantics
-open import Concurrent.Semantics State _⟶_↑_
 
 --------------------------------------------------------------------------------
-
--- Erasure of global configuration
-εᵍ : ∀ {ls} -> Label -> Global ls -> Global ls
-εᵍ lₐ ⟨ s , Σ , ps ⟩ = ⟨ ε-state lₐ s , εˢ lₐ Σ , ε-pools lₐ ps ⟩
-
-εᵉ : ∀ {lₐ l} -> Dec (l ⊑ lₐ) -> Effect l -> Effect l
-εᵉ (yes p) ∙ = ∙
-εᵉ (yes p) ∅ = ∅
-εᵉ {lₐ} (yes p) (fork t) = fork (ε lₐ t)
-εᵉ (no ¬p) e = ∙
-
--- εᵉ lₐ (fork t) = fork (ε lₐ t)
-
-open Program
-
 postulate Value-ε : ∀ {τ l lₐ} {t : CTerm (Mac l τ)} -> (p : l ⊑ lₐ) -> IsValue (ε-Mac lₐ (yes p) t) -> IsValue t
 postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Redex (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t) -> Redex Σ t
 
@@ -132,10 +124,12 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ε-read (yes p) ∙ = ∙
 ε-read (yes p) Here = Here
 ε-read (yes p) (There a) = There (ε-read (yes p) a)
-ε-read {t = t} (no ¬p) a rewrite ε-Mac-CTerm≡∙ _ t ¬p = ∙
+ε-read {t = t} (no ¬p) a with ε-Mac-CTerm≡∙ _ t ¬p
+... | eq rewrite eq = ∙
 
 ε-readᵖ : ∀ {l lₐ n ls} {ps : Pools ls} {t : Thread l} -> (x : Dec (l ⊑ lₐ)) -> ps [ l ][ n ]= t -> (ε-pools lₐ ps) [ l ][ n ]= (ε-Mac _ x t)
-ε-readᵖ {l} {lₐ} {t = t} x (Here {p = ts} y) rewrite ε-Mac-extensional x (l ⊑? lₐ) t = Here (ε-read (l ⊑? lₐ) y)
+ε-readᵖ {l} {lₐ} {t = t} x (Here {p = ts} y) with ε-Mac-extensional x (l ⊑? lₐ) t
+... | eq rewrite eq = Here (ε-read (l ⊑? lₐ) y)
 ε-readᵖ x (There y) = There (ε-readᵖ x y)
 
 ε-readᵗ : ∀ {l lₐ ls n} {ps : Pools ls} {ts : Pool l n} -> (x : Dec (l ⊑ lₐ)) -> ps [ l ]= ts ->  (ε-pools lₐ ps) [ l ]= εᵗ x ts
@@ -159,7 +153,8 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ε-updateᵖ p (There a) = There (ε-updateᵖ p a)
 
 ▻-≡ : ∀ {l lₐ n} (ts : Pool l n) (t : Thread l)  (x : Dec (l ⊑ lₐ)) -> (εᵗ x ts ▻ ε-Mac _ x t) ≡ εᵗ (l ⊑? lₐ) (ts ▻ t)
-▻-≡ {l} {lₐ} ts t (yes p) rewrite εᵗ-extensional (l ⊑? lₐ) (yes p) (ts ▻ t) = sym (ε-▻-≡ p t ts)
+▻-≡ {l} {lₐ} ts t (yes p) with εᵗ-extensional (l ⊑? lₐ) (yes p) (ts ▻ t)
+... | eq rewrite eq = sym (ε-▻-≡ p t ts)
 ▻-≡ {l} {lₐ} ts t (no ¬p) with l ⊑? lₐ
 ▻-≡ ts t (no ¬p) | yes p = ⊥-elim (¬p p)
 ▻-≡ ts t (no ¬p₁) | no ¬p = refl
@@ -167,7 +162,8 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ε-update-▻ : ∀ {l lₐ ls n} {ps₁ ps₂ : Pools ls} {ts : Pool l n} {t : Thread l} -> (x : Dec (l ⊑ lₐ)) ->
                ps₂ ← ps₁ [ l ]≔ (ts ▻ t) ->
                ε-pools lₐ ps₂ ← ε-pools lₐ ps₁ [ l ]≔ ((εᵗ x ts) ▻ (ε-Mac _ x t))
-ε-update-▻ {l} {lₐ} {ts = ts} {t = t} x Here rewrite ▻-≡ ts t x = Here
+ε-update-▻ {l} {lₐ} {ts = ts} {t = t} x Here with ▻-≡ ts t x
+... | eq rewrite eq = Here
 ε-update-▻ x (There y) = There (ε-update-▻ x y)
 
 ε-updateᵗ-≡ : ∀ {l lₐ ls n} {ps₁ ps₂ : Pools ls} {ts : Pool l n} -> ¬ (l ⊑ lₐ) ->
@@ -201,37 +197,41 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ε-fork? l⊑h (yes p₁) (putMVar t t₁) | no ¬p | yes p = refl
 ε-fork? l⊑h (yes p₁) ∙ | no ¬p | yes p = ⊥-elim (¬p ∙)
 ε-fork? l⊑h (yes p) t | no ¬p₁ | no ¬p = ⊥-elim (¬p p)
-ε-fork? l⊑h (no ¬p) t rewrite ε-Mac-CTerm≡∙ _ t ¬p with is∙? t
-ε-fork? l⊑h (no ¬p) t | yes p = refl
-ε-fork? {h} {lₐ} l⊑h (no ¬p) t | no ¬p₁ with h ⊑? lₐ
-ε-fork? l⊑h (no ¬p) t | no ¬p₁ | yes p = ⊥-elim (¬p p)
-ε-fork? l⊑h (no ¬p₂) t | no ¬p₁ | no ¬p = refl
+ε-fork? l⊑h (no ¬p) t with ε-Mac-CTerm≡∙ _ t ¬p
+... | eq rewrite eq with is∙? t
+ε-fork? l⊑h (no ¬p) t | refl | yes p = refl
+ε-fork? {h} {lₐ} l⊑h (no ¬p₁) t | refl | no ¬p with h ⊑? lₐ
+... | yes p' = ⊥-elim (¬p₁ p')
+... | no ¬p' = refl
 
 -- Distributivity
 εᵍ-dist : ∀ {l n ls} {g₁ g₂ : Global ls} -> (lₐ : Label) -> l , n ⊢ g₁ ↪ g₂ -> l , n ⊢ (εᵍ lₐ g₁) ↪ (εᵍ lₐ g₂)
 
 εᵍ-dist {l} lₐ (step r st sc w)  with l ⊑? lₐ
-εᵍ-dist lₐ (step r st sc w) | yes p = step (ε-readᵖ (yes p) r) ((ε-↑ p st)) (ε-sch-dist (yes p) sc ) (ε-updateᵖ p w)
-εᵍ-dist lₐ (step r st sc w) | no ¬p with ε-read∙ ¬p r | (ε-sch-dist (no ¬p) sc)
-... | x | sc' rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-updateᵖ-≡ ¬p w | ε-sch-≡ ¬p sc = hole x (bullet (Pure Hole)) sc'
+εᵍ-dist lₐ (step r st sc w) | yes p = step (ε-readᵖ (yes p) r) ((ε-↑ p st)) (ε-sch-dist 𝓢 (yes p) sc ) (ε-updateᵖ p w)
+εᵍ-dist lₐ (step r st sc w) | no ¬p
+  with ε-read∙ ¬p r | (ε-sch-dist 𝓢 (no ¬p) sc) |  εˢ-≡ lₐ ¬p (stepOf st) | ε-updateᵖ-≡ ¬p w | ε-sch-≡ 𝓢 ¬p sc
+... | x | sc' | eq₁ | eq₂ | eq₃ rewrite eq₁ | eq₂ | eq₃ = hole x (bullet (Pure Hole)) sc'
 
 εᵍ-dist {l} lₐ (fork r₁ r₂ st sc w₁ w₂) with l ⊑? lₐ
-εᵍ-dist {l} lₐ (fork {h = h} {nʰ = nʰ} {tʰ = tʰ} {{l⊑h}} r₁ r₂ st sc w₁ w₂) | yes p with ε-sch-dist (yes p) sc
+εᵍ-dist {l} lₐ (fork {h = h} {nʰ = nʰ} {tʰ = tʰ} {l⊑h = l⊑h} r₁ r₂ st sc w₁ w₂) | yes p with ε-sch-dist 𝓢 (yes p) sc
 ... | sc' rewrite ε-fork? {n = nʰ} l⊑h (h ⊑? lₐ) tʰ
   = fork (ε-readᵖ (yes p) r₁) (ε-readᵗ (h ⊑? lₐ) r₂) (ε-↑ p st) sc' (ε-update-▻ (h ⊑? lₐ) w₁) (ε-updateᵖ p w₂)
-εᵍ-dist lₐ (fork r₁ r₂ st sc w₁ w₂) | no ¬p with ε-read∙ ¬p r₁ | (ε-sch-dist (no ¬p) sc)
-... | x | sc' rewrite εˢ-≡ lₐ ¬p (stepOf st) | ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₁ | ε-updateᵖ-≡ ¬p w₂ | ε-sch-≡ ¬p sc = hole x (bullet (Pure Hole)) sc'
+εᵍ-dist lₐ (fork r₁ r₂ st sc w₁ w₂) | no ¬p
+  with ε-read∙ ¬p r₁ | (ε-sch-dist 𝓢 (no ¬p) sc) |  εˢ-≡ lₐ ¬p (stepOf st)
+       | ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₁ | ε-updateᵖ-≡ ¬p w₂ | ε-sch-≡ 𝓢 ¬p sc
+... | x | sc' | eq₁ | eq₂ | eq₃ | eq₄ rewrite eq₁ | eq₂ | eq₃ | eq₄ = hole x (bullet (Pure Hole)) sc'
 
 εᵍ-dist {l} lₐ (hole r (bullet (Pure Hole)) sc) with l ⊑? lₐ
-... | yes p = hole (ε-readᵖ (yes p) r) (bullet (Pure Hole)) (ε-sch-dist (yes p) sc)
-... | no ¬p = hole (ε-readᵖ (no ¬p) r) (bullet (Pure Hole)) (ε-sch-dist (no ¬p) sc)
+... | yes p = hole (ε-readᵖ (yes p) r) (bullet (Pure Hole)) (ε-sch-dist 𝓢 (yes p) sc)
+... | no ¬p = hole (ε-readᵖ (no ¬p) r) (bullet (Pure Hole)) (ε-sch-dist 𝓢 (no ¬p) sc)
 
 εᵍ-dist {l} lₐ (skip r st sc) with l ⊑? lₐ
-... | yes p = skip (ε-readᵖ (yes p) r) (ε-Stuck p st) (ε-sch-dist (yes p) sc)
-... | no ¬p with ε-sch-dist (no ¬p) sc
-... | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r) (bullet (Pure Hole)) sc'
+... | yes p = skip (ε-readᵖ (yes p) r) (ε-Stuck p st) (ε-sch-dist 𝓢 (yes p) sc)
+... | no ¬p with ε-sch-dist 𝓢 (no ¬p) sc
+... | sc' rewrite ε-sch-≡ 𝓢 ¬p sc = hole (ε-read∙ ¬p r) (bullet (Pure Hole)) sc'
 
 εᵍ-dist {l} lₐ (exit r isV sc) with l ⊑? lₐ
-... | yes p = exit (ε-readᵖ (yes p) r) (ε-IsValue p isV) (ε-sch-dist (yes p) sc)
-... | no ¬p  with ε-sch-dist (no ¬p) sc
-... | sc' rewrite ε-sch-≡ ¬p sc = hole (ε-read∙ ¬p r) (bullet (Pure Hole)) sc'
+... | yes p = exit (ε-readᵖ (yes p) r) (ε-IsValue p isV) (ε-sch-dist 𝓢 (yes p) sc)
+... | no ¬p  with ε-sch-dist 𝓢 (no ¬p) sc
+... | sc' rewrite ε-sch-≡ 𝓢 ¬p sc = hole (ε-read∙ ¬p r) (bullet (Pure Hole)) sc'
