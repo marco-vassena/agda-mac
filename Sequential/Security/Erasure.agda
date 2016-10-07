@@ -1,4 +1,6 @@
-module Sequential.Security.Erasure where
+open import Lattice
 
-open import Sequential.Security.Erasure.Base public
-open import Sequential.Security.Erasure.LowEq public
+module Sequential.Security.Erasure (𝓛 : Lattice) where
+
+open import Sequential.Security.Erasure.Base 𝓛 public
+open import Sequential.Security.Erasure.LowEq 𝓛 public

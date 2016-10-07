@@ -2,8 +2,10 @@ open import Lattice
 
 module Sequential.Semantics (𝓛 : Lattice) where
 
+open import Types 𝓛
+open import Sequential.Calculus 𝓛
+
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
-open import Sequential.Calculus 𝓛 public
 
 data _⇝_ : ∀ {τ} -> CTerm τ -> CTerm τ -> Set where
 

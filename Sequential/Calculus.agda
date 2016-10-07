@@ -2,7 +2,7 @@ open import Lattice
 
 module Sequential.Calculus (𝓛 : Lattice) where
 
-open import Types 𝓛 public
+open import Types 𝓛
 open import Relation.Binary.PropositionalEquality hiding ([_] ; subst)
 open import Data.List.All
 open import Data.Nat using (ℕ ; zero ; suc) public

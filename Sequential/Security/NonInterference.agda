@@ -2,9 +2,15 @@ open import Lattice
 
 module Sequential.Security.NonInterference (𝓛 : Lattice) where
 
+open import Types 𝓛
+
+open import Sequential.Calculus 𝓛
+open import Sequential.Semantics 𝓛
 open import Sequential.Security.Distributivity 𝓛 hiding (εˢ-≡)
 open import Sequential.Determinism 𝓛
+open import Sequential.Security.Erasure.Base 𝓛
 open import Sequential.Security.Erasure.LowEq 𝓛
+
 open import Relation.Binary.PropositionalEquality
 open import Data.Sum
 

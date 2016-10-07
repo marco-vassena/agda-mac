@@ -2,7 +2,10 @@ open import Lattice
 
 module Sequential.Security.Distributivity (𝓛 : Lattice) where
 
-open import Sequential.Security.Erasure.Base 𝓛 public
+open import Types 𝓛
+open import Sequential.Calculus 𝓛
+open import Sequential.Semantics 𝓛
+open import Sequential.Security.Erasure.Base 𝓛
 open import Relation.Binary.PropositionalEquality hiding (subst ; [_])
 
 --------------------------------------------------------------------------------

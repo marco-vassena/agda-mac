@@ -1,5 +1,9 @@
 open import Lattice
+
 module Sequential.Determinism (𝓛 : Lattice) where
+
+open import Types 𝓛
+open import Sequential.Calculus 𝓛
 
 open import Data.Sum
 open import Data.Product hiding (Σ)
