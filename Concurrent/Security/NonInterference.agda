@@ -1,41 +1,18 @@
-open import Types
-open import Concurrent.Communication renaming (_,_,_ to ⟪_,_,_⟫)
-open import Relation.Binary.PropositionalEquality
-open import Concurrent.Security.Erasure
-open import Data.Product
+open import Lattice
+open import Scheduler using (Scheduler)
 
-module Concurrent.Security.NonInterference
-  (State : Set) (_⟶_↑_ :  ∀ {l} -> State -> State -> Message l -> Set)
-  (ε-state : Label -> State -> State) -- Erasure function of the scheduler state
-  (_≈ᵀ-⟨_⟩_ : State -> Label -> State -> Set)
-  (_≈ˢ-⟨_~_~_⟩_ : State -> ℕ -> Label -> ℕ -> State -> Set)
-  (offset₁ : {lₐ : Label} {s₁ s₂ : State} -> s₁ ≈ᵀ-⟨ lₐ ⟩ s₂ -> ℕ)
-  (offset₂ : {lₐ : Label} {s₁ s₂ : State} -> s₁ ≈ᵀ-⟨ lₐ ⟩ s₂ -> ℕ)
-  (align : ∀ {lₐ s₁ s₂} -> (eq : s₁ ≈ᵀ-⟨ lₐ ⟩ s₂) -> s₁ ≈ˢ-⟨ offset₁ eq ~ lₐ ~ offset₂ eq ⟩ s₂)
-  (forget : ∀ {lₐ s₁ s₂ n m} -> s₁ ≈ˢ-⟨ n ~ lₐ ~ m ⟩ s₂ -> s₁ ≈ᵀ-⟨ lₐ ⟩ s₂)
-  (ε-sch-dist : ∀ {s₁ s₂ l lₐ} {m : Message l} -> (x : Dec (l ⊑ lₐ)) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ⟶ (ε-state lₐ s₂) ↑ (εᴹ x m))
-  -- TODO as long as ≈ is isomorphic to ≡ we can just stick to one of them!
-  (ε-sch-≡ : ∀ {s₁ s₂ l lₐ} {m : Message l} -> ¬ (l ⊑ lₐ) -> s₁ ⟶ s₂ ↑ m -> (ε-state lₐ s₁) ≡ (ε-state lₐ s₂))
+module Concurrent.Security.NonInterference (𝓛 : Lattice) (𝓢 : Scheduler 𝓛) where
 
 
+open import Concurrent.Determinism 𝓛 𝓢
+open import Concurrent.Security.Distributivity 𝓛 𝓢
+open import Concurrent.Semantics 𝓛 𝓢
+open import Concurrent.Calculus 𝓛 𝓢
+open import Concurrent.Security.Erasure 𝓛 𝓢 renaming (ε-pools to εᵖ)
+open import Concurrent.Security.Erasure.LowEq 𝓛 𝓢 renaming (ε-pools to εᵖ)
 
-  (deterministic-scheduler : ∀ {s₁ s₂ s₃ l n e} ->
-                                   s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ ->
-                                   s₁ ⟶ s₃ ↑ ⟪ l , n , e ⟫ ->
-                                   s₂ ≡ s₃ )
-  
-  where
-
-
-open import Concurrent.Determinism State _⟶_↑_ deterministic-scheduler
-open import Concurrent.Security.Distributivity State _⟶_↑_ ε-state ε-sch-dist ε-sch-≡
-open import Concurrent.Semantics State _⟶_↑_
-open import Concurrent.Calculus
-open import Concurrent.Security.Erasure renaming (ε-pools to εᵖ)
-open import Concurrent.Security.Erasure.LowEq renaming (ε-pools to εᵖ)
-
-open import Sequential.Security.Distributivity renaming (εˢ-≡ to high-stepˢ) hiding (εᵖ)
-open import Sequential.Security.NonInterference -- hiding (_≈ᵖ_ ; non-interference)
+open import Sequential.Security.Distributivity 𝓛 renaming (εˢ-≡ to high-stepˢ) hiding (εᵖ)
+open import Sequential.Security.NonInterference 𝓛 -- hiding (_≈ᵖ_ ; non-interference)
 
 
 open Global
