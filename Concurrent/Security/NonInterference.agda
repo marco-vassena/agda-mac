@@ -1,21 +1,29 @@
-open import Lattice
+open import Lattice 
 open import Scheduler using (Scheduler)
 
 module Concurrent.Security.NonInterference (𝓛 : Lattice) (𝓢 : Scheduler 𝓛) where
 
+open import Types 𝓛
+open import Scheduler 𝓛 renaming ( _,_,_ to ⟪_,_,_⟫ )
+open Scheduler.Scheduler 𝓛 𝓢 
+
+open import Sequential.Calculus 𝓛
+open import Sequential.Semantics 𝓛
+open import Sequential.Security.Distributivity 𝓛 renaming (εˢ-≡ to high-stepˢ)
+open import Sequential.Security.Erasure.LowEq 𝓛
+open import Sequential.Security.NonInterference 𝓛 -- hiding (_≈ᵖ_ ; non-interference)
 
 open import Concurrent.Determinism 𝓛 𝓢
 open import Concurrent.Security.Distributivity 𝓛 𝓢
 open import Concurrent.Semantics 𝓛 𝓢
 open import Concurrent.Calculus 𝓛 𝓢
-open import Concurrent.Security.Erasure 𝓛 𝓢 renaming (ε-pools to εᵖ)
-open import Concurrent.Security.Erasure.LowEq 𝓛 𝓢 renaming (ε-pools to εᵖ)
+open import Concurrent.Security.Erasure 𝓛 𝓢
+open import Concurrent.Security.Scheduler 𝓛 𝓢
 
-open import Sequential.Security.Distributivity 𝓛 renaming (εˢ-≡ to high-stepˢ) hiding (εᵖ)
-open import Sequential.Security.NonInterference 𝓛 -- hiding (_≈ᵖ_ ; non-interference)
+open import Data.Product 
+open import Relation.Binary.PropositionalEquality
 
-
-open Global
+--open Global
 
 --------------------------------------------------------------------------------
 
@@ -31,15 +39,13 @@ simulation↪ {{lₐ}} p s₁ s₂ = lift-≈ᵍ (aux (unlift-≈ᵍ p) (εᵍ-d
 
 --------------------------------------------------------------------------------
 
-open import Sequential.Semantics
-
 high-step : ∀ {lₐ l ls n} {g₁ g₂ : Global ls} -> ¬ (l ⊑ lₐ) -> l , n ⊢ g₁ ↪ g₂ -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₂
-high-step ¬p (step r st sc w) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (ε-updateᵖ-≡ ¬p w) ⟩
+high-step ¬p (step r st sc w) = ⟨ ≡-≈ˢ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (ε-updateᵖ-≡ ¬p w) ⟩
 high-step ¬p (fork r₁ r₂ st sc  w₁ w₂)
-  = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (trans (ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₁) (ε-updateᵖ-≡ ¬p w₂)) ⟩
-high-step ¬p (hole r st sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
-high-step ¬p (skip r b sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
-high-step ¬p (exit r isV sc) = ⟨ ≡-≈ᵀ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
+  = ⟨ ≡-≈ˢ ((ε-sch-≡ ¬p sc)) , εˢ-≡ (high-stepˢ _ ¬p (stepOf st)) , ≡-≈ᴾ (trans (ε-updateᵗ-≡ (trans-⋢ (fork-⊑ st) ¬p) w₁) (ε-updateᵖ-≡ ¬p w₂)) ⟩
+high-step ¬p (hole r st sc) = ⟨ ≡-≈ˢ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
+high-step ¬p (skip r b sc) = ⟨ ≡-≈ˢ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
+high-step ¬p (exit r isV sc) = ⟨ ≡-≈ˢ ((ε-sch-≡ ¬p sc)) , εˢ-≡ refl , ≡-≈ᴾ refl ⟩
 
 read-≌ᴾ : ∀ {l lₐ n n'} {t₁ : Thread l} {ts₁ ts₂ : Pool l n} -> l ⊑ lₐ -> ts₁ ≌ᴾ-⟨ lₐ ⟩ ts₂ -> LookupThread t₁ n' ts₁ -> ∃ (λ t₂ -> LookupThread t₂ n' ts₂ × t₁ ≈-⟨ lₐ ⟩ t₂)
 read-≌ᴾ p (high ¬p) ∙ = ⊥-elim (¬p p)
@@ -64,7 +70,7 @@ readPool-≈ (ts₁≈ts₂ ∷ eq) (There r) with readPool-≈ eq r
 ... | _ , r' , eq' = _ , (There r') , eq'
 
 -- TODO USE CONSISTENT NAMES
-open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ᵀ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_
+--open import Concurrent.Security.Scheduler State _⟶_↑_ ε-state _≈ˢ-⟨_⟩_ _≈ˢ-⟨_~_~_⟩_
 
 --------------------------------------------------------------------------------
 
@@ -83,7 +89,8 @@ e₁ ≈ᵉ-⟨ lₐ ⟩ e₂ = _≈ᵉ_ {lₐ} e₁ e₂
 ≈ᵉ-≡ : ∀ {l lₐ} {e₁ e₂ : Effect l} -> (x : Dec (l ⊑ lₐ)) -> e₁ ≈ᵉ-⟨ lₐ ⟩ e₂ -> εᵉ x e₁ ≡ εᵉ x e₂
 ≈ᵉ-≡ (yes p) ∙ = refl
 ≈ᵉ-≡ (yes p) ∅ = refl
-≈ᵉ-≡ (yes p) (fork x (ε-≡ eq)) rewrite eq = refl
+≈ᵉ-≡ (yes p) (fork x (ε-≡ eq)) with eq
+... | eq' rewrite eq' = refl
 ≈ᵉ-≡ (yes p) (nv x) = ⊥-elim (x p)
 ≈ᵉ-≡ (no ¬p) ∙ = refl
 ≈ᵉ-≡ (no ¬p) ∅ = refl
@@ -101,8 +108,6 @@ e₁ ≈ᵉ-⟨ lₐ ⟩ e₂ = _≈ᵉ_ {lₐ} e₁ e₂
 ≡-≈ᵉ {e₁ = fork x} {∅} (yes p) ()
 ≡-≈ᵉ {e₁ = fork x} {fork x₁} (yes p) eq = {!!} -- TODO if we know p₁ ≈ p₂ we can conclude that the type is actually the same
 ≡-≈ᵉ (no ¬p) refl = nv ¬p
-
-open import Sequential.Security.NonInterference
 
 -- TODO maybe we don't need this
 postulate same-event : ∀ {ls l lₐ e₁ e₂} {p₁ p₂ p₁' p₂' : Program ls (Mac l _)} -> l ⊑ lₐ -> p₁ ≈ᵖ-⟨ lₐ ⟩ p₂ -> p₁ ⟼ p₂ ↑ e₁ -> p₁' ⟼ p₂' ↑ e₂ -> e₁ ≈ᵉ-⟨ lₐ ⟩ e₂
@@ -176,7 +181,6 @@ square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (sk
 square p sc' ⟨ s₁≈s₁' , Σ₁≈Σ₁' , ps₁≈ps₁' ⟩ (withMsg (exit r isV sc)) with read-≈ p ps₁≈ps₁' r
 ... | t₁' , r' , t₁≈t₁' = _ , _ , exit r' (valueᴸ p isV t₁≈t₁') sc'
 
--- Inner module defined to break mutual dependency between Security.Scheduler and specific scheduler modules (e.g. RoundRobin)
 module PS
     (highˢ : ∀ {s₁ s₁' s₂ l lₐ n e i j} -> l ⊑ lₐ -> s₁ ⟶ s₂ ↑ ⟪ l , n , e ⟫ -> e ≢ ∙ -> s₁ ≈ˢ-⟨ i ~ lₐ ~ suc j ⟩ s₁' ->
                     ∃ λ h -> ∃ λ n -> (e' : Event h) -> e' ≢ ∙ -> HighStep lₐ h n e' s₁ s₂ s₁' i j)
@@ -185,10 +189,9 @@ module PS
 
     low-step : ∀ {l n lₐ n₁ n₂ ls} {g₁ g₂ g₁' : Global ls} {{v₁ : Valid g₁}} {{v₁' : Valid g₁'}} -> l ⊑ lₐ ->
                  (s : l , n ⊢ g₁ ↪ g₂) -> (state g₁) ≈ˢ-⟨ n₁ ~ lₐ ~ n₂ ⟩ (state g₁') -> g₁ ≈ᵍ-⟨ lₐ ⟩ g₁' -> NI lₐ g₁' g₂
-    -- The two configurations are aligned
-    low-step {n₂ = zero} {{v₁}} p gs eq₁ eq₂ with aligned p (getSchedulerStep gs) (∙↑∙ v₁ gs) eq₁
+    low-step {lₐ = lₐ} {n₂ = zero} {{v₁}} p gs eq₁ eq₂ with aligned p (getSchedulerStep gs) (∙↑∙ v₁ gs) eq₁
     ... | low sc' eq₁' with square p sc' eq₂ (withMsg gs)
-    ... | Σ₂' , ps₂' , gs' = isNI (gs' ∷ []) (simulation↪ eq₂ gs gs')                        
+    ... | Σ₂' , ps₂' , gs' = isNI (gs' ∷ []) (simulation↪ {{lₐ}} eq₂ gs gs')                        
 
     -- The other global configuration performs a high step
     low-step {n₂ = suc n₂} {g₁ = g₁} {g₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} {{v₁}} p gs eq₁ ⟨ a , b , c ⟩ with highˢ p (getSchedulerStep gs) (∙↑∙ v₁ gs) eq₁
@@ -220,9 +223,9 @@ module PS
     ... | nⁿ , tsⁿ , rⁿ with k (fork? (fork-⊑ st') tⁿ nⁿ) fork?≠∙
     ... | high ¬p sc' eq₁' with forkPool rⁿ tⁿ
     ... | ps₂' , w' with writeAfterFork (tsⁿ ▻ tⁿ) r' w'
-    ... | ps₃' , w'' with high-step ¬p (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' w'')
-    ... | eq'' with low-step {{ v₁' = stepValid (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' w'') }} p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
-    ... | isNI ss eq₂' = isNI (fork {{p = fork-⊑ st'}} r' rⁿ st' sc' w' w'' ∷ ss) eq₂'
+    ... | ps₃' , w'' with high-step ¬p (fork {l⊑h = fork-⊑ st'} r' rⁿ st' sc' w' w'')
+    ... | eq'' with low-step {{ v₁' = stepValid (fork {l⊑h = fork-⊑ st'} r' rⁿ st' sc' w' w'') }} p gs eq₁' (trans-≈ᵍ ⟨ a , b , c ⟩ eq'')
+    ... | isNI ss eq₂' = isNI (fork {l⊑h = fork-⊑ st'} r' rⁿ st' sc' w' w'' ∷ ss) eq₂'
 
     -- NoStep Event
     low-step {n₂ = suc n₂} {g₁' = ⟨ s₁' , Σ₁' , ps₁' ⟩} p gs eq₁ ⟨ a , b , c ⟩ | h , n , k | t' , r' | S isS with k NoStep (λ ())

@@ -3,7 +3,7 @@ module Lattice where
 open import Relation.Nullary
 
 record Lattice : Set₁ where
-  constructor _,_,_
+  constructor Lat
   field
     Label : Set
     _⊑_ : Label -> Label -> Set

@@ -106,7 +106,7 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 
 --------------------------------------------------------------------------------
 
-ε-updateᵖ-≡ : ∀ {l lₐ n ls} {t : Thread l} {ps₁ ps₂ : Pools ls} -> ¬ (l ⊑ lₐ) -> ps₂ ← ps₁ [ l ][ n ]≔ t -> ε-pools lₐ ps₁ ≡ ε-pools lₐ ps₂
+ε-updateᵖ-≡ : ∀ {l lₐ n ls} {t : Thread l} {ps₁ ps₂ : Pools ls} -> ¬ (l ⊑ lₐ) -> ps₂ ← ps₁ [ l ][ n ]≔ t -> εᴾ lₐ ps₁ ≡ εᴾ lₐ ps₂
 ε-updateᵖ-≡ {l} {lₐ} ¬p (Here x) with l ⊑? lₐ
 ε-updateᵖ-≡ ¬p (Here x) | yes p = ⊥-elim (¬p p)
 ε-updateᵖ-≡ ¬p₁ (Here x) | no ¬p = refl
@@ -114,7 +114,7 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 
 --------------------------------------------------------------------------------
 
-ε-read∙  : ∀ {l lₐ ls n} {ps : Pools ls} {t : Thread l} -> ¬ ( l ⊑ lₐ) -> ps [ l ][ n ]= t -> ε-pools lₐ ps [ l ][ n ]= ∙
+ε-read∙  : ∀ {l lₐ ls n} {ps : Pools ls} {t : Thread l} -> ¬ ( l ⊑ lₐ) -> ps [ l ][ n ]= t -> εᴾ lₐ ps [ l ][ n ]= ∙
 ε-read∙ {l} {lₐ} {ps = x ◅ ps} ¬p (Here a) with l ⊑? lₐ
 ε-read∙ {l} {lₐ} {._} {n'} {x ◅ ps} ¬p (Here a) | yes p = ⊥-elim (¬p p)
 ε-read∙ {l} {lₐ} {._} {n'} {x ◅ ps} ¬p₁ (Here a) | no ¬p = Here ∙
@@ -127,12 +127,12 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 ε-read {t = t} (no ¬p) a with ε-Mac-CTerm≡∙ _ t ¬p
 ... | eq rewrite eq = ∙
 
-ε-readᵖ : ∀ {l lₐ n ls} {ps : Pools ls} {t : Thread l} -> (x : Dec (l ⊑ lₐ)) -> ps [ l ][ n ]= t -> (ε-pools lₐ ps) [ l ][ n ]= (ε-Mac _ x t)
+ε-readᵖ : ∀ {l lₐ n ls} {ps : Pools ls} {t : Thread l} -> (x : Dec (l ⊑ lₐ)) -> ps [ l ][ n ]= t -> (εᴾ lₐ ps) [ l ][ n ]= (ε-Mac _ x t)
 ε-readᵖ {l} {lₐ} {t = t} x (Here {p = ts} y) with ε-Mac-extensional x (l ⊑? lₐ) t
 ... | eq rewrite eq = Here (ε-read (l ⊑? lₐ) y)
 ε-readᵖ x (There y) = There (ε-readᵖ x y)
 
-ε-readᵗ : ∀ {l lₐ ls n} {ps : Pools ls} {ts : Pool l n} -> (x : Dec (l ⊑ lₐ)) -> ps [ l ]= ts ->  (ε-pools lₐ ps) [ l ]= εᵗ x ts
+ε-readᵗ : ∀ {l lₐ ls n} {ps : Pools ls} {ts : Pool l n} -> (x : Dec (l ⊑ lₐ)) -> ps [ l ]= ts ->  (εᴾ lₐ ps) [ l ]= εᵗ x ts
 ε-readᵗ {l} {lₐ} {ts = ts} x Here rewrite εᵗ-extensional x (l ⊑? lₐ) ts = Here
 ε-readᵗ x (There y) = There (ε-readᵗ x y)
 
@@ -147,7 +147,7 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 
 ε-updateᵖ : ∀ {l lₐ n ls} {ps₁ ps₂ : Pools ls} {t : Thread l} -> (p : l ⊑ lₐ) ->
              ps₂ ← ps₁ [ l ][ n ]≔ t  ->
-             (ε-pools lₐ ps₂) ← (ε-pools lₐ ps₁) [ l ][ n ]≔ (ε-Mac _ (yes p) t)
+             (εᴾ lₐ ps₂) ← (εᴾ lₐ ps₁) [ l ][ n ]≔ (ε-Mac _ (yes p) t)
 ε-updateᵖ {l} {lₐ} {t = t} p (Here {p₁ = ts₁} {p₂ = ts₂} x)
   rewrite εᵗ-extensional (l ⊑? lₐ) (yes p) ts₁ | εᵗ-extensional (l ⊑? lₐ) (yes p) ts₂ = Here (ε-update p x)
 ε-updateᵖ p (There a) = There (ε-updateᵖ p a)
@@ -161,13 +161,13 @@ postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -
 
 ε-update-▻ : ∀ {l lₐ ls n} {ps₁ ps₂ : Pools ls} {ts : Pool l n} {t : Thread l} -> (x : Dec (l ⊑ lₐ)) ->
                ps₂ ← ps₁ [ l ]≔ (ts ▻ t) ->
-               ε-pools lₐ ps₂ ← ε-pools lₐ ps₁ [ l ]≔ ((εᵗ x ts) ▻ (ε-Mac _ x t))
+               εᴾ lₐ ps₂ ← εᴾ lₐ ps₁ [ l ]≔ ((εᵗ x ts) ▻ (ε-Mac _ x t))
 ε-update-▻ {l} {lₐ} {ts = ts} {t = t} x Here with ▻-≡ ts t x
 ... | eq rewrite eq = Here
 ε-update-▻ x (There y) = There (ε-update-▻ x y)
 
 ε-updateᵗ-≡ : ∀ {l lₐ ls n} {ps₁ ps₂ : Pools ls} {ts : Pool l n} -> ¬ (l ⊑ lₐ) ->
-            ps₂ ← ps₁ [ l ]≔ ts -> ε-pools lₐ ps₁ ≡ ε-pools lₐ ps₂
+            ps₂ ← ps₁ [ l ]≔ ts -> εᴾ lₐ ps₁ ≡ εᴾ lₐ ps₂
 ε-updateᵗ-≡ {l} {lₐ} ¬p Here with l ⊑? lₐ
 ε-updateᵗ-≡ ¬p Here | yes p = ⊥-elim (¬p p)
 ε-updateᵗ-≡ ¬p₁ Here | no ¬p = refl
