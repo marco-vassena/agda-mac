@@ -12,18 +12,30 @@ open import Scheduler 𝓛
 
 open Scheduler.Scheduler using (ε-sch-dist ; ε-sch-≡)
 
-open import Sequential.Calculus 𝓛
+import Sequential.Calculus as S
+open module S1 = S 𝓛
+
 open import Sequential.Semantics 𝓛
 open import Sequential.Security 𝓛
 
-open import Concurrent.Calculus 𝓛 𝓢
+import Sequential.Security.Erasure.Graph as SG
+open module S2 = SG 𝓛
+
+import Concurrent.Calculus
+open module C = Concurrent.Calculus 𝓛 𝓢
 open import Concurrent.Semantics 𝓛 𝓢
 open import Concurrent.Security.Erasure.Base 𝓛 𝓢
 
 open import Relation.Binary.PropositionalEquality
 
 --------------------------------------------------------------------------------
-postulate Value-ε : ∀ {τ l lₐ} {t : CTerm (Mac l τ)} -> (p : l ⊑ lₐ) -> IsValue (ε-Mac lₐ (yes p) t) -> IsValue t
+
+Value-ε : ∀ {τ l lₐ} {t : CTerm (Mac l τ)} -> (p : l ⊑ lₐ) -> IsValue (ε-Mac lₐ (yes p) t) -> IsValue t
+Value-ε {τ} {l} {lₐ} {t = t} p isV = aux (ε-Mac-yes-ErasureIso (Macᴸ p) p t) isV
+  where aux : ∀ {t tᵉ : CTerm (Mac l τ)} {nonS : Insensitive lₐ (Mac l τ)} -> ErasureIso nonS t tᵉ -> IsValue tᵉ -> IsValue t
+        aux (SG.Mac p₁ x) (S.Mac t₁) = S.Mac _
+        aux (SG.Macₓ p₁ e₁) (S.Macₓ e) = S.Macₓ _
+        
 postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Redex (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t) -> Redex Σ t
 
 -- To prove this we would need to prove the following lemmas:
