@@ -15,11 +15,13 @@ open Scheduler.Scheduler using (ε-sch-dist ; ε-sch-≡)
 import Sequential.Calculus as S
 open module S1 = S 𝓛
 
-open import Sequential.Semantics 𝓛
+import Sequential.Semantics as S₂
+open module S2 = S₂ 𝓛
+
 open import Sequential.Security 𝓛
 
 import Sequential.Security.Erasure.Graph as SG
-open module S2 = SG 𝓛
+open module S3 = SG 𝓛
 
 import Concurrent.Calculus
 open module C = Concurrent.Calculus 𝓛 𝓢
@@ -35,14 +37,116 @@ Value-ε {τ} {l} {lₐ} {t = t} p isV = aux (ε-Mac-yes-ErasureIso (Macᴸ p) p
   where aux : ∀ {t tᵉ : CTerm (Mac l τ)} {nonS : Insensitive lₐ (Mac l τ)} -> ErasureIso nonS t tᵉ -> IsValue tᵉ -> IsValue t
         aux (SG.Mac p₁ x) (S.Mac t₁) = S.Mac _
         aux (SG.Macₓ p₁ e₁) (S.Macₓ e) = S.Macₓ _
-        
-postulate Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Redex (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t) -> Redex Σ t
 
+
+
+PRedex-ε : ∀ {lₐ τ} {c cᵉ : CTerm τ} {nonS : Insensitive lₐ τ} -> ErasureIso nonS c cᵉ -> PRedex cᵉ -> PRedex c
+PRedex-ε (SG.App nonS e₁ e₂) (S₂.Step (S₂.AppL s)) with PRedex-ε e₁ (Step s)
+... | Step s' = S₂.Step (S₂.AppL s')
+PRedex-ε (SG.App nonS (SG.Abs x₃) x₂) (S₂.Step S₂.Beta) = Step Beta
+PRedex-ε (SG.Ite nonS e₁ e₂ e₃) (S₂.Step (S₂.IfCond x)) with PRedex-ε e₁ (Step x)
+... | Step s' = S₂.Step (S₂.IfCond s')
+PRedex-ε (SG.Ite nonS SG.True e₂ e₃) (S₂.Step S₂.IfTrue) = S₂.Step S₂.IfTrue
+PRedex-ε (SG.Ite nonS SG.False e₂ e₁) (S₂.Step S₂.IfFalse) = S₂.Step S₂.IfFalse
+PRedex-ε (SG.unId nonS e) (S₂.Step (S₂.unIdCtx x)) with PRedex-ε e (Step x)
+... | Step s' = S₂.Step (S₂.unIdCtx s')
+PRedex-ε (SG.unId nonS (SG.Id x)) (S₂.Step S₂.unId) = S₂.Step S₂.unId
+PRedex-ε (e SG.<*>ᴵ e₁) (S₂.Step (S₂.appFunIdCtx₁ x₂)) with PRedex-ε e (Step x₂)
+... | Step s' = S₂.Step (S₂.appFunIdCtx₁ s')
+PRedex-ε (SG.Id (SG.Iso nonS e₁) SG.<*>ᴵ e₂) (S₂.Step (S₂.appFunIdCtx₂ x₂)) with PRedex-ε e₁ (Step x₂)
+... | Step s' = S₂.Step (S₂.appFunIdCtx₂ s')
+PRedex-ε (SG.Id (SG.Iso ._ (SG.Abs x₂)) SG.<*>ᴵ e₁) (S₂.Step (S₂.appFunIdCtx₃ x₄)) with PRedex-ε e₁ (Step x₄)
+... | Step s' = S₂.Step (S₂.appFunIdCtx₃ s')
+PRedex-ε (SG.Id (SG.Iso ._ (SG.Abs x₂)) SG.<*>ᴵ SG.Id x₃) (S₂.Step S₂.appFunId) = S₂.Step S₂.appFunId
+PRedex-ε (SG.Return p x) (S₂.Step S₂.Return) = S₂.Step S₂.Return
+PRedex-ε (SG.Throw p e₁) (S₂.Step S₂.Throw) = S₂.Step S₂.Throw
+PRedex-ε (SG.Bind p (SG.Mac .p x) e₁) (S₂.Step S₂.Bind) = S₂.Step S₂.Bind
+PRedex-ε (SG.Bind p (SG.Macₓ .p e₁) e₂) (S₂.Step S₂.BindEx) = S₂.Step S₂.BindEx
+PRedex-ε (SG.Catch p (SG.Mac .p x) e₁) (S₂.Step S₂.Catch) = S₂.Step S₂.Catch
+PRedex-ε (SG.Catch p (SG.Macₓ .p e₁) e₂) (S₂.Step S₂.CatchEx) = S₂.Step S₂.CatchEx
+PRedex-ε (SG.labelᴸ p₁ p p₃ x) (S₂.Step (S₂.label .p)) = S₂.Step (S₂.label p)
+PRedex-ε (SG.labelᴴ p₁ p p₃ x) (S₂.Step (S₂.label∙ .p)) = S₂.Step (S₂.label p)
+PRedex-ε (SG.label∙ p₁ p x) (S₂.Step (S₂.label∙ .p)) = S₂.Step (label∙ p)
+PRedex-ε (SG.unlabel p₁ p (SG.Iso nonS x)) (S₂.Step (S₂.unlabelCtx₁ .p x₁)) with PRedex-ε x (Step x₁)
+... | Step s' = S₂.Step (S₂.unlabelCtx₁ p s')
+PRedex-ε (SG.unlabel p₁ p (SG.Res∙ ¬p x)) (S₂.Step (S₂.unlabelCtx₁ .p x₁)) = ⊥-elim (¬p (trans-⊑ p p₁))
+--... | r = {!!}
+PRedex-ε (SG.unlabel p₁ p (SG.Iso .(SG.Resᴸ p₂) (SG.Res p₂ (SG.Iso nonS x)))) (S₂.Step (S₂.unlabelCtx₂ .p x₁))
+  with PRedex-ε x (Step x₁)
+... | Step s' = S₂.Step (S₂.unlabelCtx₂ p s')
+PRedex-ε (SG.unlabel p₁ p (SG.Res∙ ¬p x)) (S₂.Step (S₂.unlabelCtx₂ .p x₁)) = ⊥-elim (¬p (trans-⊑ p p₁))
+PRedex-ε (SG.unlabel p₁ p (SG.Iso .(SG.Resᴸ p₂) (SG.Res p₂ (SG.Iso ._ (SG.Id x))))) (S₂.Step (S₂.unlabel .p)) = S₂.Step (S₂.unlabel p)
+PRedex-ε (SG.unlabel p₁ p (SG.Res∙ ¬p x)) (S₂.Step (S₂.unlabel .p)) = ⊥-elim (¬p (trans-⊑ p p₁))
+PRedex-ε (SG.unlabel p₁ p (SG.Iso .(SG.Resᴸ p₂) (SG.Resₓ p₂ x))) (S₂.Step (S₂.unlabelEx .p)) = S₂.Step (S₂.unlabelEx p)
+PRedex-ε (SG.unlabel p₁ p (SG.Res∙ ¬p x)) (S₂.Step (S₂.unlabelEx .p)) = ⊥-elim (¬p (trans-⊑ p p₁))
+PRedex-ε (SG.Star p e e₁) (S₂.Step (S₂.appFunCtx₁ x₂)) with PRedex-ε e (Step x₂)
+... | Step s' = S₂.Step (S₂.appFunCtx₁ s')
+PRedex-ε (SG.Star p (SG.Res .p (SG.Iso nonS x₁)) e₁) (S₂.Step (S₂.appFunCtx₂ x₃)) with PRedex-ε e₁ (Step x₃)
+... | Step s' = S₂.Step (S₂.appFunCtx₂ s')
+PRedex-ε (SG.Star p (SG.Resₓ .p e₁) e₂) (S₂.Step (S₂.appFunCtx₂ₓ x₃)) with PRedex-ε e₂ (Step x₃)
+... | Step s' = S₂.Step (S₂.appFunCtx₂ₓ s')
+PRedex-ε (SG.Star p (SG.Res .p x₁) (SG.Res .p x₂)) (S₂.Step S₂.appFun) = S₂.Step S₂.appFun
+PRedex-ε (SG.Star p (SG.Resₓ .p e₁) (SG.Res .p x₁)) (S₂.Step S₂.appFun₁ₓ) = S₂.Step S₂.appFun₁ₓ
+PRedex-ε (SG.Star p (SG.Res .p x) (SG.Resₓ .p e₂)) (S₂.Step S₂.appFun₂ₓ) = S₂.Step S₂.appFun₂ₓ
+PRedex-ε (SG.Star p (SG.Resₓ .p e) (SG.Resₓ .p e₃)) (S₂.Step S₂.appFun₁₂ₓ) = S₂.Step S₂.appFun₁₂ₓ
+PRedex-ε (SG.Star∙ p e e₁) (S₂.Step (S₂.appFunCtx∙₁ x₂)) with PRedex-ε e (Step x₂)
+... | Step s' = S₂.Step (S₂.appFunCtx∙₁ s')
+PRedex-ε (SG.Star∙ p (SG.Res .p x₁) e₁) (S₂.Step (S₂.appFunCtx∙₂ x₃)) with PRedex-ε e₁ (Step x₃)
+... | Step s' = S₂.Step (S₂.appFunCtx∙₂ s')
+PRedex-ε (SG.Star∙ p (SG.Resₓ .p e₁) e₂) (S₂.Step (S₂.appFunCtx∙₂ₓ x₃)) with PRedex-ε e₂ (Step x₃)
+... | Step s' = S₂.Step (S₂.appFunCtx∙₂ₓ s')
+PRedex-ε (SG.Star∙ p (SG.Res .p x₁) (SG.Res .p x₂)) (S₂.Step S₂.appFun∙) = Step appFun∙
+PRedex-ε (SG.Star∙ p (SG.Resₓ .p e₁) (SG.Res .p x₁)) (S₂.Step S₂.appFun∙₁ₓ) = S₂.Step S₂.appFun∙₁ₓ
+PRedex-ε (SG.Star∙ p (SG.Res .p x) (SG.Resₓ .p e₂)) (S₂.Step S₂.appFun∙₂ₓ) = S₂.Step S₂.appFun∙₂ₓ
+PRedex-ε (SG.Star∙ p (SG.Resₓ .p e) (SG.Resₓ .p e₃)) (S₂.Step S₂.appFun∙₁₂ₓ) = S₂.Step S₂.appFun∙₁₂ₓ
+PRedex-ε (SG.∙ nonS) (S₂.Step S₂.Hole) = Step Hole
+PRedex-ε (SG.relabel p p₂ (SG.Iso nonS x)) (S₂.Step (S₂.relabelCtx .p x₁)) with PRedex-ε x (Step x₁)
+... | Step s' = S₂.Step (S₂.relabelCtx p s')
+PRedex-ε (SG.relabel p p₂ (SG.Res∙ ¬p x)) (S₂.Step (S₂.relabelCtx .p x₁)) = ⊥-elim (¬p (trans-⊑ p p₂))
+PRedex-ε (SG.relabel p p₂ (SG.Iso .(SG.Resᴸ p₁) (SG.Res p₁ x))) (S₂.Step (S₂.relabel .p)) = S₂.Step (S₂.relabel p)
+PRedex-ε (SG.relabel p p₂ (SG.Res∙ ¬p x)) (S₂.Step (S₂.relabel .p)) = ⊥-elim (¬p (trans-⊑ p p₂))
+PRedex-ε (SG.relabel p p₂ (SG.Iso .(SG.Resᴸ p₁) (SG.Resₓ p₁ x))) (S₂.Step (S₂.relabelEx .p)) = S₂.Step (S₂.relabelEx p)
+PRedex-ε (SG.relabel p p₂ (SG.Res∙ ¬p ())) (S₂.Step (S₂.relabelEx .p))
+PRedex-ε (SG.relabel∙ p p₂ (SG.Iso nonS x)) (S₂.Step (S₂.relabelCtx∙ .p x₁)) with PRedex-ε x (Step x₁)
+... | Step s' = S₂.Step (S₂.relabelCtx∙ p s')
+PRedex-ε (SG.relabel∙ p p₂ (SG.Res∙ ¬p x)) (S₂.Step (S₂.relabelCtx∙ .p x₁)) = ⊥-elim (¬p (trans-⊑ p p₂))
+PRedex-ε (SG.relabel∙ p p₂ (SG.Iso .(SG.Resᴸ p₁) (SG.Res p₁ x))) (S₂.Step (S₂.relabel∙ .p)) = Step (relabel∙ p)
+PRedex-ε (SG.relabel∙ p p₂ (SG.Res∙ ¬p x)) (S₂.Step (S₂.relabel∙ .p)) = ⊥-elim (¬p (trans-⊑ p p₂))
+PRedex-ε (SG.relabel∙ p p₂ (SG.Iso .(SG.Resᴸ p₁) (SG.Resₓ p₁ x))) (S₂.Step (S₂.relabelEx∙ .p)) = S₂.Step (relabelEx∙ p)
+PRedex-ε (SG.relabel∙ p p₂ (SG.Res∙ ¬p x)) (S₂.Step (S₂.relabelEx∙ .p)) = ⊥-elim (¬p (trans-⊑ p p₂))
+
+Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Redex (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t) -> Redex Σ t
+Redex-ε {τ} {l} {lₐ} {ls} {t} {Σ} p isR = aux (ε-Mac-yes-ErasureIso (SG.Macᴸ p) p t) (εˢ-ErasureStore Σ) isR
+  where aux : ∀ {τ} {Σ Σᵉ : Store ls} {t tᵉ : CTerm (Mac l τ)} {nonS : Insensitive lₐ (Mac l τ)} ->
+                ErasureIso nonS t tᵉ -> ErasureStore lₐ Σ Σᵉ -> Redex Σᵉ tᵉ -> Redex Σ t
+        aux eᵗ eˢ (S₂.Step (S₂.Pure x)) with PRedex-ε eᵗ (S₂.Step x)
+        ... | Step s = S₂.Step (Pure s)
+        aux eᵗ eˢ (S₂.Step (S₂.BindCtx x)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.CatchCtx x)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.join p₁ x)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.joinEx p₁ x)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.join∙ p₁)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.new p₁ q)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.writeCtx p₁ x)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.write p₁ q r)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.writeEx p₁ q r)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.readCtx p₁ x)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.read p₁ q r)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.readEx p₁)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.fork p₁ t₂)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.newMVar p₁ q)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.putMVarCtx x)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.putMVar q r)) = {!!}
+        aux eᵗ eˢ (S₂.Step S₂.putMVarEx) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.takeMVarCtx x)) = {!!}
+        aux eᵗ eˢ (S₂.Step (S₂.takeMVar q r)) = {!!}
+        aux eᵗ eˢ (S₂.Step S₂.takeMVarEx) = {!!}
+        
 -- To prove this we would need to prove the following lemmas:
 -- IsValue (ε t) => IsValue t
 -- Redex (ε Σ) (ε t) => Redex Σ t
 -- For thise we need the graph of the erasure function, therefore I am going to postulate them for the time being
-ε-Stuck : ∀ {l lₐ τ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ)  -> Stuck Σ t -> Stuck (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t)
+ε-Stuck : ∀ {l lₐ τ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Stuck Σ t -> Stuck (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t)
 ε-Stuck {l} {lₐ} {t = t} {Σ} p (stuck nS nV) = stuck f g
   where f : Redex (εˢ lₐ Σ)  (ε-Mac lₐ (yes p) t) -> ⊥
         f s = nS (Redex-ε p s)

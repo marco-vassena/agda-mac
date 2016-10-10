@@ -219,6 +219,10 @@ mutual
   NormalForm : ∀ {ls τ} -> Store ls -> CTerm τ -> Set
   NormalForm s₁ c = ¬ Redex s₁ c
 
+  -- Pure redex
+  data PRedex {τ : Ty} (c₁ : CTerm τ) : Set where
+    Step : {c₂ : CTerm τ} -> c₁ ⇝ c₂ -> PRedex c₁
+    
 --------------------------------------------------------------------------------
 
 data Stuck {ls : List Label} {τ : Ty} (Σ : Store ls) (t : CTerm τ) : Set where

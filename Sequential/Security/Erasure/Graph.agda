@@ -455,3 +455,59 @@ Erasure-ε (Res∙ ¬p x) = ErasureRes∙-ε ¬p x
 ... | no ¬p' rewrite ε-Mac-extensional (no ¬p') (no ¬p) t = Mac∙ ¬p (ε-Mac-no-ErasureIso ¬p t)
 ε-Erasure t | inj₁ (Resᴴ x) = Res∙ x (ε-Res-ErasureRes∙ x t)
 ε-Erasure t | inj₂ y = Iso y (ε-ErasureIso y t)
+
+
+--------------------------------------------------------------------------------
+
+data ErasureCell (lₐ : Label) {τ : Ty} : ∀ {s} -> Cell τ s -> Cell τ s -> Set where
+  ⊞ : ErasureCell lₐ ⊞ ⊞
+  ⟦_⟧ : ∀ {t tᵉ : CTerm τ} -> Erasure lₐ t tᵉ -> ErasureCell lₐ ⟦ t ⟧ ⟦ tᵉ ⟧ 
+  
+εᶜ-ErasureCell : ∀ {s τ lₐ} -> (c : Cell s τ) -> ErasureCell lₐ c (εᶜ lₐ c)
+εᶜ-ErasureCell ⊞ = ⊞
+εᶜ-ErasureCell ⟦ x ⟧ = ⟦ (ε-Erasure x) ⟧
+
+ErasureCell-εᶜ : ∀ {lₐ s τ} {c cᵉ : Cell s τ} -> ErasureCell lₐ c cᵉ -> εᶜ lₐ c ≡ cᵉ
+ErasureCell-εᶜ ⊞ = refl
+ErasureCell-εᶜ ⟦ e ⟧ with Erasure-ε e
+... | eq rewrite eq = refl
+
+
+data ErasureIsoMemory {lₐ : Label} {l : Label} (p : l ⊑ lₐ) : Memory l -> Memory l -> Set where
+  ∙ : ErasureIsoMemory p ∙ ∙
+  [] : ErasureIsoMemory p [] []
+  _∷_  : ∀ {τ s} {m mᵉ : Memory l} {c cᵉ : Cell s τ} ->
+         ErasureCell lₐ c cᵉ -> ErasureIsoMemory p m mᵉ -> ErasureIsoMemory p (c ∷ m) (cᵉ ∷ mᵉ)
+
+data ErasureMemory {lₐ : Label} {l : Label} : Dec (l ⊑ lₐ) -> Memory l -> Memory l -> Set where
+  Iso : ∀ {m mᵉ : Memory l} -> (p : l ⊑ lₐ) -> ErasureIsoMemory p m mᵉ -> ErasureMemory (yes p) m mᵉ
+  
+  ∙ : ∀ {¬p : ¬ (l ⊑ lₐ)} {m : Memory l} -> ErasureMemory (no ¬p) m ∙
+
+εᵐ-ErasureMemory : ∀ {l lₐ} -> (x : Dec (l ⊑ lₐ)) (m : Memory l) -> ErasureMemory x m (εᵐ lₐ x m)
+εᵐ-ErasureMemory (yes p) ∙ = Iso p ∙
+εᵐ-ErasureMemory (yes p) [] = Iso p []
+εᵐ-ErasureMemory (yes p) (x ∷ m) with εᵐ-ErasureMemory (yes p) m
+... | Iso .p e = Iso p ((εᶜ-ErasureCell x) ∷ e)
+εᵐ-ErasureMemory (no ¬p) m = ∙
+
+ErasureMemory-εᵐ : ∀ {lₐ l} {m mᵉ : Memory l} -> (x : Dec (l ⊑ lₐ)) -> ErasureMemory x m mᵉ -> εᵐ lₐ x m ≡ mᵉ
+ErasureMemory-εᵐ (yes p) (Iso .p ∙) = refl
+ErasureMemory-εᵐ (yes p) (Iso .p []) = refl
+ErasureMemory-εᵐ (yes p) (Iso .p (x ∷ e))
+  rewrite ErasureMemory-εᵐ (yes p) (Iso p e) | ErasureCell-εᶜ x =  refl
+ErasureMemory-εᵐ (no ¬p) ∙ = refl
+
+data ErasureStore (lₐ : Label) : ∀ {ls} -> Store ls -> Store ls -> Set where
+  [] : ErasureStore lₐ [] []
+  _∷_ : ∀ {l ls} {m mᵉ : Memory l} {Σ Σᵉ : Store ls} {x : Dec (l ⊑ lₐ)} {u : Unique l ls} ->
+        ErasureMemory x m mᵉ -> ErasureStore lₐ Σ Σᵉ -> ErasureStore lₐ (m ∷ Σ) (mᵉ ∷ Σᵉ)
+
+εˢ-ErasureStore : ∀ {ls lₐ} (Σ : Store ls) -> ErasureStore lₐ Σ (εˢ lₐ Σ)
+εˢ-ErasureStore [] = []
+εˢ-ErasureStore (x ∷ Σ) = (εᵐ-ErasureMemory (_ ⊑? _) x) ∷ (εˢ-ErasureStore Σ)
+
+ErasureStore-εˢ : ∀ {ls lₐ} {Σ Σᵉ : Store ls} -> ErasureStore lₐ Σ Σᵉ -> εˢ lₐ Σ ≡ Σᵉ
+ErasureStore-εˢ [] = refl
+ErasureStore-εˢ (_∷_ {x = x} e₁ e₂) 
+  rewrite extensional x  (_ ⊑? _) | ErasureMemory-εᵐ _ e₁ | ErasureStore-εˢ e₂ = refl
