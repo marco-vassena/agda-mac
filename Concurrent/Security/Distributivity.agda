@@ -178,6 +178,8 @@ PRedex-ε-Res∙ ¬p SG.∙ (S₂.Step S₂.Hole) = S₂.Step Hole
 PRedex-ε-Res (SG.Iso nonS x) p = PRedex-ε-Iso x p
 PRedex-ε-Res (SG.Res∙ ¬p x) p = PRedex-ε-Res∙ ¬p x p
 
+-- TODO: Change name from write-... to ref-....  (we are actually bulding references)
+
 write-memory : ∀ {lₐ l s τ} (p : l ⊑ lₐ) {m mᵉ : Memory l} {t tᵉ : CTerm Nat} ->
                 ErasureMemory (yes p) m mᵉ -> Erasure lₐ t tᵉ -> TypedIx τ s tᵉ mᵉ -> TypedIx τ s t m
 write-memory p (SG.Iso .p (x SG.∷ x₁)) (SG.Iso .SG.Nat SG.zero) S.Here = Here
@@ -223,17 +225,22 @@ Redex-ε {τ} {l} {lₐ} {ls} {t} {Σ} p isR = aux (ε-Mac-yes-ErasureIso (SG.Ma
         aux (SG.write p₁ p₂ (SG.Res∙ ¬p SG.Resₓ) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = S₂.Step (writeEx p₂ q {!r₁!}) -- I have to assume that Res ∙ was originally Res n a valid index
         aux (SG.write p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Resₓ p₃ x)) x₁) eˢ (S₂.Step (S₂.writeEx .p₂ q r₁)) = Step (writeEx p₂ q (writeEx-store p₃ q eˢ r₁))
         aux (SG.write p₁ p₂ (SG.Res∙ ¬p ()) x) eˢ (S₂.Step (S₂.writeEx .p₂ q r₁))
-        aux eᵗ eˢ (S₂.Step (S₂.readCtx p₁ x)) = {!!}
-        aux eᵗ eˢ (S₂.Step (S₂.read p₁ q r)) = {!!}
-        aux eᵗ eˢ (S₂.Step (S₂.readEx p₁)) = {!!}
+        aux (SG.read p₁ p₂ x) eˢ (S₂.Step (S₂.readCtx .p₂ (Pure x₁))) with PRedex-ε-Res x (Step x₁)
+        ... | Step s = S₂.Step (S₂.readCtx p₂ (S₂.Pure s))
+        aux (SG.read p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Res p₃ x))) eˢ (S₂.Step (S₂.read .p₂ q r)) = S₂.Step (read p₂ q (write-store p₃ q eˢ x r))
+        aux (SG.read p₁ p₂ (SG.Res∙ ¬p x)) eˢ (S₂.Step (S₂.read .p₂ q r)) = ⊥-elim (¬p (trans-⊑ p₂ p₁))
+        aux (SG.read p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Resₓ p₃ x))) eˢ (S₂.Step (S₂.readEx .p₂)) = S₂.Step (readEx p₂)
+        aux (SG.read p₁ p₂ (SG.Res∙ ¬p x)) eˢ (S₂.Step (S₂.readEx .p₂)) = ⊥-elim (¬p (trans-⊑ p₂ p₁))
         aux (SG.fork p₁ p₂ x) eˢ (S₂.Step (S₂.fork .p₂ t₂)) = S₂.Step (S₂.fork p₂ _)
-        aux eᵗ eˢ (S₂.Step (S₂.newMVar p₁ q)) = {!!}
-        aux eᵗ eˢ (S₂.Step (S₂.putMVarCtx x)) = {!!}
-        aux eᵗ eˢ (S₂.Step (S₂.putMVar q r)) = {!!}
-        aux eᵗ eˢ (S₂.Step S₂.putMVarEx) = {!!}
-        aux eᵗ eˢ (S₂.Step (S₂.takeMVarCtx x)) = {!!}
-        aux eᵗ eˢ (S₂.Step (S₂.takeMVar q r)) = {!!}
-        aux eᵗ eˢ (S₂.Step S₂.takeMVarEx) = {!!}
+        aux (SG.newMVar p₁ p₂) eˢ (S₂.Step (S₂.newMVar .p₂ q)) = S₂.Step (S₂.newMVar p₂ q)
+        aux (SG.putMVar p₁ eᵗ x) eˢ (S₂.Step (S₂.putMVarCtx (S₂.Pure x₁))) with PRedex-ε-Iso eᵗ (Step x₁)
+        ... | Step s = S₂.Step (S₂.putMVarCtx (S₂.Pure s))
+        aux (SG.putMVar p₁ (SG.Res .p₁ x₁) x) eˢ (S₂.Step (S₂.putMVar q r₁)) = S₂.Step (putMVar q (write-store p₁ q eˢ x₁ r₁))
+        aux (SG.putMVar p₁ (SG.Resₓ .p₁ eᵗ) x) eˢ (S₂.Step S₂.putMVarEx) = S₂.Step putMVarEx
+        aux (SG.takeMVar p₁ eᵗ) eˢ (S₂.Step (S₂.takeMVarCtx (Pure x))) with PRedex-ε-Iso eᵗ (Step x)
+        ... | Step s = S₂.Step (S₂.takeMVarCtx (S₂.Pure s))
+        aux (SG.takeMVar p₁ (SG.Res .p₁ x)) eˢ (S₂.Step (S₂.takeMVar q r)) = S₂.Step (takeMVar q (write-store p₁ q eˢ x r))
+        aux (SG.takeMVar p₁ (SG.Resₓ .p₁ eᵗ)) eˢ (S₂.Step S₂.takeMVarEx) = S₂.Step takeMVarEx
         
 -- -- To prove this we would need to prove the following lemmas:
 -- -- IsValue (ε t) => IsValue t
