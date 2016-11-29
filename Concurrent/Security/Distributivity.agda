@@ -178,31 +178,33 @@ PRedex-ε-Res∙ ¬p SG.∙ (S₂.Step S₂.Hole) = S₂.Step Hole
 PRedex-ε-Res (SG.Iso nonS x) p = PRedex-ε-Iso x p
 PRedex-ε-Res (SG.Res∙ ¬p x) p = PRedex-ε-Res∙ ¬p x p
 
--- TODO: Change name from write-... to ref-....  (we are actually bulding references)
-
-write-memory : ∀ {lₐ l s τ} (p : l ⊑ lₐ) {m mᵉ : Memory l} {t tᵉ : CTerm Nat} ->
+--------------------------------------------------------------------------------
+-- If a reference is valid in an erased memory it is valid in the original memory.
+valid-ref : ∀ {lₐ l s τ} (p : l ⊑ lₐ) {m mᵉ : Memory l} {t tᵉ : CTerm Nat} ->
                 ErasureMemory (yes p) m mᵉ -> Erasure lₐ t tᵉ -> TypedIx τ s tᵉ mᵉ -> TypedIx τ s t m
-write-memory p (SG.Iso .p (x SG.∷ x₁)) (SG.Iso .SG.Nat SG.zero) S.Here = Here
-write-memory p (SG.Iso .p (x₂ SG.∷ x₁)) (SG.Iso .SG.Nat (SG.suc x)) (S.There r) = There (write-memory p (SG.Iso p x₁) (SG.Iso SG.Nat x) r)
-write-memory p (SG.Iso .p SG.∙) (SG.Iso nonS x₁) S.∙ = ∙                
+valid-ref p (SG.Iso .p (x SG.∷ x₁)) (SG.Iso .SG.Nat SG.zero) S.Here = Here
+valid-ref p (SG.Iso .p (x₂ SG.∷ x₁)) (SG.Iso .SG.Nat (SG.suc x)) (S.There r) = There (valid-ref p (SG.Iso p x₁) (SG.Iso SG.Nat x) r)
+valid-ref p (SG.Iso .p SG.∙) (SG.Iso nonS x₁) S.∙ = ∙                
 
 
-write-store : ∀ {lₐ l ls s τ} (p : l ⊑ lₐ) (q : l ∈ ls) {Σ Σᵉ : Store ls} {t tᵉ : CTerm Nat} ->
+TypedIx-ε : ∀ {lₐ l ls s τ} (p : l ⊑ lₐ) (q : l ∈ ls) {Σ Σᵉ : Store ls} {t tᵉ : CTerm Nat} ->
                 ErasureStore lₐ Σ Σᵉ -> Erasure lₐ t tᵉ -> TypedIx τ s tᵉ (getMemory q Σᵉ) -> TypedIx τ s t (getMemory q Σ)
-write-store p Here (SG._∷_ {x = yes p₁} m₁ x) n r =  write-memory p₁ m₁ n r
-write-store p Here (SG._∷_ {x = no ¬p} m₁ x) _ r = ⊥-elim (¬p p)
-write-store p (There q) {Σ = m ∷ Σ} {Σᵉ = mᵉ ∷ Σᵉ} (x₁ SG.∷ x₂) n r = write-store p q x₂ n r
+TypedIx-ε p Here (SG._∷_ {x = yes p₁} m₁ x) n r =  valid-ref p₁ m₁ n r
+TypedIx-ε p Here (SG._∷_ {x = no ¬p} m₁ x) _ r = ⊥-elim (¬p p)
+TypedIx-ε p (There q) {Σ = m ∷ Σ} {Σᵉ = mᵉ ∷ Σᵉ} (x₁ SG.∷ x₂) n r = TypedIx-ε p q x₂ n r
 
-writeEx-memory : ∀ {τ n l lₐ} {m mᵉ : Memory l} (p : l ⊑ lₐ) -> ErasureMemory (yes p) m mᵉ -> TypedIx τ F n mᵉ -> TypedIx τ F n m
-writeEx-memory p (SG.Iso .p (x₁ SG.∷ x)) S.Here = S.Here
-writeEx-memory p (SG.Iso .p (x₁ SG.∷ x)) (S.There r) = S.There (writeEx-memory p (SG.Iso p x) r)
-writeEx-memory p (SG.Iso .p SG.∙) S.∙ = S.∙
+valid-refₓ : ∀ {τ n l lₐ} {m mᵉ : Memory l} (p : l ⊑ lₐ) -> ErasureMemory (yes p) m mᵉ -> TypedIx τ F n mᵉ -> TypedIx τ F n m
+valid-refₓ p (SG.Iso .p (x₁ SG.∷ x)) S.Here = S.Here
+valid-refₓ p (SG.Iso .p (x₁ SG.∷ x)) (S.There r) = S.There (valid-refₓ p (SG.Iso p x) r)
+valid-refₓ p (SG.Iso .p SG.∙) S.∙ = S.∙
 
-writeEx-store : ∀ {τ n l lₐ ls} {Σ Σᵉ : Store ls} -> (p : l ⊑ lₐ) (q : l ∈ ls) -> ErasureStore lₐ Σ Σᵉ ->
+TypedIx-εₓ : ∀ {τ n l lₐ ls} {Σ Σᵉ : Store ls} -> (p : l ⊑ lₐ) (q : l ∈ ls) -> ErasureStore lₐ Σ Σᵉ ->
         TypedIx τ F n (getMemory q Σᵉ) -> TypedIx τ F n (getMemory q Σ)
-writeEx-store p Here (SG.Iso p₁ x SG.∷ x₂) r = writeEx-memory p₁ (SG.Iso p₁ x) r
-writeEx-store p Here (SG.∙ {¬p = ¬p} SG.∷ x₂) r = ⊥-elim (¬p p)
-writeEx-store p (There q) (x₁ SG.∷ x₂) r = writeEx-store p q x₂ r
+TypedIx-εₓ p Here (SG.Iso p₁ x SG.∷ x₂) r = valid-refₓ p₁ (SG.Iso p₁ x) r
+TypedIx-εₓ p Here (SG.∙ {¬p = ¬p} SG.∷ x₂) r = ⊥-elim (¬p p)
+TypedIx-εₓ p (There q) (x₁ SG.∷ x₂) r = TypedIx-εₓ p q x₂ r
+
+--------------------------------------------------------------------------------
 
 Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Redex (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t) -> Redex Σ t
 Redex-ε {τ} {l} {lₐ} {ls} {t} {Σ} p isR = aux (ε-Mac-yes-ErasureIso (SG.Macᴸ p) p t) (εˢ-ErasureStore Σ) isR
@@ -220,14 +222,14 @@ Redex-ε {τ} {l} {lₐ} {ls} {t} {Σ} p isR = aux (ε-Mac-yes-ErasureIso (SG.Ma
         aux (SG.new p₁ p₂ x) eˢ (S₂.Step (S₂.new .p₂ q)) = Step (new p₂ q)
         aux (SG.write p₁ p₂ x x₁) eˢ (S₂.Step (S₂.writeCtx .p₂ (S₂.Pure x₂))) with PRedex-ε-Res x (Step x₂)
         ... | Step s = S₂.Step (S₂.writeCtx p₂ (S₂.Pure s))
-        aux (SG.write p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Res p₃ x)) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = S₂.Step (write p₂ q (write-store p₃ q eˢ x r₁))
+        aux (SG.write p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Res p₃ x)) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = S₂.Step (write p₂ q (TypedIx-ε p₃ q eˢ x r₁))
         aux (SG.write p₁ p₂ (SG.Res∙ ¬p SG.Res) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = {!!} -- I have to assume that Res ∙ was originally Res n a valid index
         aux (SG.write p₁ p₂ (SG.Res∙ ¬p SG.Resₓ) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = S₂.Step (writeEx p₂ q {!r₁!}) -- I have to assume that Res ∙ was originally Res n a valid index
-        aux (SG.write p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Resₓ p₃ x)) x₁) eˢ (S₂.Step (S₂.writeEx .p₂ q r₁)) = Step (writeEx p₂ q (writeEx-store p₃ q eˢ r₁))
+        aux (SG.write p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Resₓ p₃ x)) x₁) eˢ (S₂.Step (S₂.writeEx .p₂ q r₁)) = Step (writeEx p₂ q (TypedIx-εₓ p₃ q eˢ r₁))
         aux (SG.write p₁ p₂ (SG.Res∙ ¬p ()) x) eˢ (S₂.Step (S₂.writeEx .p₂ q r₁))
         aux (SG.read p₁ p₂ x) eˢ (S₂.Step (S₂.readCtx .p₂ (Pure x₁))) with PRedex-ε-Res x (Step x₁)
         ... | Step s = S₂.Step (S₂.readCtx p₂ (S₂.Pure s))
-        aux (SG.read p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Res p₃ x))) eˢ (S₂.Step (S₂.read .p₂ q r)) = S₂.Step (read p₂ q (write-store p₃ q eˢ x r))
+        aux (SG.read p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Res p₃ x))) eˢ (S₂.Step (S₂.read .p₂ q r)) = S₂.Step (read p₂ q (TypedIx-ε p₃ q eˢ x r))
         aux (SG.read p₁ p₂ (SG.Res∙ ¬p x)) eˢ (S₂.Step (S₂.read .p₂ q r)) = ⊥-elim (¬p (trans-⊑ p₂ p₁))
         aux (SG.read p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Resₓ p₃ x))) eˢ (S₂.Step (S₂.readEx .p₂)) = S₂.Step (readEx p₂)
         aux (SG.read p₁ p₂ (SG.Res∙ ¬p x)) eˢ (S₂.Step (S₂.readEx .p₂)) = ⊥-elim (¬p (trans-⊑ p₂ p₁))
@@ -235,11 +237,11 @@ Redex-ε {τ} {l} {lₐ} {ls} {t} {Σ} p isR = aux (ε-Mac-yes-ErasureIso (SG.Ma
         aux (SG.newMVar p₁ p₂) eˢ (S₂.Step (S₂.newMVar .p₂ q)) = S₂.Step (S₂.newMVar p₂ q)
         aux (SG.putMVar p₁ eᵗ x) eˢ (S₂.Step (S₂.putMVarCtx (S₂.Pure x₁))) with PRedex-ε-Iso eᵗ (Step x₁)
         ... | Step s = S₂.Step (S₂.putMVarCtx (S₂.Pure s))
-        aux (SG.putMVar p₁ (SG.Res .p₁ x₁) x) eˢ (S₂.Step (S₂.putMVar q r₁)) = S₂.Step (putMVar q (write-store p₁ q eˢ x₁ r₁))
+        aux (SG.putMVar p₁ (SG.Res .p₁ x₁) x) eˢ (S₂.Step (S₂.putMVar q r₁)) = S₂.Step (putMVar q (TypedIx-ε p₁ q eˢ x₁ r₁))
         aux (SG.putMVar p₁ (SG.Resₓ .p₁ eᵗ) x) eˢ (S₂.Step S₂.putMVarEx) = S₂.Step putMVarEx
         aux (SG.takeMVar p₁ eᵗ) eˢ (S₂.Step (S₂.takeMVarCtx (Pure x))) with PRedex-ε-Iso eᵗ (Step x)
         ... | Step s = S₂.Step (S₂.takeMVarCtx (S₂.Pure s))
-        aux (SG.takeMVar p₁ (SG.Res .p₁ x)) eˢ (S₂.Step (S₂.takeMVar q r)) = S₂.Step (takeMVar q (write-store p₁ q eˢ x r))
+        aux (SG.takeMVar p₁ (SG.Res .p₁ x)) eˢ (S₂.Step (S₂.takeMVar q r)) = S₂.Step (takeMVar q (TypedIx-ε p₁ q eˢ x r))
         aux (SG.takeMVar p₁ (SG.Resₓ .p₁ eᵗ)) eˢ (S₂.Step S₂.takeMVarEx) = S₂.Step takeMVarEx
         
 -- -- To prove this we would need to prove the following lemmas:
