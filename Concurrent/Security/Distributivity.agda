@@ -299,8 +299,7 @@ Redex-ε {τ} {l} {lₐ} {ls} {t} {Σ} p isV isR = aux isV (ε-Mac-yes-ErasureIs
 
 -- It is not a contraddiction asking for Stuck Σ t and valid Σ t.
 -- valid Σ t is only about plain references being valid not for synchronization variables!
--- A thread cannot get stuck on a simple write because this operation is non-blocking,
--- unlike a write to an MVar.
+-- A thread cannot get stuck on a simple write because this operation is non-blocking, unlike a write to an MVar.
 ε-Stuck : ∀ {l lₐ τ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Stuck Σ t -> valid Σ t -> Stuck (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t)
 ε-Stuck {l} {lₐ} {t = t} {Σ} p (stuck nS nV) isV = stuck f g
   where f : Redex (εˢ lₐ Σ)  (ε-Mac lₐ (yes p) t) -> ⊥
