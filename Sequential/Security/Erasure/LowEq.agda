@@ -50,6 +50,18 @@ sym-≈ (ε-≡ x) = ε-≡ (sym x)
 trans-≈ : ∀ {l Δ τ} {t₁ t₂ t₃ : Term Δ τ} -> t₁ ≈-⟨ l ⟩ t₂ -> t₂ ≈ t₃ -> t₁ ≈ t₃
 trans-≈ (ε-≡ x) (ε-≡ x₁) = ε-≡ (trans x x₁)
 
+data Structural≈  {Δ τ} (lₐ : Label) (t₁ t₂ : Term Δ τ) : Set where
+  S-≈ : {tᵉ : Term Δ τ} -> Erasure lₐ t₁ tᵉ -> Erasure lₐ t₂ tᵉ -> Structural≈ lₐ t₁ t₂
+
+-- Connection to Graph of the function to get a (sort of) cheap structural equivalence
+≈-Structural : ∀ {lₐ Δ τ} {t₁ t₂ : Term Δ τ} -> t₁ ≈-⟨ lₐ ⟩ t₂ -> Structural≈ lₐ t₁ t₂ 
+≈-Structural {lₐ} {t₁ = t₁} {t₂ = t₂} (ε-≡ eq) with  ε-Erasure {lₐ = lₐ} t₁ | ε-Erasure {lₐ = lₐ} t₂
+... | a | b rewrite eq = S-≈ a b 
+
+Structural-≈ : ∀ {lₐ Δ τ} {t₁ t₂ : Term Δ τ} -> Structural≈ lₐ t₁ t₂ -> t₁ ≈-⟨ lₐ ⟩ t₂
+Structural-≈ (S-≈ x y) with Erasure-ε x | Erasure-ε y
+... | a | b = ε-≡ (trans a (sym b))
+
 --------------------------------------------------------------------------------
 -- Program Low Equivalence
 
