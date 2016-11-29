@@ -206,43 +206,93 @@ TypedIx-εₓ p (There q) (x₁ SG.∷ x₂) r = TypedIx-εₓ p q x₂ r
 
 --------------------------------------------------------------------------------
 
-Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> Redex (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t) -> Redex Σ t
-Redex-ε {τ} {l} {lₐ} {ls} {t} {Σ} p isR = aux (ε-Mac-yes-ErasureIso (SG.Macᴸ p) p t) (εˢ-ErasureStore Σ) isR
+open import Data.Product renaming (Σ to Sigma)
+
+
+-- If the term is a reference (Nat) it must point somewhere in the store
+validIndex : ∀ {τ l ls} -> (Σ : Store ls) -> (c : CTerm (Ref l τ)) -> Set
+validIndex {τ} {l} {ls} Σ (S.Res c) = (q : l ∈ ls) -> TypedIx τ F c (getMemory q Σ)
+validIndex {τ} {l} {ls} Σ (S.Resₓ c) = Sigma (CTerm Nat) (λ n → (q : l ∈ ls) -> TypedIx τ F n (getMemory q Σ))
+validIndex Σ _ = ⊤
+
+valid : ∀ {τ ls} -> Store ls -> CTerm τ -> Set
+valid Σ S.（） = ⊤
+valid Σ S.True = ⊤
+valid Σ S.False = ⊤
+valid Σ (S.Id c) = valid Σ c
+valid Σ (S.unId c) = valid Σ c
+valid Σ (c S.<*>ᴵ c₁) = valid Σ c × valid Σ c₁
+valid Σ (S.Var x) = ⊤
+valid Σ (S.Abs c) = ⊤
+valid Σ (S.App c c₁) = valid Σ c × valid Σ c₁
+valid Σ (S.If c Then c₁ Else c₂) = valid Σ c × valid Σ c₁ × valid Σ c₂
+valid Σ (S.Return c) = valid Σ c
+valid Σ (c S.>>= c₁) = valid Σ c × valid Σ c₁
+valid Σ S.ξ = ⊤
+valid Σ (S.Throw c) = valid Σ c
+valid Σ (S.Catch c c₁) = valid Σ c × valid Σ c₁
+valid Σ (S.Mac c) = valid Σ c
+valid Σ (S.Macₓ c) = valid Σ c
+valid Σ (S.Res c) = valid Σ c
+valid Σ (S.Resₓ c) = valid Σ c
+valid Σ (S.relabel x c) = valid Σ c
+valid Σ (S.relabel∙ x c) = valid Σ c
+valid Σ (S.label x c) = valid Σ c
+valid Σ (S.label∙ x c) = valid Σ c
+valid Σ (S.unlabel x c) = valid Σ c
+valid Σ (S.join x c) = ⊥
+valid Σ (S.join∙ x c) = ⊥
+valid Σ S.zero = ⊤
+valid Σ (S.suc c) = valid Σ c
+valid Σ (S.read x c) = valid Σ c
+valid Σ (S.write {α = τ} x c c₁) = valid Σ c × validIndex {τ = τ} Σ c
+valid Σ (S.new x c) = valid Σ c
+valid Σ (c S.<*> c₁) = valid Σ c × valid Σ c₁
+valid Σ (c S.<*>∙ c₁) = valid Σ c × valid Σ c₁
+valid Σ (S.fork x c) = valid Σ c
+valid Σ (S.newMVar x) = ⊤
+valid Σ (S.takeMVar c) = valid Σ c
+valid Σ (S.putMVar c c₁) = valid Σ c × valid Σ c₁
+valid Σ S.∙ = ⊤ 
+
+Redex-ε : ∀ {τ l lₐ ls} {t : CTerm (Mac l τ)} {Σ : Store ls} -> (p : l ⊑ lₐ) -> valid Σ t -> Redex (εˢ lₐ Σ) (ε-Mac lₐ (yes p) t) -> Redex Σ t
+Redex-ε {τ} {l} {lₐ} {ls} {t} {Σ} p isV isR = aux isV (ε-Mac-yes-ErasureIso (SG.Macᴸ p) p t) (εˢ-ErasureStore Σ) isR
   where aux : ∀ {τ} {Σ Σᵉ : Store ls} {t tᵉ : CTerm (Mac l τ)} {nonS : Insensitive lₐ (Mac l τ)} ->
-                ErasureIso nonS t tᵉ -> ErasureStore lₐ Σ Σᵉ -> Redex Σᵉ tᵉ -> Redex Σ t
-        aux eᵗ eˢ (S₂.Step (S₂.Pure x)) with PRedex-ε-Iso eᵗ (S₂.Step x)
+                valid Σ t -> ErasureIso nonS t tᵉ -> ErasureStore lₐ Σ Σᵉ -> Redex Σᵉ tᵉ -> Redex Σ t
+        aux isV eᵗ eˢ (S₂.Step (S₂.Pure x)) with PRedex-ε-Iso eᵗ (S₂.Step x)
         ... | Step s = S₂.Step (Pure s)
-        aux (SG.Bind p₁ eᵗ eᵗ₁) eˢ (S₂.Step (S₂.BindCtx x)) with aux eᵗ eˢ (Step x)
+        aux (isV , _) (SG.Bind p₁ eᵗ eᵗ₁) eˢ (S₂.Step (S₂.BindCtx x)) with aux isV eᵗ eˢ (Step x)
         ... | Step s = S₂.Step (S₂.BindCtx s)
-        aux (SG.Catch p₁ eᵗ eᵗ₁) eˢ (S₂.Step (S₂.CatchCtx x)) with aux eᵗ eˢ (Step x)
+        aux (isV , _) (SG.Catch p₁ eᵗ eᵗ₁) eˢ (S₂.Step (S₂.CatchCtx x)) with aux isV eᵗ eˢ (Step x)
         ... | Step s = S₂.Step (S₂.CatchCtx s)
-        aux (SG.joinᴸ p₁ p₂ p₃ eᵗ) eˢ (S₂.Step (S₂.join .p₂ x)) = {!!} -- Rule out join with Valid in concurrent
-        aux eᵗ eˢ (S₂.Step (S₂.joinEx p₁ x)) = {!!} -- Rule out join with Valid in concurrent
-        aux eᵗ eˢ (S₂.Step (S₂.join∙ p₁)) = {!!} -- Rule out join with Valid in concurrent
-        aux (SG.new p₁ p₂ x) eˢ (S₂.Step (S₂.new .p₂ q)) = Step (new p₂ q)
-        aux (SG.write p₁ p₂ x x₁) eˢ (S₂.Step (S₂.writeCtx .p₂ (S₂.Pure x₂))) with PRedex-ε-Res x (Step x₂)
+        aux () (SG.joinᴸ p₁ p₂ p₃ eᵗ) eˢ (S₂.Step (S₂.join .p₂ x))
+        aux () (SG.joinᴸ p₁ p₂ p₃ eᵗ) eˢ (S₂.Step (S₂.joinEx .p₂ x))
+        aux () (SG.joinᴴ p₁ p₂ p₃ x) eˢ (S₂.Step (S₂.join∙ .p₂))
+        aux () (SG.join∙ p₁ p₂ x) eˢ (S₂.Step (S₂.join∙ .p₂))
+        aux isV (SG.new p₁ p₂ x) eˢ (S₂.Step (S₂.new .p₂ q)) = Step (new p₂ q)
+        aux isV (SG.write p₁ p₂ x x₁) eˢ (S₂.Step (S₂.writeCtx .p₂ (S₂.Pure x₂))) with PRedex-ε-Res x (Step x₂)
         ... | Step s = S₂.Step (S₂.writeCtx p₂ (S₂.Pure s))
-        aux (SG.write p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Res p₃ x)) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = S₂.Step (write p₂ q (TypedIx-ε p₃ q eˢ x r₁))
-        aux (SG.write p₁ p₂ (SG.Res∙ ¬p SG.Res) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = {!!} -- I have to assume that Res ∙ was originally Res n a valid index
-        aux (SG.write p₁ p₂ (SG.Res∙ ¬p SG.Resₓ) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = S₂.Step (writeEx p₂ q {!r₁!}) -- I have to assume that Res ∙ was originally Res n a valid index
-        aux (SG.write p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Resₓ p₃ x)) x₁) eˢ (S₂.Step (S₂.writeEx .p₂ q r₁)) = Step (writeEx p₂ q (TypedIx-εₓ p₃ q eˢ r₁))
-        aux (SG.write p₁ p₂ (SG.Res∙ ¬p ()) x) eˢ (S₂.Step (S₂.writeEx .p₂ q r₁))
-        aux (SG.read p₁ p₂ x) eˢ (S₂.Step (S₂.readCtx .p₂ (Pure x₁))) with PRedex-ε-Res x (Step x₁)
+        aux isV (SG.write p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Res p₃ x)) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = S₂.Step (write p₂ q (TypedIx-ε p₃ q eˢ x r₁))
+        aux (isV , validRef) (SG.write p₁ p₂ (SG.Res∙ ¬p SG.Res) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = Step (write p₂ q (validRef q))
+        aux (isV , (n , validRef)) (SG.write p₁ p₂ (SG.Res∙ ¬p SG.Resₓ) x₁) eˢ (S₂.Step (S₂.write .p₂ q r₁)) = S₂.Step (writeEx p₂ q (validRef q))
+        aux isV (SG.write p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Resₓ p₃ x)) x₁) eˢ (S₂.Step (S₂.writeEx .p₂ q r₁)) = Step (writeEx p₂ q (TypedIx-εₓ p₃ q eˢ r₁))
+        aux isV (SG.write p₁ p₂ (SG.Res∙ ¬p ()) x) eˢ (S₂.Step (S₂.writeEx .p₂ q r₁))
+        aux isV (SG.read p₁ p₂ x) eˢ (S₂.Step (S₂.readCtx .p₂ (Pure x₁))) with PRedex-ε-Res x (Step x₁)
         ... | Step s = S₂.Step (S₂.readCtx p₂ (S₂.Pure s))
-        aux (SG.read p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Res p₃ x))) eˢ (S₂.Step (S₂.read .p₂ q r)) = S₂.Step (read p₂ q (TypedIx-ε p₃ q eˢ x r))
-        aux (SG.read p₁ p₂ (SG.Res∙ ¬p x)) eˢ (S₂.Step (S₂.read .p₂ q r)) = ⊥-elim (¬p (trans-⊑ p₂ p₁))
-        aux (SG.read p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Resₓ p₃ x))) eˢ (S₂.Step (S₂.readEx .p₂)) = S₂.Step (readEx p₂)
-        aux (SG.read p₁ p₂ (SG.Res∙ ¬p x)) eˢ (S₂.Step (S₂.readEx .p₂)) = ⊥-elim (¬p (trans-⊑ p₂ p₁))
-        aux (SG.fork p₁ p₂ x) eˢ (S₂.Step (S₂.fork .p₂ t₂)) = S₂.Step (S₂.fork p₂ _)
-        aux (SG.newMVar p₁ p₂) eˢ (S₂.Step (S₂.newMVar .p₂ q)) = S₂.Step (S₂.newMVar p₂ q)
-        aux (SG.putMVar p₁ eᵗ x) eˢ (S₂.Step (S₂.putMVarCtx (S₂.Pure x₁))) with PRedex-ε-Iso eᵗ (Step x₁)
+        aux isV (SG.read p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Res p₃ x))) eˢ (S₂.Step (S₂.read .p₂ q r)) = S₂.Step (read p₂ q (TypedIx-ε p₃ q eˢ x r))
+        aux isV (SG.read p₁ p₂ (SG.Res∙ ¬p x)) eˢ (S₂.Step (S₂.read .p₂ q r)) = ⊥-elim (¬p (trans-⊑ p₂ p₁))
+        aux isV (SG.read p₁ p₂ (SG.Iso .(SG.Resᴸ p₃) (SG.Resₓ p₃ x))) eˢ (S₂.Step (S₂.readEx .p₂)) = S₂.Step (readEx p₂)
+        aux isV (SG.read p₁ p₂ (SG.Res∙ ¬p x)) eˢ (S₂.Step (S₂.readEx .p₂)) = ⊥-elim (¬p (trans-⊑ p₂ p₁))
+        aux isV (SG.fork p₁ p₂ x) eˢ (S₂.Step (S₂.fork .p₂ t₂)) = S₂.Step (S₂.fork p₂ _)
+        aux isV (SG.newMVar p₁ p₂) eˢ (S₂.Step (S₂.newMVar .p₂ q)) = S₂.Step (S₂.newMVar p₂ q)
+        aux isV (SG.putMVar p₁ eᵗ x) eˢ (S₂.Step (S₂.putMVarCtx (S₂.Pure x₁))) with PRedex-ε-Iso eᵗ (Step x₁)
         ... | Step s = S₂.Step (S₂.putMVarCtx (S₂.Pure s))
-        aux (SG.putMVar p₁ (SG.Res .p₁ x₁) x) eˢ (S₂.Step (S₂.putMVar q r₁)) = S₂.Step (putMVar q (TypedIx-ε p₁ q eˢ x₁ r₁))
-        aux (SG.putMVar p₁ (SG.Resₓ .p₁ eᵗ) x) eˢ (S₂.Step S₂.putMVarEx) = S₂.Step putMVarEx
-        aux (SG.takeMVar p₁ eᵗ) eˢ (S₂.Step (S₂.takeMVarCtx (Pure x))) with PRedex-ε-Iso eᵗ (Step x)
+        aux isV (SG.putMVar p₁ (SG.Res .p₁ x₁) x) eˢ (S₂.Step (S₂.putMVar q r₁)) = S₂.Step (putMVar q (TypedIx-ε p₁ q eˢ x₁ r₁))
+        aux isV (SG.putMVar p₁ (SG.Resₓ .p₁ eᵗ) x) eˢ (S₂.Step S₂.putMVarEx) = S₂.Step putMVarEx
+        aux isV (SG.takeMVar p₁ eᵗ) eˢ (S₂.Step (S₂.takeMVarCtx (Pure x))) with PRedex-ε-Iso eᵗ (Step x)
         ... | Step s = S₂.Step (S₂.takeMVarCtx (S₂.Pure s))
-        aux (SG.takeMVar p₁ (SG.Res .p₁ x)) eˢ (S₂.Step (S₂.takeMVar q r)) = S₂.Step (takeMVar q (TypedIx-ε p₁ q eˢ x r))
-        aux (SG.takeMVar p₁ (SG.Resₓ .p₁ eᵗ)) eˢ (S₂.Step S₂.takeMVarEx) = S₂.Step takeMVarEx
+        aux isV (SG.takeMVar p₁ (SG.Res .p₁ x)) eˢ (S₂.Step (S₂.takeMVar q r)) = S₂.Step (takeMVar q (TypedIx-ε p₁ q eˢ x r))
+        aux isV (SG.takeMVar p₁ (SG.Resₓ .p₁ eᵗ)) eˢ (S₂.Step S₂.takeMVarEx) = S₂.Step takeMVarEx
         
 -- -- To prove this we would need to prove the following lemmas:
 -- -- IsValue (ε t) => IsValue t
