@@ -151,5 +151,27 @@ postulate stuckᴸ : ∀ {τ l ls lₐ} -> {p p' : Program ls (Mac l τ)} ->
 --------------------------------------------------------------------------------
 
 -- It should be easy to prove these other lemmas with a structural definition of low-equivalence
-postulate isNotForkᴸ : ∀ {τ lₐ l} {t₁ t₂ : CTerm (Mac l τ)} -> l ⊑ lₐ -> ¬ (IsFork t₁) -> t₁ ≈-⟨ lₐ ⟩ t₂ -> ¬ (IsFork t₂)
-postulate isNot∙ᴸ : ∀ {τ lₐ l} {t₁ t₂ : CTerm (Mac l τ)} -> l ⊑ lₐ -> ¬ (Is∙ t₁) -> t₁ ≈-⟨ lₐ ⟩ t₂ -> ¬ (Is∙ t₂)
+
+open import Sequential.Security.Erasure.Graph
+
+isNotForkᴸ : ∀ {lₐ τ l} {t₁ t₂ : CTerm (Mac l τ)} -> l ⊑ lₐ -> ¬ (IsFork t₁) -> t₁ ≈-⟨ lₐ ⟩ t₂ -> ¬ (IsFork t₂)
+isNotForkᴸ {lₐ} {_} {l} p ¬fork t₁≈t₂ (fork p₁ t) = aux p₁ ¬fork (≈-Structural t₁≈t₂)
+  where
+
+        -- Avoids unification problems
+        aux' : ∀ {l h h'} {p : l ⊑ h} {p' : l ⊑ h'} {t : CTerm (Mac l _)} {t' : CTerm (Mac h' _)}
+               -> ErasureIso 𝓛 (Macᴸ p) t (fork p' t') -> IsFork t
+        aux' (fork p₂ p' x) = fork p' _ 
+        
+        aux : ∀ {h} {t₁ : CTerm (Mac l _)} {t' : CTerm (Mac h _)} ->
+                (p' : l ⊑ h) -> ¬ (IsFork t₁) -> Structural≈ lₐ t₁ (fork p' t')  -> ⊥
+        aux p' ¬fork₁ (S-≈ (Iso (Macᴸ p₂) x) (Iso .(Macᴸ p₃) (fork p₃ .p' x₁))) = ¬fork₁ (aux' x)
+        aux p' ¬fork₁ (S-≈ (Mac∙ ¬p x) (Iso .(Macᴸ p₂) (fork p₂ .p' x₁))) = ⊥-elim (¬p p₂)
+        aux p' ¬fork₁ (S-≈ x (Mac∙ ¬p x₁)) = ⊥-elim (¬p p)
+  
+isNot∙ᴸ : ∀ {lₐ τ l} {t₁ t₂ : CTerm (Mac l τ)} -> l ⊑ lₐ -> ¬ (Is∙ t₁) -> t₁ ≈-⟨ lₐ ⟩ t₂ -> ¬ (Is∙ t₂)
+isNot∙ᴸ {lₐ} {τ} {l} p ¬∙ t₁≈t₂ ∙ = aux ¬∙ (≈-Structural t₁≈t₂) 
+  where aux : ∀ {t₁ : CTerm (Mac l τ)} -> ¬ (Is∙ t₁) -> Structural≈ lₐ t₁ ∙ -> ⊥
+        aux ¬∙ (S-≈ (Iso nonS (∙ .nonS)) (Iso nonS₁ (∙ .nonS₁))) = ¬∙ ∙
+        aux ¬∙ (S-≈ (Mac∙ ¬p x) (Iso nonS (∙ .nonS))) = ⊥-elim (¬p p)
+        aux ¬∙ (S-≈ x (Mac∙ ¬p x₁)) = ⊥-elim (¬p p)
